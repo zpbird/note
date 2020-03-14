@@ -1,0 +1,4030 @@
+* emacs配置ts环境
+** 安装typescript
++ 系统使用nvm时，emacs 中需要设置node的路径
++ sudo apt install nodejs
++ sudo apt install npm(nodejs_v8不自带npm)
++ sudo npm install typescript -g (需要使用sudo)
++ sudo npm install jquery -g --save (这个包安装以后, tsserver 就不会抱怨找不到 JQuery 的 $ 符号了 )
+** 配置emacs(https://github.com/ananthakumaran/tide)
+#+BEGIN_SRC lisp
+(use-package tide
+  :ensure t
+  :after (typescript-mode company flycheck)
+  :hook ((typescript-mode . tide-setup)
+         (typescript-mode . tide-hl-identifier-mode)
+         (before-save . tide-format-before-save)))
+
+
+
+或者
+(defun setup-tide-mode ()
+  (interactive)
+  (tide-setup)
+  (flycheck-mode +1)
+  (setq flycheck-check-syntax-automatically '(save mode-enabled))
+  (eldoc-mode +1)
+  (tide-hl-identifier-mode +1)
+  ;; company is an optional dependency. You have to
+  ;; install it separately via package-install
+  ;; `M-x package-install [ret] company`
+  (company-mode +1))
+
+;; aligns annotation to the right hand side
+(setq company-tooltip-align-annotations t)
+
+;; formats the buffer before saving
+(add-hook 'before-save-hook 'tide-format-before-save)
+
+(add-hook 'typescript-mode-hook #'setup-tide-mode)
+
+
+
+或者
+(require 'tide)
+
+(dolist (hook (list
+               'js2-mode-hook
+               'rjsx-mode-hook
+               'typescript-mode-hook
+               ))
+  (add-hook hook (lambda ()
+                   ;; 初始化 tide
+                   (tide-setup)
+                   ;; 当 tsserver 服务没有启动时自动重新启动
+                   (unless (tide-current-server)
+                     (tide-restart-server))
+                   )))
+#+END_SRC
+** tsconfig.json文件
++ 在项目根目录中设置tsconfig.json文件与package.json同级
+  tsc --init //基础化搭建环境 生成tscconfig.json
++ 文件内容(http://www.typescriptlang.org/docs/handbook/tsconfig-json.html)
+  #+BEGIN_SRC json
+  {
+    "compilerOptions": {
+        "module": "commonjs",
+        "noImplicitAny": true,
+        "removeComments": true,
+        "preserveConstEnums": true,
+        "sourceMap": true,
+        // 以严格模式解析
+        "strict": true,
+        // 允许编译javascript文件
+        "allowJs": true,
+        // 编译输出目标 ES 版本
+        "target": "es5",
+        //用mode进行模块解析
+        "moduleResolution": "node",
+        //使用sourceMap
+        "sourceMap": true,        
+      },
+
+    "files": [
+        "core.ts",
+        "sys.ts",
+        "types.ts",
+        "scanner.ts",
+        "parser.ts",
+        "utilities.ts",
+        "binder.ts",
+        "checker.ts",
+        "emitter.ts",
+        "program.ts",
+        "commandLineParser.ts",
+        "tsc.ts",
+        "diagnosticInformationMap.generated.ts"
+      ]，
+      "include": [
+          "src/*",
+          "src/**/*"
+      ],
+      "exclude": [
+          "node_modules"
+      ]
+  }
+
+
+
+
+更加详细设置范例1
+    "compilerOptions": {
+        // types option has been previously configured
+        "types": [
+            // add node as an option
+            "node"
+        ],
+        // typeRoots option has been previously configured
+        "typeRoots": [
+            // add path to @types
+            "node_modules/@types"
+        ],
+
+        // 在.tsx文件里支持JSX
+        "jsx": "preserve",
+        // 使用的JSX工厂函数
+        "jsxFactory": "h",
+        // 允许从没有设置默认导出的模块中默认导入
+        "allowSyntheticDefaultImports": true,
+        // 启用装饰器
+        "experimentalDecorators": true,
+        "strictFunctionTypes": false,
+        // 采用的模块系统
+        "module": "esnext",
+
+
+        // 在表达式和声明上有隐含的any类型时报错
+        "noImplicitAny": true,
+        "lib": [
+            "dom",
+            "es5",
+            "es6",
+            "es7",
+            "es2015.promise"
+          ],
+        "sourceMap": true,
+        "pretty": true
+    },    
+
+更加详细设置范例2
+  "compilerOptions": {
+    "target": "es5", // 编译后的代码转为 es5 以兼容低版本
+    "module": "esnext", // 读取的文件采用的都是 ES6 的模块系统
+    "allowSyntheticDefaultImports": true, // 允许从没有设置默认导出的模块中默认导入
+    "experimentalDecorators": true, // 允许使用 装饰器
+    "moduleResolution": "node", // 决定如何处理模块
+    "strict": true, // 启用所有严格检查选项。 包含--noImplicitAny, --noImplicitThis, --alwaysStrict, --strictBindCallApply, --strictNullChecks, --strictFunctionTypes和--strictPropertyInitialization
+    "allowJs": true, // 接受JavaScript做为输入
+    "skipLibCheck": true, // 忽略所有的声明文件（*.d.ts）的类型检查
+    "sourceMap": true,
+    "importHelpers": true,// 从tslib导入辅助工具函数
+    "downlevelIteration": true,
+    "lib": ["es2015", "dom"], // 编译过程中需要引入的库文件的列表
+    "jsx": "react" // 在.tsx文件里支持JSX
+  },
+
+
+
+  #+END_SRC
+** webpack对应配置
++ 安装插件ts-load
+  sudo npm install ts-loader -g --save-dev
++ 基本webpack.config.js
+  #+BEGIN_SRC js
+  module.exports = {
+    entry: "./src/index.tsx",
+    output: {
+        filename: "bundle.js"
+    },
+    resolve: {
+        // Add '.ts' and '.tsx' as a resolvable extension.
+        extensions: ["", ".webpack.js", ".web.js", ".ts", ".tsx", ".js"]
+    },
+    module: {
+        loaders: [
+            // all files with a '.ts' or '.tsx' extension will be handled by 'ts-loader'
+            { test: /\.tsx?$/, loader: "ts-loader" }
+        ]
+    }
+  };
+  #+END_SRC
+** 其他插件
++ ts-node
+  sudo npm install ts-node -g
+* 手册
+** 基础类型
+*** 布尔值(boolean)
++ 最基本的数据类型就是简单的true/false值，在JavaScript和TypeScript里叫做 boolean
+  #+BEGIN_SRC typescript
+  let isDone: boolean = false;
+  #+END_SRC
+*** 数字(number)
++ 和JavaScript一样，TypeScript里的所有数字都是浮点数。 这些浮点数的类型是 number 。 除了支持十进制和十六进制字面量，TypeScript还支持ECMAScript2015中引入的二进制和八进制字面量
+  #+BEGIN_SRC typescript
+  let decLiteral: number = 6;
+  let hexLiteral: number = 0xf00d;
+  let binaryLiteral: number = 0b1010;
+  let octalLiteral: number = 0o744;
+  #+END_SRC
+*** 字符串(string)
++ JavaScript程序的另一项基本操作是处理网页或服务器端的文本数据。 像其它语言里一样，我们使用 string 表示文本数据类型。 和JavaScript一样，可以使用双引号（ " ）或单引号（ ' ）表示字符串
+  #+BEGIN_SRC typescript
+  let name: string = "bob";
+  name = "smith";
+  #+END_SRC
++ 可以使用模版字符串，它可以定义多行文本和内嵌表达式。 这种字符串是被反引号包围（ ` ），并且以 ${ expr } 这种形式嵌入表达式
+  #+BEGIN_SRC typescript
+  let name: string = `Gene`;
+  let age: number = 37;
+  let sentence: string = `Hello, my name is ${ name }.
+  I'll be ${ age + 1 } years old next month.`;
+  #+END_SRC
++ 这与下面定义 sentence 的方式效果相同
+  #+BEGIN_SRC typescript
+  let sentence: string = "Hello, my name is " + name + ".\n\n" + "I'll be " + (age + 1) + " years old next month.";
+  #+END_SRC
+*** 数组(list)
++ TypeScript像JavaScript一样可以操作数组元素。 有两种方式可以定义数组。 第一种，可以在元素类型后面接上 [] ，表示由此类型元素组成的一个数组
+  #+BEGIN_SRC typescript
+  let list: number[] = [1, 2, 3];
+  #+END_SRC
++ 第二种方式是使用数组泛型， Array<元素类型> 
+  #+BEGIN_SRC typescript
+  let list: Array<number> = [1, 2, 3];  
+  #+END_SRC
+*** 元组(tuple)
++ 元组类型允许表示一个已知元素数量和类型的数组，各元素的类型不必相同。 比如，你可以定义一对值分别为 string 和 number 类型的元组
+  #+BEGIN_SRC typescript
+  // Declare a tuple type
+  let x: [string, number];
+  // Initialize it
+  x = ['hello', 10]; // OK
+  // Initialize it incorrectly
+  x = [10, 'hello']; // Error
+  #+END_SRC
++ 当访问一个已知索引的元素，会得到正确的类型
+  #+BEGIN_SRC typescript
+  console.log(x[0].substr(1)); // OK
+  console.log(x[1].substr(1)); // Error, 'number' does not have 'substr'
+  #+END_SRC
++ 当访问一个越界的元素，会使用联合类型替代
+  #+BEGIN_SRC typescript
+  x[3] = 'world'; // OK, 字符串可以赋值给(string | number)类型
+  console.log(x[5].toString()); // OK, 'string' 和 'number' 都有 toString
+  x[6] = true; // Error, 布尔不是(string | number)类型
+  #+END_SRC
+*** 枚举(enum)
++ enum 类型是对JavaScript标准数据类型的一个补充。 像C#等其它语言一样，使用枚举类型可以为一组数值赋予友好的名字
+  #+BEGIN_SRC typescript
+  enum Color {Red, Green, Blue}
+  let c: Color = Color.Green;
+  #+END_SRC
++ 默认情况下，从 0 开始为元素编号。 你也可以手动的指定成员的数值。 例如，我们将上面的例子改成从 1 开始编号
+  #+BEGIN_SRC typescript
+  enum Color {Red = 1, Green, Blue}
+  let c: Color = Color.Green;
+  #+END_SRC
++ 或者，全部都采用手动赋值
+  #+BEGIN_SRC typescript
+  enum Color {Red = 1, Green = 2, Blue = 4}
+  let c: Color = Color.Green;
+  #+END_SRC
++ 枚举类型提供的一个便利是你可以由枚举的值得到它的名字。 例如，我们知道数值为2，但是不确定它映射到Color里的哪个名字，我们可以查找相应的名字
+  #+BEGIN_SRC typescript
+  enum Color {Red = 1, Green, Blue}
+  let colorName: string = Color[2];
+  alert(colorName); // 显示'Green'因为上面代码里它的值是2
+  #+END_SRC
+*** 任意值(any)
++ 有时候，我们会想要为那些在编程阶段还不清楚类型的变量指定一个类型。 这些值可能来自于动态的内容，比如来自用户输入或第三方代码库。 这种情况下，我们不希望类型检查器对这些值进行检查而是直接让它们通过编译阶段的检查。 那么我们可以使用 any 类型来标记这些变量
+  #+BEGIN_SRC typescript
+  let notSure: any = 4;
+  notSure = "maybe a string instead";
+  notSure = false; // okay, definitely a boolean
+  #+END_SRC
++ 在对现有代码进行改写的时候， any 类型是十分有用的，它允许你在编译时可选择地包含或移除类型检查。 你可能认为 Object 有相似的作用，就像它在其它语言中那样。 但是 Object 类型的变量只是允许你给它赋任意值 - 但是却不能够在它上面调用任意的方法，即便它真的有这些方法
+  #+BEGIN_SRC typescript
+  let notSure: any = 4;
+  notSure.ifItExists(); // okay, ifItExists might exist at runtime
+  notSure.toFixed(); // okay, toFixed exists (but the compiler doesn't check)
+  let prettySure: Object = 4;
+  prettySure.toFixed(); // Error: Property 'toFixed' doesn't existon type 'Object'
+  #+END_SRC
++ 只知道一部分数据的类型时， any 类型也是有用的。 比如，你有一个数组，它包含了不同的类型的数据
+  #+BEGIN_SRC typescript
+  let list: any[] = [1, true, "free"];
+  list[1] = 100;
+  #+END_SRC
+*** 空值(void)
++ 某种程度上来说， void 类型像是与 any 类型相反，它表示没有任何类型。 当一个函数没有返回值时，你通常会见到其返回值类型是 void
+  #+BEGIN_SRC typescript
+  function warnUser(): void {
+      alert("This is my warning message");
+  }
+  #+END_SRC
++ 声明一个 void 类型的变量没有什么大用，因为你只能为它赋予 undefined 和 null
+  #+BEGIN_SRC typescript
+  let unusable: void = undefined;
+  #+END_SRC
+*** Null 和 Undefined
++ ypeScript里， undefined 和 null 两者各自有自己的类型分别叫做 undefined 和 null 。 和 void 相似，它们的本身的类型用处不是很大
+  #+BEGIN_SRC typescript
+  // Not much else we can assign to these variables!
+  let u: undefined = undefined;
+  let n: null = null;
+  #+END_SRC
++ 默认情况下 null 和 undefined 是所有类型的子类型。 就是说你可以把 null 和 undefined 赋值给 number 类型的变量,然而，当你指定了 --strictNullChecks 标记， null 和 undefined 只能赋值给 void 和它们各自。 这能避免很多常见的问题。 也许在某处你想传入一个 string 或 null 或 undefined ，你可以使用联合类型 string | null |undefined
+*** Never
++ never 类型表示的是那些永不存在的值的类型。 例如， never 类型是那些总是会抛出异常或根本就不会有返回值的函数表达式或箭头函数表达式的返回值类型；变量也可能是 never 类型，当它们被永不为真的类型保护所约束时
++ never 类型是任何类型的子类型，也可以赋值给任何类型；然而，没有类型是 never 的子类型或可以赋值给 never 类型（除了 never 本身之外）。 即使 any 也不可以赋值给 never
+  #+BEGIN_SRC typescript
+  // 返回never的函数必须存在无法达到的终点
+  function error(message: string): never {
+      throw new Error(message);
+  }
+  // 推断的返回值类型为never
+  function fail() {
+      return error("Something failed");
+  }
+  // 返回never的函数必须存在无法达到的终点
+  function infiniteLoop(): never {
+      while (true) {
+      }
+  }
+  #+END_SRC
+*** Object
++ object 表示非原始类型，也就是除 number ， string ， boolean ， symbol ， null 或 undefined 之外的类型。使用 object 类型，就可以更好的表示像 Object.create 这样的API
+  #+BEGIN_SRC typescript
+  declare function create(o: object | null): void;
+  create({ prop: 0 }); // OK
+  create(null); // OK
+  create(42); // Error
+  create("string"); // Error
+  create(false); // Error
+  create(undefined); // Error
+  #+END_SRC
+*** 类型断言
++ 通过类型断言这种方式可以告诉编译器，“相信我，我知道自己在干什么”。 类型断言好比其它语言里的类型转换，但是不进行特殊的数据检查和解构。 它没有运行时的影响，只是在编译阶段起作用。 TypeScript会假设你，程序员，已经进行了必须的检查,类型断言有两种形式
+  #+BEGIN_SRC typescript
+  // 其一是“尖括号”语法：
+  let someValue: any = "this is a string";
+  let strLength: number = (<string>someValue).length;
+  // 另一个为 as 语法
+  let someValue: any = "this is a string";
+  let strLength: number = (someValue as string).length;
+  #+END_SRC
+*** 关于 let
++ 使用 let 关键字来代替大家所熟悉的JavaScript关键字 var 。 let 关键字是JavaScript的一个新概念，TypeScript实现了它。 我们会在以后详细介绍它，很多常见的问题都可以通过使用 let 来解决，所以尽可能地使用 let 来代替 var
+** 变量声明
++ let 和 const 是JavaScript里相对较新的变量声明方式。 像我们之前提到过的， let 在很多方面与 var 是相似的，但是可以帮助大家避免在JavaScript里常见一些问题。 const 是对 let 的一个增强，它能阻止对一个变量再次赋值
+*** var 声明
++ 由于作用域的问题容易造成混乱，基本已经弃用
+*** let 声明
+**** 块作用域
++ 当用 let 声明一个变量，它使用的是词法作用域或块作用域。 不同于使用 var 声明的变量那样可以在包含它们的函数外访问，块作用域变量在包含它们的块或 for 循环之外是不能访问的
+  #+BEGIN_SRC typescript
+  function f(input: boolean) {
+      let a = 100;
+      if (input) {
+          // Still okay to reference 'a'
+          let b = a + 1;
+          return b;
+      }
+      // Error: 'b' doesn't exist here
+      return b;
+  }
+  #+END_SRC
++ 拥有块级作用域的变量的另一个特点是，它们不能在被声明之前读或写。 虽然这些变量始终“存在”于它们的作用域里，但在直到声明它的代码之前的区域都属于暂时性死区
+**** 重定义及屏蔽
++ 在一个嵌套作用域里引入一个新名字的行为称做屏蔽。 它是一把双刃剑，它可能会不小心地引入新问题，同时也可能会解决一些错误
++ 通常来讲应该避免使用屏蔽，因为我们需要写出清晰的代码。 同时也有些场景适合利用它，你需要好好打算一下
+**** 块级作用域变量的获取
++ 直观地讲，每次进入一个作用域时，它创建了一个变量的环境。 就算作用域内代码已经执行完毕，这个环境与其捕获的变量依然存在
++ 当 let 声明出现在循环体里时拥有完全不同的行为。 不仅是在循环里引入了一个新的变量环境，而是针对每次迭代都会创建这样一个新作用域。 这就是我们在使用立即执行的函数表达式时做的事，所以在 setTimeout 例子里我们仅使用 let 声明就可以了
+  #+BEGIN_SRC typescript
+  for (let i = 0; i < 10 ; i++) {
+      setTimeout(function() {console.log(i); }, 100 * i);
+  }
+  #+END_SRC
+*** const 声明
++ const 声明是声明变量的另一种方式,它们与 let 声明相似，但是就像它的名字所表达的，它们被赋值后不能再改变。换句话说，它们拥有与 let 相同的作用域规则，但是不能对它们重新赋值。这很好理解，它们引用的值是不可变的
+*** 解构
++ 要小心使用解构。 从前面的例子可以看出，就算是最简单的解构表达式也是难以理解的。 尤其当存在深层嵌套解构的时候，就算这时没有堆叠在一起的重命名，默认值和类型注解，也是令人难以理解的。 解构表达式要尽量保持小而简单
+**** 解构数组
++ 最简单的解构莫过于数组的解构赋值了
+  #+BEGIN_SRC typescript
+  let input = [1, 2];
+  let [first, second] = input;
+  console.log(first); // outputs 1
+  console.log(second); // outputs 2
+
+  // 这创建了2个命名变量 first 和 second 。 相当于使用了索引，但更为方便
+    first = input[0];
+  second = input[1];
+  #+END_SRC
++ 解构作用于已声明的变量会更好
+  #+BEGIN_SRC typescript
+  // swap variables
+  [first, second] = [second, first];
+  #+END_SRC
++ 作用于函数参数
+  #+BEGIN_SRC typescript
+  function f([first, second]: [number, number]) {
+      console.log(first);
+      console.log(second);
+  }
+  f(input);
+  #+END_SRC
++ 可以在数组里使用 ... 语法创建剩余变量
+  #+BEGIN_SRC typescript
+  let [first, ...rest] = [1, 2, 3, 4];
+  console.log(first); // outputs 1
+  console.log(rest); // outputs [ 2, 3, 4 ]
+  #+END_SRC
++ 当然，由于是JavaScript, 你可以忽略你不关心的尾随元素
+  #+BEGIN_SRC typescript
+  let [first] = [1, 2, 3, 4];
+  console.log(first); // outputs 1
+  // 或其它元素：
+  let [, second, , fourth] = [1, 2, 3, 4];
+  #+END_SRC
+**** 对象解构
++ 也可以解构对象
+  #+BEGIN_SRC typescript
+  let o = {
+      a: "foo",
+      b: 12,
+      c: "bar"
+  };
+  let { a, b } = o;
+  // 这通过 o.a and o.b 创建了 a 和 b 。 注意，如果你不需要 c 你可以忽略它
+  #+END_SRC
++ 就像数组解构，你可以用没有声明的赋值
+  #+BEGIN_SRC typescript
+  ({ a, b } = { a: "baz", b: 101 });
+  // 注意，我们需要用括号将它括起来，因为Javascript通常会将以"{}" 起始的语句解析为一个块
+  #+END_SRC
++ 可以在对象里使用 ... 语法创建剩余变量
+  #+BEGIN_SRC typescript
+  let { a, ...passthrough } = o;
+  let total = passthrough.b + passthrough.c.length;
+  #+END_SRC
+**** 属性重命名
++ 可以给属性以不同的名字
+  #+BEGIN_SRC typescript
+  let { a: newName1, b: newName2 } = o;
+  // 这里的语法开始变得混乱。 你可以将 a: newName1 读做 " a 作为newName1 "。 方向是从左到右，好像你写成了以下样子：
+  let newName1 = o.a;
+  let newName2 = o.b;
+  // 令人困惑的是，这里的冒号不是指示类型的。 如果你想指定它的类型， 仍然需要在其后写上完整的模式。
+  let {a, b}: {a: string, b: number} = o;
+  #+END_SRC
+**** 默认值
++ 默认值可以让你在属性为 undefined 时使用缺省值
+  #+BEGIN_SRC typescript
+  function keepWholeObject(wholeObject: { a: string, b?: number })
+  {
+      let { a, b = 1001 } = wholeObject;
+  }
+  // 现在，即使 b 为 undefined ， keepWholeObject 函数的变量 wholeObject的属性 a 和 b 都会有值
+  #+END_SRC
+**** 函数声明
++ 解构也能用于函数声明。 看以下简单的情况
+  #+BEGIN_SRC typescript
+  type C = { a: string, b?: number }
+  function f({ a, b }: C): void {
+      // ...
+  }
+  #+END_SRC
+*** 展开
++ 展开操作符正与解构相反。 它允许你将一个数组展开为另一个数组，或将一个对象展开为另一个对象
+  #+BEGIN_SRC typescript
+  let first = [1, 2];
+  let second = [3, 4];
+  let bothPlus = [0, ...first, ...second, 5];
+  #+END_SRC
++ 可以展开对象
+  #+BEGIN_SRC typescript
+  let defaults = { food: "spicy", price: "$$", ambiance: "noisy" };
+  let search = { ...defaults, food: "rich" };
+  #+END_SRC
++ 对象的展开比数组的展开要复杂的多。 像数组展开一样，它是从左至右进行处理，但结果仍为对象。 这就意味着出现在展开对象后面的属性会覆盖前面的属性
+** 接口
+*** 简介
++ 接口的作用就是为这些类型命名和为你的代码或第三方代码定义契约
+*** 可选属性
++ 接口里的属性不全都是必需的。 有些是只在某些条件下存在，或者根本不存在。可选属性在应用“option bags”模式时很常用，即给函数传入的参数对象中只有部分属性赋值了
+  #+BEGIN_SRC typescript
+  interface SquareConfig {
+      color?: string;
+      width?: number;
+  }
+  function createSquare(config: SquareConfig): {color: string; area: number} {
+      let newSquare = {color: "white", area: 100};
+      if (config.color) {
+      newSquare.color = config.color;
+      }
+      if (config.width) {
+          newSquare.area = config.width * config.width;
+      }
+      return newSquare;
+  }
+  let mySquare = createSquare({color: "black"});
+  #+END_SRC
++ 带有可选属性的接口与普通的接口定义差不多，只是在可选属性名字定义的后面加一个 ? 符号,可选属性的好处之一是可以对可能存在的属性进行预定义，好处之二是可以捕获引用了不存在的属性时的错误
+*** 只读属性
++ 一些对象属性只能在对象刚刚创建的时候修改其值。 你可以在属性名前用 readonly 来指定只读属性
+  #+BEGIN_SRC typescript
+  interface Point {
+      readonly x: number;
+      readonly y: number;
+  }
+  #+END_SRC
++ TypeScript具有 ReadonlyArray<T> 类型，它与 Array<T> 相似，只是把所有可变方法去掉了，因此可以确保数组创建后再也不能被修改
+  #+BEGIN_SRC typescript
+  let a: number[] = [1, 2, 3, 4];
+  let ro: ReadonlyArray<number> = a;
+  ro[0] = 12; // error!
+  ro.push(5); // error!
+  ro.length = 100; // error!
+  a = ro; // error!
+  #+END_SRC
++ 上面代码的最后一行，可以看到就算把整个 ReadonlyArray 赋值到一个普通数组也是不可以的。 但是你可以用类型断言重写
+  #+BEGIN_SRC typescript
+  a = ro as number[];
+  #+END_SRC
+*** readonly vs const
++ 最简单判断该用 readonly 还是 const 的方法是看要把它做为变量使用还是做为一个属性。 做为变量使用的话用 const ，若做为属性则使用 readonly
+*** 额外的属性检查
++ 最佳的方式是能够添加一个字符串索引签名，前提是你能够确定这个对象可能具有某些做为特殊用途使用的额外属性。 如果 SquareConfig 带有上面定义的类型的 color 和 width 属性，并且还会带有任意数量的其它属性，那么我们可以这样定义它
+  #+BEGIN_SRC typescript
+  interface SquareConfig {
+      color?: string;
+      width?: number;
+      [propName: string]: any;
+  }
+  #+END_SRC
+*** 函数类型
++ 接口能够描述JavaScript中对象拥有的各种各样的外形。 除了描述带有属性的普通对象外，接口也可以描述函数类型
++ 为了使用接口表示函数类型，我们需要给接口定义一个调用签名。 它就像是一个只有参数列表和返回值类型的函数定义。参数列表里的每个参数都需要名字和类型
+  #+BEGIN_SRC typescript
+  interface SearchFunc {
+      (source: string, subString: string): boolean;
+  }
+  #+END_SRC
++ 对于函数类型的类型检查来说，函数的参数名不需要与接口里定义的名字相匹配
++ 函数的参数会逐个进行检查，要求对应位置上的参数类型是兼容的。 如果你不想指定类型，TypeScript的类型系统会推断出参数类型，因为函数直接赋值给了 SearchFunc 类型变量。 函数的返回值类型是通过其返回值推断出来的（此例是 false 和 true ）。 如果让这个函数返回数字或字符串，类型检查器会警告我们函数的返回值类型与 SearchFunc 接口中的定义不匹配
+*** 可索引的类型
++ 与使用接口描述函数类型差不多，我们也可以描述那些能够“通过索引得到”的类型，比如 a[10] 或 ageMap["daniel"] 。 可索引类型具有一个索引签名，它描述了对象索引的类型，还有相应的索引返回值类型
+  #+BEGIN_SRC typescript
+  interface StringArray {
+      [index: number]: string;
+  }
+  let myArray: StringArray;
+  myArray = ["Bob", "Fred"];
+  let myStr: string = myArray[0];
+  #+END_SRC
++ 共有支持两种索引签名：字符串和数字。 可以同时使用两种类型的索引，但是数字索引的返回值必须是字符串索引返回值类型的子类型。 这是因为当使用 number 来索引时，JavaScript会将它转换成 string 然后再去索引对象。 也就是说用 100 （一个 number ）去索引等同于使用 "100" （一个 string ）去索引，因此两者需要保持一致
++ 字符串索引签名能够很好的描述 dictionary 模式，并且它们也会确保所有属性与其返回值类型相匹配。 因为字符串索引声明了 obj.property 和 obj["property"] 两种形式都可以
++ 可以将索引签名设置为只读，这样就防止了给索引赋值
+  #+BEGIN_SRC typescript
+  interface ReadonlyStringArray {
+      readonly [index: number]: string;
+  }
+  let myArray: ReadonlyStringArray = ["Alice", "Bob"];
+  myArray[2] = "Mallory"; // error!
+  #+END_SRC
+*** 类类型
+**** 实现接口
++ 与C#或Java里接口的基本作用一样，TypeScript也能够用它来明确的强制一个类去符合某种契约
+  #+BEGIN_SRC typescript
+  interface ClockInterface {
+      currentTime: Date;
+  }
+  class Clock implements ClockInterface {
+      currentTime: Date;
+      constructor(h: number, m: number) { }
+  }
+  #+END_SRC
++ 也可以在接口中描述一个方法，在类里实现它，如同下面的 setTime 方法一样
+  #+BEGIN_SRC typescript
+  interface ClockInterface {
+      currentTime: Date;
+      setTime(d: Date);
+  }
+  class Clock implements ClockInterface {
+      currentTime: Date;
+      setTime(d: Date) {
+          this.currentTime = d;
+      }
+      constructor(h: number, m: number) { }
+  }
+  #+END_SRC
++ 接口描述了类的公共部分，而不是公共和私有两部分。 它不会帮你检查类是否具有某些私有成员
+**** 类静态部分与实例部分的区别
++ 你操作类和接口的时候，你要知道类是具有两个类型的：静态部分的类型和实例的类型。 你会注意到，当你用构造器签名去定义一个接口并试图定义一个类去实现这个接口时会得到一个错误
+  #+BEGIN_SRC typescript
+  interface ClockConstructor {
+      new (hour: number, minute: number);
+  }
+  class Clock implements ClockConstructor {
+      currentTime: Date;
+      constructor(h: number, m: number) { }
+  }
+  #+END_SRC
++ 这里因为当一个类实现了一个接口时，只对其实例部分进行类型检查。 constructor存在于类的静态部分，所以不在检查的范围内
++ 应该直接操作类的静态部分。 看下面的例子，我们定义了两个接口， ClockConstructor 为构造函数所用和 ClockInterface 为实例方法所用。为了方便我们定义一个构造函数 createClock ，它用传入的类型创建实例
+  #+BEGIN_SRC typescript
+  interface ClockConstructor {
+      new (hour: number, minute: number): ClockInterface;
+  }
+  interface ClockInterface {
+      tick();
+  }
+  function createClock(ctor: ClockConstructor, hour: number, minut
+  e: number): ClockInterface {
+      return new ctor(hour, minute);
+  }
+  class DigitalClock implements ClockInterface {
+      constructor(h: number, m: number) { }
+      tick() {
+          console.log("beep beep");
+      }
+  }
+  class AnalogClock implements ClockInterface {
+      constructor(h: number, m: number) { }
+      tick() {
+          console.log("tick tock");
+      }
+  }
+  let digital = createClock(DigitalClock, 12, 17);
+  let analog = createClock(AnalogClock, 7, 32);
+  #+END_SRC
+**** 继承接口
++ 和类一样，接口也可以相互继承。 这让我们能够从一个接口里复制成员到另一个接口里，可以更灵活地将接口分割到可重用的模块里
+  #+BEGIN_SRC typescript
+  interface Shape {
+      color: string;
+  }
+  interface Square extends Shape {
+      sideLength: number;
+  }
+  let square = <Square>{};
+  square.color = "blue";
+  square.sideLength = 10;
+  #+END_SRC
++ 一个接口可以继承多个接口，创建出多个接口的合成接口
+  #+BEGIN_SRC typescript
+  interface Shape {
+      color: string;
+  }
+  interface PenStroke {
+      penWidth: number;
+  }
+  interface Square extends Shape, PenStroke {
+      sideLength: number;
+  }
+  let square = <Square>{};
+  square.color = "blue";
+  square.sideLength = 10;
+  square.penWidth = 5.0;
+  #+END_SRC
+**** 混合类型
++ 接口能够描述JavaScript里丰富的类型。 因为JavaScript其动态灵活的特点，有时你会希望一个对象可以同时具有上面提到的多种类型。一个例子就是，一个对象可以同时做为函数和对象使用，并带有额外的属性
+  #+BEGIN_SRC typescript
+  interface Counter {
+      (start: number): string;
+      interval: number;
+      reset(): void;
+  }
+  function getCounter(): Counter {
+      let counter = <Counter>function (start: number) { };
+      counter.interval = 123;
+      counter.reset = function () { };
+      return counter;
+  }
+  let c = getCounter();
+  c(10);
+  c.reset();
+  c.interval = 5.0;
+  #+END_SRC
++ 在使用JavaScript第三方库的时候，你可能需要像上面那样去完整地定义类型
+**** 接口继承类
++ 当接口继承了一个类类型时，它会继承类的成员但不包括其实现。 就好像接口声明了所有类中存在的成员，但并没有提供具体实现一样。 接口同样会继承到类的private和protected成员。 这意味着当你创建了一个接口继承了一个拥有私有或受保护的成员的类时，这个接口类型只能被这个类或其子类所实现（implement）
++ 当你有一个庞大的继承结构时这很有用，但要指出的是你的代码只在子类拥有特定属性时起作用。 除了继承自基类，子类之间不必相关联
+  #+BEGIN_SRC typescript
+  class Control {
+      private state: any;
+  }
+  interface SelectableControl extends Control {
+      select(): void;
+  }
+  class Button extends Control implements SelectableControl {
+      select() { }
+  }
+  class TextBox extends Control {
+      select() { }
+  }
+  // Error: Property 'state' is missing in type 'Image'.
+  class Image implements SelectableControl {
+      select() { }
+  }
+  class Location {
+  }
+  #+END_SRC
++ 上面的例子里， SelectableControl 包含了 Control 的所有成员，包括私有成员 state 。 因为 state 是私有成员，所以只能够是 Control 的子类们才能实现 SelectableControl 接口。 因为只有 Control 的子类才能够拥有一个声明于 Control 的私有成员 state ，这对私有成员的兼容性是必需的
+  + 在 Control 类内部，是允许通过 SelectableControl 的实例来访问私有成员 state 的。 实际上， SelectableControl 就像 Control 一样，并拥有一个 select 方法。 Button 和 TextBox 类是 SelectableControl 的子类（因为它们都继承自 Control 并有 select 方法），但 Image 和 Location 类并不是这样的
+** 类
+*** 简介
++ 使用类的例子
+  #+BEGIN_SRC typescript
+  class Greeter {
+      greeting: string;
+      constructor(message: string) {
+          this.greeting = message;
+      }
+      greet() {
+          return "Hello, " + this.greeting;
+      }
+  }
+  let greeter = new Greeter("world");
+  #+END_SRC
++ 声明一个 Greeter 类。这个类有3个成员：一个叫做 greeting 的属性，一个构造函数和一个 greet 方法
++ 在引用任何一个类成员的时候都用了 this 。 它表示我们访问的是类的成员
++ 使用 new 构造了 Greeter 类的一个实例。 它会调用之前定义的构造函数，创建一个 Greeter 类型的新对象，并执行构造函数初始化它
+*** 继承
++ 在TypeScript里，我们可以使用常用的面向对象模式。 基于类的程序设计中一种最基本的模式是允许使用继承来扩展现有的类
+  #+BEGIN_SRC typescript
+  class Animal {
+      move(distanceInMeters: number = 0) {
+          console.log(`Animal moved ${distanceInMeters}m.`);
+      }
+  }
+  class Dog extends Animal {
+      bark() {
+          console.log('Woof! Woof!');
+      }
+  }
+  const dog = new Dog();
+  dog.bark();
+  dog.move(10);
+  dog.bark();
+  #+END_SRC
++ 这个例子展示了最基本的继承：类从基类中继承了属性和方法。 这里， Dog 是一个派生类，它派生自 Animal 基类，通过 extends 关键字。 派生类通常被称作子类，基类通常被称作超类
++ 我们来看个更加复杂的例子
+  #+BEGIN_SRC typescript
+  class Animal {
+      name: string;
+      constructor(theName: string) { this.name = theName; }
+      move(distanceInMeters: number = 0) {
+          console.log(`${this.name} moved ${distanceInMeters}m.`);
+      }
+  }
+  class Snake extends Animal {
+      constructor(name: string) { super(name); }
+      move(distanceInMeters = 5) {
+          console.log("Slithering...");
+          super.move(distanceInMeters);
+      }
+  }
+  class Horse extends Animal {
+      constructor(name: string) { super(name); }
+      move(distanceInMeters = 45) {
+          console.log("Galloping...");
+          super.move(distanceInMeters);
+      }
+  }
+  let sam = new Snake("Sammy the Python");
+  let tom: Animal = new Horse("Tommy the Palomino");
+  sam.move();
+  tom.move(34);
+  #+END_SRC
++ 与前一个例子的不同点是，派生类包含了一个构造函数，它必须调用 super() ，它会执行基类的构造函数。 而且，在构造函数里访问 this 的属性之前，我们一定要调用 super() 。 这个是TypeScript强制执行的一条重要规则
++ 这个例子演示了如何在子类里可以重写父类的方法。 Snake 类和 Horse 类都创建了 move 方法，它们重写了从 Animal 继承来的 move 方法，使得 move 方法根据不同的类而具有不同的功能。 注意，即使 tom 被声明为 Animal 类型，但因为它的值是 Horse ，调用 tom.move(34) 时，它会调用 Horse 里重写的方法
+*** 公共，私有与受保护的修饰符
+**** 默认为 public
++ 在TypeScript里，成员都默认为 public 。你也可以明确的将一个成员标记成 public 。 我们可以用下面的方式来重写上面的 Animal 类
+  #+BEGIN_SRC typescript
+  class Animal {
+      public name: string;
+      public constructor(theName: string) { this.name = theName; }
+      public move(distanceInMeters: number) {
+          console.log(`${this.name} moved ${distanceInMeters}m.`);
+      }
+  }
+  #+END_SRC
+**** 理解 private
++ 当成员被标记成 private 时，它就不能在声明它的类的外部访问
+  #+BEGIN_SRC typescript
+  class Animal {
+      private name: string;
+      constructor(theName: string) { this.name = theName; }
+  }
+  new Animal("Cat").name; // 错误: 'name' 是私有的
+  #+END_SRC
++ TypeScript使用的是结构性类型系统。 当我们比较两种不同的类型时，并不在乎它们从何处而来，如果所有成员的类型都是兼容的，我们就认为它们的类型是兼容的
++ 当我们比较带有 private 或 protected 成员的类型的时候，情况就不同了。 如果其中一个类型里包含一个 private 成员，那么只有当另外一个类型中也存在这样一个 private 成员， 并且它们都是来自同一处声明时，我们才认为这两个类型是兼容的。 对于 protected 成员也使用这个规则
+  #+BEGIN_SRC typescript
+  class Animal {
+      private name: string;
+      constructor(theName: string) { this.name = theName; }
+  }
+  class Rhino extends Animal {
+      constructor() { super("Rhino"); }
+  }
+  class Employee {
+      private name: string;
+      constructor(theName: string) { this.name = theName; }
+  }
+  let animal = new Animal("Goat");
+  let rhino = new Rhino();
+  let employee = new Employee("Bob");
+  animal = rhino;
+  animal = employee; // 错误: Animal 与 Employee 不兼容.
+  #+END_SRC
+**** 理解 protected
++ protected 修饰符与 private 修饰符的行为很相似，但有一点不同， protected 成员在派生类中仍然可以访问
+  #+BEGIN_SRC typescript
+  class Person {
+      protected name: string;
+      constructor(name: string) { this.name = name; }
+  }
+  class Employee extends Person {
+      private department: string;
+      constructor(name: string, department: string) {
+      super(name)
+      this.department = department;
+      }
+      public getElevatorPitch() {
+          return `Hello, my name is ${this.name} and I work in ${this.department}.`;
+      }
+  }
+  let howard = new Employee("Howard", "Sales");
+  console.log(howard.getElevatorPitch());
+  console.log(howard.name); // 错误类
+  #+END_SRC
++ 我们不能在 Person 类外使用 name ，但是我们仍然可以通过 Employee 类的实例方法访问，因为 Employee 是由 Person 派生而来的
++ 构造函数也可以被标记成 protected 。 这意味着这个类不能在包含它的类外被实例化，但是能被继承
+  #+BEGIN_SRC typescript
+  class Person {
+      protected name: string;
+      protected constructor(theName: string) { this.name = theName; 
+      }
+  }
+  // Employee 能够继承 Person
+  class Employee extends Person {
+      private department: string;
+      constructor(name: string, department: string) {
+          super(name);
+          this.department = department;
+      }
+      public getElevatorPitch() {
+          return `Hello, my name is ${this.name} and I work in ${this.department}.`;
+      }
+  }
+  let howard = new Employee("Howard", "Sales");
+  let john = new Person("John"); // 错误: 'Person' 的构造函数是被保护的.
+  #+END_SRC
+*** readonly修饰符
++ 可以使用 readonly 关键字将属性设置为只读的。 只读属性必须在声明时或构造函数里被初始化
+  #+BEGIN_SRC typescript
+  class Octopus {
+      readonly name: string;
+      readonly numberOfLegs: number = 8;
+      constructor (theName: string) {
+          this.name = theName;
+      }
+  }
+  let dad = new Octopus("Man with the 8 strong legs");
+  dad.name = "Man with the 3-piece suit"; // 错误! name 是只读的
+  #+END_SRC
+*** 参数属性
++ 在上面的例子中，我们不得不定义一个受保护的成员 name 和一个构造函数参数 theName 在 Person 类里，并且立刻将 theName 的值赋给 name 。 这种情况经常会遇到。参数属性可以方便地让我们在一个地方定义并初始化一个成员。 下面的例子是对之前 Animal 类的修改版，使用了参数属性
+  #+BEGIN_SRC typescript
+  class Animal {
+      constructor(private name: string) { }
+      move(distanceInMeters: number) {
+      console.log(`${this.name} moved ${distanceInMeters}m.`);
+      }
+  }
+  #+END_SRC
++ 注意看我们是如何舍弃了 theName ，仅在构造函数里使用 private name:string 参数来创建和初始化 name 成员。 我们把声明和赋值合并至一处
++ 参数属性通过给构造函数参数添加一个访问限定符来声明。 使用 private 限定一个参数属性会声明并初始化一个私有成员；对于 public 和 protected 来说也是一样
+*** 存取器
++ TypeScript支持通过getters/setters来截取对对象成员的访问。 它能帮助你有效的控制对对象成员的访问,下面来看如何把一个简单的类改写成使用 get 和 set 。 首先，我们从一个没有使用存取器的例子开始
+  #+BEGIN_SRC typescript
+  class Employee {
+      fullName: string;
+  }
+  let employee = new Employee();
+  employee.fullName = "Bob Smith";
+  if (employee.fullName) {
+      console.log(employee.fullName);
+  }
+  #+END_SRC
++ 我们可以随意的设置 fullName ，这是非常方便的，但是这也可能会带来麻烦。下面这个版本里，我们先检查用户密码是否正确，然后再允许其修改员工信息。 我们把对 fullName 的直接访问改成了可以检查密码的 set 方法。 我们也加了一个 get 方法，让上面的例子仍然可以工作
+  #+BEGIN_SRC typescript
+  let passcode = "secret passcode";
+  class Employee {
+      private _fullName: string;
+      get fullName(): string {
+          return this._fullName;
+      }
+      set fullName(newName: string) {
+          if (passcode && passcode == "secret passcode") {
+              this._fullName = newName;
+          }
+          else {
+              console.log("Error: Unauthorized update of employee!");
+          }
+      }
+  }
+  let employee = new Employee();
+  employee.fullName = "Bob Smith";
+  if (employee.fullName) {
+      alert(employee.fullName);
+  }
+  #+END_SRC
++ 我们可以修改一下密码，来验证一下存取器是否是工作的。当密码不对时，会提示我们没有权限去修改员工
++ 对于存取器有下面几点需要注意的
+  - 存取器要求你将编译器设置为输出ECMAScript 5或更高
+  - 只带有 get 不带有 set 的存取器自动被推断为 readonly
+  - 这在从代码生成 .d.ts 文件时是有帮助的，因为利用这个属性的用户会看到不允许够改变它的值
+*** 静态属性
++ 到目前为止，我们只讨论了类的实例成员，那些仅当类被实例化的时候才会被初始化的属性。 我们也可以创建类的静态成员，这些属性存在于类本身上面而不是类的实例上。 在这个例子里，我们使用 static 定义 origin ，因为它是所有网格都会用到的属性。 每个实例想要访问这个属性的时候，都要在 origin 前面加上类名。 如同在实例属性上使用 this. 前缀来访问属性一样，这里我们使用 Grid. 来访问静态属性
+  #+BEGIN_SRC typescript
+  class Grid {
+      static origin = {x: 0, y: 0};
+      calculateDistanceFromOrigin(point: {x: number; y: number;})
+      {
+          let xDist = (point.x - Grid.origin.x);
+          let yDist = (point.y - Grid.origin.y);
+          return Math.sqrt(xDist * xDist + yDist * yDist) / this.scale;
+      }
+      constructor (public scale: number) { }
+  }
+  let grid1 = new Grid(1.0); // 1x scale
+  let grid2 = new Grid(5.0); // 5x scale
+  console.log(grid1.calculateDistanceFromOrigin({x: 10, y: 10}));
+  console.log(grid2.calculateDistanceFromOrigin({x: 10, y: 10}));
+  #+END_SRC
+*** 抽象类
++ 抽象类做为其它派生类的基类使用。 它们一般不会直接被实例化。 不同于接口，抽象类可以包含成员的实现细节。 abstract 关键字是用于定义抽象类和在抽象类内部定义抽象方法
+  #+BEGIN_SRC typescript
+  abstract class Animal {
+      abstract makeSound(): void;
+      move(): void {
+          console.log('roaming the earch...');
+      }
+  }
+  #+END_SRC
++ 抽象类中的抽象方法不包含具体实现并且必须在派生类中实现。 抽象方法的语法与接口方法相似。 两者都是定义方法签名但不包含方法体。 然而，抽象方法必须包含 abstract 关键字并且可以包含访问修饰符
+  #+BEGIN_SRC typescript
+  abstract class Department {
+      constructor(public name: string) {
+      }
+      printName(): void {
+          console.log('Department name: ' + this.name);
+      }
+      abstract printMeeting(): void; // 必须在派生类中实现
+  }
+  class AccountingDepartment extends Department {
+      constructor() {
+      super('Accounting and Auditing'); // 在派生类的构造函数中必须调用 super()
+      }
+      printMeeting(): void {
+          console.log('The Accounting Department meets each Monday at 10am.');
+      }
+      generateReports(): void {
+          console.log('Generating accounting reports...');
+      }
+  }
+  let department: Department; // 允许创建一个对抽象类型的引用
+  department = new Department(); // 错误: 不能创建一个抽象类的实例
+  department = new AccountingDepartment(); // 允许对一个抽象子类进行实例化和赋值
+  department.printName();
+  department.printMeeting();
+  department.generateReports(); // 错误: 方法在声明的抽象类中不存在
+  #+END_SRC
+*** 高级技巧
+**** 构造函数
++ 当你在TypeScript里声明了一个类的时候，实际上同时声明了很多东西。 首先就是类的实例的类型
+  #+BEGIN_SRC typescript
+  class Greeter {
+      greeting: string;
+      constructor(message: string) {
+          this.greeting = message;
+      }
+      greet() {
+          return "Hello, " + this.greeting;
+      }
+  }
+  let greeter: Greeter;
+  greeter = new Greeter("world");
+  console.log(greeter.greet());
+  #+END_SRC
++ 这里，我们写了 let greeter: Greeter ，意思是 Greeter 类的实例的类型是 Greeter 。 这对于用过其它面向对象语言的程序员来讲已经是老习惯了
+**** 把类当做接口使用
++ 类定义会创建两个东西：类的实例类型和一个构造函数。 因为类可以创建出类型，所以你能够在允许使用接口的地方使用类
+  #+BEGIN_SRC typescript
+  class Point {
+      x: number;
+      y: number;
+  }
+  interface Point3d extends Point {
+      z: number;
+  }
+  let point3d: Point3d = {x: 1, y: 2, z: 3};
+  #+END_SRC
+** 函数
+*** 简介
++ 和JavaScript一样，TypeScript函数可以创建有名字的函数和匿名函数。 你可以随意选择适合应用程序的方式，不论是定义一系列API函数还是只使用一次的函数
++ 
+** 泛型
+** 枚举
+** 类型推论
+** 类型兼容性
+** 高级类型
+** Symbols
+** Iterators 和 Generators
+** 模块
+** 命名空间
+** 命名空间和模块
+** 模块解析
+** 声明合并
+** 书写.d.ts文件
+** Decorators
+** 混入
+** 三斜线指令
+** JavaScript文件里的类型检查
+** this
+** 编码规范
+** 常见编译错误
+** 书写声明文件
+*** 结构
+*** 规范
+*** 举例
+*** 深入
+*** 发布
+*** 使用
+** 工程配置
+*** tsconfig.json
+*** NPM包的类型
+*** 编译选项
+*** 在MSBuild里使用编译选项
+*** 与其他构建工具整合
+* 零基础学习
+** 搭建开发环境
+*** vscode编辑器配置
++ 编辑器本身配置
+  - 有一些编辑器相关配置，需要在项目根目录下创建一个.vscode文件夹，然后在这个文件夹创建一个settings.json文件，编辑器的配置都放在这里，并且你还需要安装一个插件EditorConfig for VS Code这样配置才会生效。配置文件里我们来看几个简单而且使用的配置
+    #+BEGIN_SRC json
+    {
+      "tslint.configFile": "./tslint.json", //用来指定tslint.json文件的路径，注意这里是相对根目录的
+      "tslint.autoFixOnSave": true,  //设置为true则每次保存的时候编辑器会自动根据我们的tslint配置对不符合规范的代码进行自动修改
+      "editor.formatOnSave": true //设为true则编辑器会对格式在保存的时候进行整理
+    }
+    #+END_SRC
++ TypeScript相关插件
+  - TSLint(deprecated)是一个通过tslint.json配置在你写TypeScript代码时，对你的代码风格进行检查和提示的插件
+  - TSLint Vue加强了对Vue中的TypeScript语法语句进行检查的能力。如果你使用TypeScript开发Vue项目，而且要使用TSLint对代码质量进行把控，那你应该需要这个插件
++ 框架相关
+  - 使用Vue进行项目开发，那Vue相关的插件也是需要的，比如Vue 2 Snippets
+  - Vetur插件是Vue的开发辅助工具，安装它之后会得到代码高亮、输入辅助等功能
+*** 搭建开发环境
+**** 初始化项目
++ 使用npm默认package.json配置
+  npm init -y
++ 或者使用交互式自行配置，遇到选项如果直接敲回车即使用括号内的值
+  npm init
+  package name: (client-side) # 可敲回车即使用client-side这个名字，也可输入其他项目名
+  version: (1.0.0) # 版本号，默认1.0.0
+  description: # 项目描述，默认为空
+  entry point: (index.js) # 入口文件，我们这里改为./src/index.ts
+  test command: # 测试指令，默认为空
+  git repository: # git仓库地址，默认为空
+  keywords: # 项目关键词，多个关键词用逗号隔开，我们这里写typescript,client,lison
+  author: # 项目作者，这里写lison<lison16new@163.com>
+  license: (ISC) # 项目使用的协议，默认是ISC，我这里使用MIT协议
+  # 最后会列出所有配置的项以及值，如果没问题，敲回车即可
++ 在根目录下已经创建了一个 package.json 文件，接下来我们创建几个文件夹
+  src：用来存放项目的开发资源，在 src 下创建如下文件夹：
+  utils：和业务相关的可复用方法
+  tools：和业务无关的纯工具函数
+  assets：图片字体等静态资源
+  api：可复用的接口请求方法
+  config：配置文件
+  typings：模块声明文件
+  build：webpack 构建配置
++ 进入项目根目录，使用typescript进行初始化
+  tsc --init
++ 在项目根目录多了一个 tsconfig.json 文件
+  tsconfig.json 里默认有 4 项没有注释的配置，有一个需要提前讲下，就是"lib"这个配置项，他是一个数组，他用来配置需要引入的声明库文件，我们后面会用到ES6语法，和DOM相关内容，所以我们需要引入两个声明库文件，需要在这个数组中添加"es6"和"dom"，也就是修改数组为[“dom”, “es6”]，其他暂时不用修改
++ 在项目里安装一下typescript，因为我们要搭配使用webpack进行编译和本地开发，不是使用tsc指令，所以要在项目安装一下：
+  npm install typescript
+**** 配置TSLint
++ 全局安装TSLint，记着要用管理员身份运行：
+  npm install tslint -g
++ 在我们的项目根目录下，使用TSLint初始化我们的配置文件：
+  tslint -i
++ 项目根目录下多了一个tslint.json文件，这个就是TSLint的配置文件了，它会根据这个文件对我们的代码进行检查，生成的tslint.json文件有下面几个字段
+  #+BEGIN_SRC json
+  {
+  "defaultSeverity": "error",
+  "extends": [
+    "tslint:recommended"
+  ],
+  "jsRules": {},
+  "rules": {},
+  "rulesDirectory": []
+  }
+  #+END_SRC
+  - defaultSeverity是提醒级别，如果为error则会报错，如果为warning则会警告，如果设为off则关闭，那TSLint就关闭了；
+  - extends可指定继承指定的预设配置规则；
+  - jsRules用来配置对.js和.jsx文件的校验，配置规则的方法和下面的rules一样；
+  - rules是重点了，我们要让TSLint根据怎样的规则来检查代码，都是在这个里面配置，比如当我们不允许代码中使用eval方法时，就要在这里配置"no-eval": true；
+  - rulesDirectory可以指定规则配置文件，这里指定相对路径
+**** 配置webpack
++ 搭配使用 webpack 进行项目的开发和打包，先来安装 webpack、webpack-cli 和 webpack-dev-server
+  npm install webpack webpack-cli webpack-dev-server -D
++ 将它们安装在项目中，并且作为开发依赖(-D)安装。接下来添加一个 webpack 配置文件，放在 build 文件夹下，我们给这个文件起名 webpack.config.js，然后在 package.json 里指定启动命令
+  #+BEGIN_SRC json
+  {
+  "scripts": {
+    "start": "cross-env NODE_ENV=development webpack-dev-server --mode=development --config build/webpack.config.js"
+    }
+  }
+  #+END_SRC
++ 这里我们用到一个插件"cross-env"，并且后面跟着一个参数 NODE_ENV=development，这个用来在 webpack.config.js 里通过 process.env.NODE_ENV 来获取当前是开发还是生产环境，这个插件要安装
+  npm install cross-env
++ 紧接着我们要在 webpack.config.js 中书写配置
+  #+BEGIN_SRC js
+    const HtmlWebpackPlugin = require("html-webpack-plugin");
+    const { CleanWebpackPlugin } = require("clean-webpack-plugin");
+
+    module.exports = {
+      // 指定入口文件
+      // 这里我们在src文件夹下创建一个index.ts
+      entry: "./src/index.ts",
+      // 指定输出文件名
+      output: {
+        filename: "main.js"
+      },
+      resolve: {
+        // 自动解析一下拓展，当我们要引入src/index.ts的时候，只需要写src/index即可
+        // 后面我们讲TS模块解析的时候，写src也可以
+        extensions: [".tsx", ".ts", ".js"]
+      },
+      module: {
+        // 配置以.ts/.tsx结尾的文件都用ts-loader解析
+        // 这里我们用到ts-loader，所以要安装一下
+        // npm install ts-loader -D
+        rules: [
+          {
+            test: /\.tsx?$/,
+            use: "ts-loader",
+            exclude: /node_modules/
+          }
+        ]
+      },
+      // 指定编译后是否生成source-map，这里判断如果是生产打包环境则不生产source-map
+      devtool: process.env.NODE_ENV === "production" ? false : "inline-source-map",
+      // 这里使用webpack-dev-server，进行本地开发调试
+      devServer: {
+        contentBase: "./dist",
+        stats: "errors-only",
+        compress: false,
+        host: "localhost",
+        port: 8089
+      },
+      // 这里用到两个插件，所以首先我们要记着安装
+      // npm install html-webpack-plugin clean-webpack-plugin -D
+      plugins: [
+        // 这里在编译之前先删除dist文件夹
+        new CleanWebpackPlugin({
+          cleanOnceBeforeBuildPatterns: ["./dist"]
+        }),
+        // 这里我们指定编译需要用模板，模板文件是./src/template/index.html，所以接下来我们要创建一个index.html文件
+        new HtmlWebpackPlugin({
+          template: "./src/template/index.html"
+        })
+      ]
+    };
+
+  #+END_SRC
+  - 用到了两个webpack插件，第一个clean-webpack-plugin插件用于删除某个文件夹，我们编译项目的时候需要重新清掉上次打包生成的dist文件夹，然后进行重新编译，所以需要用到这个插件将上次打包的dist文件夹清掉
+  - 第二个html-webpack-plugin插件用于指定编译的模板，这里我们指定模板为"./src/template/index.html"文件，打包时会根据此html文件生成页面入口文件
++ 创建这个 index.html 模板
+  #+BEGIN_SRC html
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+        <title>TS-Learning</title>
+      </head>
+
+      <body></body>
+    </html>
+
+  #+END_SRC
++ 启动本地服务 
+  npm run start
++ 可以在 index.ts 文件里写逻辑
+  #+BEGIN_SRC html
+    // index.ts
+    let a: number = 123;
+
+    const h1 = document.createElement("h1");
+    h1.innerHTML = "Hello, I am Lison";
+    <!-- document.body.appendChild(h1); -->
+  #+END_SRC
+  保存代码的时候，开发服务器重新编译了代码，并且我们的浏览器也更新
++ 配置一下打包命令，在 package.json 的 scripts 里增加 build 指令
+  #+BEGIN_SRC json
+    {
+      "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "start": "cross-env NODE_ENV=development webpack-dev-server --mode=development --config ./build/webpack.config.js",
+        "build": "cross-env NODE_ENV=production webpack --mode=production --config ./build/webpack.config.js"
+      }
+    }
+
+  #+END_SRC
++ 同样通过cross-env NODE_ENV=production传入参数。现在我们运行如下命令即可执行打包
+  npm run build
+** TypeScript支持的类型
+*** 为变量指定类型
++ 语法是使用"变量: 类型"的形式
+  let num: number = 123
++ 如果你没有为这个变量指定类型，编译器会自动根据你赋给这个变量的值来推断这个变量的类型
+  let num = 123
+  num = 'abc' // error 不能将类型“"123"”分配给类型“number”
+*** 布尔类型(boolean)基本类型
++ 类型为布尔类型的变量的值只能是 true 或 false
+  #+BEGIN_SRC typescript
+  let bool: boolean = false;
+  bool = true;
+  bool = 123; // error 不能将类型"123"分配给类型"boolean"
+  #+END_SRC
++ 赋给 bool 的值也可以是一个计算之后结果是布尔值的表达式
+  #+BEGIN_SRC typescript
+  let bool: boolean = !!0
+  console.log(bool) // false
+  #+END_SRC
+*** 数值类型(number)基本类型
++ TypeScript 和 JavaScript 一样，所有数字都是浮点数，所以只有一个number类型，而没有int或者float类型。而且 TypeScript 还支持 ES6 中新增的二进制和八进制数字字面量，所以 TypeScript 中共支持二、八、十和十六四种进制的数值
+  #+BEGIN_SRC typescript
+  let num: number;
+  num = 123;
+  num = "123"; // error 不能将类型"123"分配给类型"number"
+  num = 0b1111011; //  二进制的123
+  num = 0o173; // 八进制的123
+  num = 0x7b; // 十六进制的123
+  #+END_SRC
+*** 字符串(string)基本类型
++ 字符串类型中你可以使用单引号和双引号包裹内容，但是可能你使用的 tslint 规则会对引号进行检测，使用单引号还是双引号可以在 tslint 规则里配置。你还可以使用 ES6 语法——模板字符串，拼接变量和字符串更为方便
+  #+BEGIN_SRC typescript
+  let str: string = "Lison";
+  str = "Li";
+  const first = "Lison";
+  const last = "Li";
+  str = `${first} ${last}`;
+  console.log(str) // 打印结果为:Lison Li
+  #+END_SRC
++ 另外还有个和字符串相关的类型：字符串字面量类型。即把一个字符串字面量作为一种类型，比如上面的字符串"Lison"，当你把一个变量指定为这个字符串类型的时候，就不能再赋值为其他字符串值了
+  #+BEGIN_SRC typescript
+  let str: 'Lison'
+  str = 'haha' // error 不能将类型“"haha"”分配给类型“"Lison"”
+  #+END_SRC
+*** null和undefined基本类型
++ null 和 undefined 有一些共同特点，所以我们放在一起讲。说它们有共同特点，是因为在 JavaScript 中，undefined 和 null 是两个基本数据类型。在 TypeScript 中，这两者都有各自的类型即 undefined 和 null，也就是说它们既是实际的值，也是类型
+  #+BEGIN_SRC typescript
+  let u: undefined = undefined;// 这里可能会报一个tslint的错误：Unnecessary initialization to 'undefined'，就是不能给一个值赋undefined，但我们知道这是可以的，所以如果你的代码规范想让这种代码合理化，可以配置tslint，将"no-unnecessary-initializer"设为false即可
+  let n: null = null; 
+  #+END_SRC
++ 默认情况下 undefined 和 null 可以赋值给任意类型的值，也就是说你可以把 undefined 赋值给 void 类型，也可以赋值给 number 类型。当你在 tsconfig.json 的"compilerOptions"里设置了"strictNullChecks": true时，那必须严格对待。undefined 和 null 将只能赋值给它们自身和 void 类型
+*** 数组
++ 在 TypeScript 中有两种定义数组的方式
+  #+BEGIN_SRC typescript
+  let list1: number[] = [1, 2, 3];
+  let list2: Array<number> = [1, 2, 3];
+  #+END_SRC
++ 第一种形式通过number[]的形式来指定这个类型元素均为number类型的数组类型，这种写法是推荐的写法,这两种写法中的number指定的是数组元素的类型，你也可以在这里将数组的元素指定为任意类型。如果你要指定一个数组里的元素既可以是数值也可以是字符串，那么你可以使用这种方式：number|string[]，这种方式我们在后面学习联合类型的时候会讲到
++ 使用第二种形式定义时，tslint 可能会警告让你使用第一种形式定义，如果你就是想用第二种形式，可以通过在 tslint.json 的 rules 中加入"array-type": [false]关闭 tslint 对这条的检测
++ 数组的一个特殊类型：ReadonlyArray，即只读数组
+*** object引用类型
++ object 在 JS 中是引用类型，它和 JS 中的其他基本类型不一样，像 number、string、boolean、undefined、null 这些都是基本类型，这些类型的变量存的是他们的值，而 object 类型的变量存的是引用
+  #+BEGIN_SRC typescript
+  let strInit = "abc";
+  let strClone = strInit;
+  strClone = "efg";
+  console.log(strInit); // 'abc'
+  
+  let objInit = { a: "aa" };
+  let objClone = objInit;
+  console.log(objClone) // {a:"aa"}
+  objInit.a = "bb";
+  console.log(objClone); // { a: 'bb' }
+  // 通过例子可以看出，我们修改 objInit 时，objClone 也被修改了，是因为 objClone 保存的是 objInit 的引用，实际上 objInit 和 objClone 是同一个对象
+  #+END_SRC
++ 当我们希望一个变量或者函数的参数的类型是一个对象的时候，使用这个类型
+  #+BEGIN_SRC typescript
+  let obj: object
+  obj = { name: 'Lison' }
+  obj = 123 // error 不能将类型“123”分配给类型“object”
+  #+END_SRC
++ 注意，你可能会想到给 obj 指定类型为 object 对象类型，然后给它赋值一个对象，后面通过属性访问操作符访问这个对象的某个属性，实际操作一下你就会发现会报错
+  #+BEGIN_SRC typescript
+  let obj: object
+  obj = { name: 'Lison' }
+  console.log(obj.name) // error 类型“object”上不存在属性“name”
+  #+END_SRC
++ 想要达到这种需求你应该使用我们后面章节要讲到的接口，那 object 类型适合什么时候使用呢？我们前面说了，当你希望一个值必须是对象而不是数值等类型时，比如我们定义一个函数，参数必须是对象，这个时候就用到object类型
+  #+BEGIN_SRC typescript
+  function getKeys (obj: object) {
+    return Object.keys(obj) // 会以列表的形式返回obj中的值
+  }
+  getKeys({ a: 'a' }) // ['a']
+  getKeys(123) // error 类型“123”的参数不能赋给类型“object”的参数
+  #+END_SRC
+*** 元组(tuple)
++ 元组可以看做是数组的拓展，它表示已知元素数量和类型的数组。确切地说，是已知数组中每一个位置上的元素的类型
+  #+BEGIN_SRC typescript
+  let tuple: [string, number, boolean];
+  tuple = ["a", 2, false];
+  tuple = [2, "a", false]; // error 不能将类型“number”分配给类型“string”。 不能将类型“string”分配给类型“number”。
+  tuple = ["a", 2]; // error Property '2' is missing in type '[string, number]' but required in type '[string, number, boolean]'
+  #+END_SRC
++ 定义了一个元组 tuple，它包含三个元素，且每个元素的类型是固定的。当我们为 tuple 赋值时：各个位置上的元素类型都要对应，元素个数也要一致
++ 可以给单个元素赋值
+  #+BEGIN_SRC typescript
+  tuple[1] = 3;
+  #+END_SRC
++ 访问元组中元素时，TypeScript 会对我们在元素上做的操作进行检查
+  #+BEGIN_SRC typescript
+  tuple[0].split(":"); // right 类型"string"拥有属性"split"
+  tuple[1].split(":"); // error 类型“number”上不存在属性“split”
+  #+END_SRC
+*** Any
++ JavaScript 的类型是灵活的，程序有时也是多变的。有时，我们在编写代码的时候，并不能清楚地知道一个值到底是什么类型，这时就需要用到 any 类型，即任意类型
+  #+BEGIN_SRC typescript
+  let value: any;
+  value = 123;
+  value = "abc";
+  value = false;
+  #+END_SRC
++ 在定义数组类型时使用 any 来指定数组中的元素类型为任意类型,但是请注意，不要滥用 any，如果任何值都指定为 any 类型，那么 TypeScript 将失去它的意义,如果类型是未知的，更安全的做法是使用unknown类型
+  #+BEGIN_SRC typescript
+  const array: any[] = [1, "a", true];
+  #+END_SRC
+*** void
++ void 和 any 相反，any 是表示任意类型，而 void 是表示没有任意类型，就是什么类型都不是，这在我们定义函数，函数没有返回值时会用到
+  #+BEGIN_SRC typescript
+  const consoleText = (text: string): void => {
+      console.log(text);
+  };
+  #+END_SRC
++ void 类型的变量只能赋值为 undefined 和 null，其他类型不能赋值给 void 类型的变量
+*** never
++ never 类型指那些永不存在的值的类型，它是那些总会抛出异常或根本不会有返回值的函数表达式的返回值类型，当变量被永不为真的类型保护所约束时，该变量也是 never 类型
+  #+BEGIN_SRC typescript
+  const errorFunc = (message: string): never => {
+      throw new Error(message);
+  }; //这个 errorFunc 函数总是会抛出异常，所以它的返回值类型时 never，用来表明它的返回值是永不存在的
+
+  const infiniteFunc = (): never => {
+      while (true) {}
+  }; //infiniteFunc也是根本不会有返回值的函数，它和之前讲 void 类型时的consoleText函数不同，consoleText函数没有返回值，是我们在定义函数的时候没有给它返回值，而infiniteFunc是死循环是根本不会返回值的，所以它们二者还是有区别的
+  #+END_SRC
++ never 类型是任何类型的子类型，所以它可以赋值给任何类型；而没有类型是 never 的子类型，所以除了它自身没有任何类型可以赋值给 never 类型，any 类型也不能赋值给 never 类型
+  #+BEGIN_SRC typescript
+  let neverVariable = (() => {
+      while (true) {}
+  })();
+  neverVariable = 123; // error 不能将类型"number"分配给类型"never"
+  #+END_SRC
+*** unknown
++ 表示未知的类型，这样看来它貌似和any很像，但是还是有区别的，也就是所谓的“unknown相对于any是安全的”,指定值为unknown类型的时候，如果没有通过基于控制流的类型断言来缩小范围的话，是不能对它进行任何操作的，unknown类型的值不是可以随便操作的
++ 任何类型的值都可以赋值给 unknown 类型
++ 如果没有类型断言或基于控制流的类型细化时 unknown 不可以赋值给其它类型，此时它只能赋值给 unknown 和 any 类型
++ 如果没有类型断言或基于控制流的类型细化，则不能在它上面进行任何操作
++ unknown 与任何其它类型组成的交叉类型，最后都等于其它类型
++ unknown 与任何其它类型组成的联合类型，都等于 unknown 类型，但只有any例外，unknown与any组成的联合类型等于any
++ never 类型是 unknown 的子类型
++ keyof unknown 等于类型 never
++ 只能对 unknown 进行等或不等操作，不能进行其它操作
++ unknown 类型的值不能访问其属性、作为函数调用和作为类创建实例
++ 使用映射类型时如果遍历的是 unknown 类型，则不会映射任何属性
+*** 交叉类型
++ 交叉类型就是取多个类型的并集，使用 & 符号定义，被&符链接的多个类型构成一个交叉类型，表示这个类型同时具备这几个连接起来的类型的特点
+  #+BEGIN_SRC typescript
+    const merge = <T, U>(arg1: T, arg2: U): T & U => {
+      let res = <T & U>{}; // 这里指定返回值的类型兼备T和U两个类型变量代表的类型的特点
+      res = Object.assign(arg1, arg2); // 这里使用Object.assign方法，返回一个合并后的对象；
+                                       // 关于该方法，请在例子下面补充中学习
+      return res;
+    };
+    const info1 = {
+      name: "lison"
+    };
+    const info2 = {
+      age: 18
+    };
+    const lisonInfo = merge(info1, info2);
+
+    console.log(lisonInfo.address); // error 类型“{ name: string; } & { age: number; }”上不存在属性“address”
+  #+END_SRC
++ Object.assign方法可以合并多个对象，将多个对象的属性添加到一个对象中并返回，有一点要注意的是，如果属性值是对象或者数组这种保存的是内存引用的引用类型，会保持这个引用，也就是如果在Object.assign返回的的对象中修改某个对象属性值，原来用来合并的对象也会受到影响
+*** 联合类型
++ 联合类型实际是几个类型的结合，但是和交叉类型不同，联合类型是要求只要符合联合类型中任意一种类型即可，它使用 | 符号定义。当我们的程序具有多样性，元素类型不唯一时，即使用联合类型
+  #+BEGIN_SRC typescript
+    const getLength = (content: string | number): number => {
+      if (typeof content === "string") return content.length;
+      else return content.toString().length;
+    };
+    console.log(getLength("abc")); // 3
+    // console.log(getLength(123)); // 3
+  #+END_SRC
+** symbol
+*** 语法
++ symbol是 ES6 新增的一种基本数据类型，它和 number、string、boolean、undefined 和 null 是同类型的，object 是引用类型。它用来表示独一无二的值，通过 Symbol 函数生成
+  #+BEGIN_SRC typescript
+  const s = Symbol();
+  typeof s; // 'symbol'
+  #+END_SRC
++ Symbol 前面不能加new关键字，直接调用即可创建一个独一无二的 symbol 类型的值
++ 可以在使用 Symbol 方法创建 symbol 类型值的时候传入一个参数，这个参数需要是字符串的。如果传入的参数不是字符串，会先调用传入参数的 toString 方法转为字符串
+  #+BEGIN_SRC typescript
+  onst s1 = Symbol("lison");
+  const s2 = Symbol("lison");
+  console.log(s1 === s2); // false
+  // 补充：这里第三行代码可能会报一个错误：This condition will always return 'false' since the types 'unique symbol' and 'unique symbol' have no overlap.
+  // 这是因为编译器检测到这里的s1 === s2始终是false，所以编译器提醒你这代码写的多余，建议你优化。
+  #+END_SRC
++ 可以理解为我们每一个人都是独一无二的，虽然可以有相同的名字，但是名字只是用来方便我们区分的，名字相同但是人还是不同的。Symbol 方法传入的这个字符串，就是方便我们在控制台或程序中用来区分 symbol 值的。我们可以调用 symbol 值的toString方法将它转为字符串
+  #+BEGIN_SRC typescript
+  const s1 = Symbol("lison");
+  console.log(s1.toString()); // 'Symbol(lison)'
+  #+END_SRC
++ 可以简单地理解 symbol 值为字符串类型的值，但是它和字符串有很大的区别，它不可以和其他类型的值进行运算，但是可以转为字符串和布尔类型值
+  #+BEGIN_SRC typescript
+  let s = Symbol("lison");
+  console.log(s.toString()); // 'Symbol(lison)'
+  console.log(Boolean(s)); // true
+  console.log(!s); // false
+  #+END_SRC
+*** 作为属性名
++ 在 ES6 中，对象的属性名支持表达式，所以你可以使用一个变量作为属性名，这对于一些代码的简化很有用处，但是表达式必须放到方括号内
+  #+BEGIN_SRC typescript
+    let prop = "name";
+    const obj = {
+      [prop]: "Lison"
+    };
+    // console.log(obj.name); // 'Lison'
+  #+END_SRC
++ symbol 值可以作为属性名，因为 symbol 值是独一无二的，所以当它作为属性名时，不会和其他任何属性名重复
+  #+BEGIN_SRC typescript
+    let name = Symbol();
+    let obj = {
+      [name]: "lison"
+    };
+    // console.log(obj); // { Symbol(): 'lison' }
+    // 你可以看到，打印出来的对象有一个属性名是 symbol 值。如果我们想访问这个属性值，就只能使用 name 这个 symbol 值：
+    console.log(obj[name]); // 'lison'
+    console.log(obj.name); // undefined
+  #+END_SRC
++ 使用 Symbol 类型值作为属性名，这个属性不会被for…in遍历到，也不会被Object.keys()、Object.getOwnPropertyNames()、JSON.stringify()获取到
+  #+BEGIN_SRC typescript
+    const name = Symbol("name");
+    const obj = {
+      [name]: "lison",
+      age: 18
+    };
+    for (const key in obj) {
+      console.log(key);
+    }
+    // => 'age'
+    console.log(Object.keys(obj));
+    // ['age']
+    console.log(Object.getOwnPropertyNames(obj));
+    // ['age']
+    console.log(JSON.stringify(obj));
+    '{ "age": 18 }'
+  #+END_SRC
++ 虽然这么多方法都无法遍历和访问到 Symbol 类型的属性名，但是 Symbol 类型的属性并不是私有属性。我们可以使用Object.getOwnPropertySymbols方法获取对象的所有symbol类型的属性名
+  #+BEGIN_SRC typescript
+    const name = Symbol("name");
+    const obj = {
+      [name]: "lison",
+      age: 18
+    };
+    const SymbolPropNames = Object.getOwnPropertySymbols(obj);
+    console.log(SymbolPropNames);
+    // [ Symbol(name) ]
+    console.log(obj[SymbolPropNames[0]]);
+    // 'lison'
+    // 如果最后一行代码这里报错提示：元素隐式具有 "any" 类型，因为类型“{ [name]: string; age: number; }”没有索引签名。 那可能是在tsconfig.json里开启了noImplicitAny。因为这里我们还没有学习接口等高级类型，所以你可以先忽略这个错误，或者关闭noImplicitAny。
+  #+END_SRC
++ 除了Object.getOwnPropertySymbols这个方法，还可以用 ES6 新提供的 Reflect 对象的静态方法Reflect.ownKeys，它可以返回所有类型的属性名，所以 Symbol 类型的也会返回
+  #+BEGIN_SRC typescript
+    const name = Symbol("name");
+    const obj = {
+      [name]: "lison",
+      age: 18
+    };
+    console.log(Reflect.ownKeys(obj));
+    [ 'age', Symbol(name) ]
+  #+END_SRC
+*** Symbol 包含两个静态方法
+**** Symbol.for()
++ 使用 Symbol 方法创建的 symbol 值是独一无二的，每一个值都不和其他任何值相等
+  #+BEGIN_SRC typescript
+    const s1 = Symbol("lison");
+    const s2 = Symbol("lison");
+    const s3 = Symbol.for("lison");
+    const s4 = Symbol.for("lison");
+    s3 === s4; // true
+    s1 === s3; // false
+    这里还是会报错误：This condition will always return 'false' since the types 'unique symbol' and 'unique symbol' have no overlap.还是我们说过的，因为这里的表达式始终是true和false，所以编译器会提示我们。
+  #+END_SRC
++ 直接使用 Symbol 方法，即便传入的字符串是一样的，创建的 symbol 值也是互不相等的。**而使用 Symbol.for方法传入字符串，会先检查有没有使用该字符串调用 Symbol.for 方法创建的 symbol 值，如果有，返回该值，如果没有，则使用该字符串新创建一个。**使用该方法创建 symbol 值后会在全局范围进行注册,注意：这个注册的范围包括当前页面和页面中包含的 iframe，以及 service sorker
+**** Symbol.keyFor()
++ 该方法传入一个 symbol 值，返回该值在全局注册的键名
+  #+BEGIN_SRC typescript
+  const sym = Symbol.for("lison");
+  console.log(Symbol.keyFor(sym)); // 'lison'
+  #+END_SRC
+*** 11个内置symbol值
+ES6 提供了 11 个内置的 Symbol 值，指向 JS 内部使用的属性和方法。看到它们第一眼你可能会有疑惑，这些不是 Symbol 对象的一个属性值吗？没错，这些内置的 Symbol 值就是保存在 Symbol 上的，你可以把Symbol.xxx看做一个 symbol 值
+**** Symbol.hasInstance
++ 对象的 Symbol.hasInstance 指向一个内部方法，当你给一个对象设置以 Symbol.hasInstance 为属性名的方法后，当其他对象使用 instanceof 判断是否为这个对象的实例时，会调用你定义的这个方法，参数是其他的这个对象
+  #+BEGIN_SRC typescript
+    const obj = {
+      [Symbol.hasInstance](otherObj) {
+        console.log(otherObj);
+      }
+    };
+    console.log({ a: "a" } instanceof obj); // false
+    // 注意：在TypeScript中这会报错，"instanceof" 表达式的右侧必须属于类型 "any"，或属于可分配给 "Function" 接口类型的类型。
+    // 是要求你instanceof操作符右侧的值只能是构造函数或者类，或者类型是any类型。这里你可以使用类型断言，将obj改为obj as any
+  #+END_SRC
+**** Symbol.isConcatSpreadable
++ 这个值是一个可读写布尔值，当一个数组的 Symbol.isConcatSpreadable 设为 true 时，这个数组在数组的 concat 方法中不会被扁平化
+  #+BEGIN_SRC typescript
+    let arr = [1, 2];
+    console.log([].concat(arr, [3, 4])); // 打印结果为[1, 2, 3, 4]，length为4
+    let arr1 = ["a", "b"];
+    console.log(arr1[Symbol.isConcatSpreadable]); // undefined
+    arr1[Symbol.isConcatSpreadable] = false;
+    console.log(arr1[Symbol.isConcatSpreadable]); // false
+    console.log([].concat(arr1, [3, 4])); // 打印结果如下：
+    /*
+     [ ["a", "b", Symbol(Symbol.isConcatSpreadable): false], 3, 4 ]
+     最外层这个数组有三个元素，第一个是一个数组，因为我们设置了arr1[Symbol.isConcatSpreadable] = false
+     所以第一个这个数组没有被扁平化，第一个元素这个数组看似是有三个元素，但你在控制台可以看到这个数组的length为2
+     Symbol(Symbol.isConcatSpreadable): false不是他的元素，而是他的属性，我们知道数组也是对象，所以我们可以给数组设置属性
+     你可以试试如下代码，然后看下打印出来的效果：
+      let arr = [1, 2]
+      arr.props = 'value'
+      console.log(arr)
+     // */
+  #+END_SRC
+**** Symbol.species
+**** Symbol.match、Symbol.replace、Symbol.search 和 Symbol.split
++ Symbol.match 值指向一个内部方法，当在字符串 str 上调用 match 方法时，会调用这个方法,相同的还有 Symbol.replace、Symbol.search 和 Symbol.split，使用方法和 Symbol.match 是一样的
+  #+BEGIN_SRC typescript
+    let obj = {
+      [Symbol.match](string) {
+        return string.length;
+      }
+    };
+    console.log("abcde".match(obj)); // 5
+
+  #+END_SRC
+**** Symbol.iterator
++ 数组的 Symbol.iterator 属性指向该数组的默认遍历器方法,这个 Symbol.iterator 方法是可写的，我们可以自定义遍历器方法
+  #+BEGIN_SRC typescript
+    const arr = [1, 2, 3];
+    const iterator = arr[Symbol.iterator]();
+    console.log(iterator);
+    console.log(iterator.next());
+    console.log(iterator.next());
+    console.log(iterator.next());
+    console.log(iterator.next());
+
+  #+END_SRC
+****  Symbol.toPrimitive
++ 对象的这个属性指向一个方法，当这个对象被转为原始类型值时会调用这个方法，这个方法有一个参数，是这个对象被转为的类型
+  #+BEGIN_SRC typescript
+    let obj = {
+      [Symbol.toPrimitive](type) {
+        console.log(type);
+      }
+    };
+    // const b = obj++ // number
+    const a = `abc${obj}`; // string
+
+  #+END_SRC
+**** Symbol.toStringTag
++ Symbol.toStringTag 和 Symbol.toPrimitive 相似，对象的这个属性的值可以是一个字符串，也可以是一个存取器 get 方法，当在对象上调用 toString 方法时调用这个方法，返回值将作为"[object xxx]"中 xxx 这个值
+  #+BEGIN_SRC typescript
+    let obj = {
+      [Symbol.toStringTag]: "lison"
+    };
+    obj.toString(); // "[object lison]"
+    let obj2 = {
+      get [Symbol.toStringTag]() {
+        return "haha";
+      }
+    };
+    obj2.toString(); // "[object haha]"
+
+  #+END_SRC
+**** Symbol.unscopables
++ 这个值和 with 命令有关，我们先来看下 with 怎么使用
+  #+BEGIN_SRC typescript
+    const obj = {
+      a: "a",
+      b: "b"
+    };
+    with (obj) {
+      console.log(a); // "a"
+      console.log(b); // "b"
+    }
+    // 如果是在TypeScript开发环境中，这段代码可能with会报错：不支持 "with" 语句，这是因为在严格模式下，是不允许使用with的。
+
+  #+END_SRC
+
++ 使用 with 传入一个对象后，在代码块中访问对象的属性就不需要写对象了，直接就可以用它的属性。对象的 Symbol.unscopables 属性指向一个对象，该对象包含了当使用 with 关键字时，哪些属性被 with 环境过滤掉
+  #+BEGIN_SRC typescript
+    console.log(Array.prototype[Symbol.unscopables]);
+    /*
+    {
+        copyWithin: true
+        entries: true
+        fill: true
+        find: true
+        findIndex: true
+        includes: true
+        keys: true
+        values: true
+    }
+    ,*/
+
+  #+END_SRC
+*** 在TypeScript中使用symbol类型
+**** 基础
++ 在TypeScript中使用symbol类型值，很简单。就是制定一个值的类型为symbol类型
+  #+BEGIN_SRC typescript
+  let sym: symbol = Symbol()
+  #+END_SRC
+**** unique symbol
++ 是symbols的子类型，这种类型的值只能由Symbol()或Symbol.for()创建，或者通过指定类型来指定一个值是这种类型。这种类型的值仅可用于常量的定义和用于属性名。另外还有一点要注意，定义unique symbol类型的值，必须用const不能用let
+  #+BEGIN_SRC typescript
+    const key1: unique symbol = Symbol()
+    let key2: symbol = Symbol()
+    const obj = {
+        [key1]: 'value1',
+        [key2]: 'value2'
+    }
+    console.log(obj[key1])
+    console.log(obj[key2]) // error 类型“symbol”不能作为索引类型使用。
+
+  #+END_SRC
+** 枚举
+*** 简介
++ 使用枚举，我们可以给一些难以理解的常量赋予一组具有意义的直观的名字，使其更为直观，你可以理解枚举就是一个字典，枚举使用 enum 关键字定义，TypeScript 支持数字和字符串的枚举
+*** 数字枚举
++ 示例
+  #+BEGIN_SRC typescript
+    enum Status {// 这里你的TSLint可能会报一个：枚举声明只能与命名空间或其他枚举声明合并。这样的错误，这个不影响编译，声明合并的问题我们在后面的小节会讲。
+      Uploading,
+      Success,
+      Failed
+    }
+    console.log(Status.Uploading); // 0
+    console.log(Status["Success"]); // 1
+    console.log(Status.Failed); // 2
+
+  #+END_SRC
++ 使用enum关键字定义了一个枚举值 Status，它包含三个字段，每个字段间用逗号隔开。我们使用枚举值的元素值时，就像访问对象的属性一样，你可以使用’.‘操作符和’[]'两种形式访问里面的值，这和对象一样
++ 在定义枚举 Status 的时候，并没有指定索引号，是因为这是默认的编号，我们也可以自己指定
+  #+BEGIN_SRC typescript
+    // 修改起始编号
+    enum Color {
+      Red = 2,
+      Blue,
+      Yellow
+    }
+    console.log(Color.Red, Color.Blue, Color.Yellow); // 2 3 4
+    // 指定任意字段的索引值
+    enum Status {
+      Success = 200,
+      NotFound = 404,
+      Error = 500
+    }
+    console.log(Status.Success, Status.NotFound, Status.Error); // 200 404 500
+    // 指定部分字段，其他使用默认递增索引
+    enum Status {
+      Ok = 200,
+      Created,
+      Accepted,
+      BadRequest = 400,
+      Unauthorized
+    }
+    console.log(Status.Created, Status.Accepted, Status.Unauthorized); // 201 202 401
+
+  #+END_SRC
++ 数字枚举在定义值的时候，可以使用计算值和常量。但是要注意，如果某个字段使用了计算值或常量，那么该字段后面紧接着的字段必须设置初始值，这里不能使用默认的递增值了
+  #+BEGIN_SRC typescript
+    const getValue = () => {
+      return 0;
+    };
+    enum ErrorIndex {
+      a = getValue(),
+      b, // error 枚举成员必须具有初始化的值
+      c
+    }
+    enum RightIndex {
+      a = getValue(),
+      b = 1,
+      c
+    }
+    const Start = 1;
+    enum Index {
+      a = Start,
+      b, // error 枚举成员必须具有初始化的值
+      c
+    }
+
+  #+END_SRC
+***  反向映射
++ 定义一个枚举值的时候，可以通过 Enum[‘key’]或者 Enum.key 的形式获取到对应的值 value。TypeScript 还支持反向映射，但是反向映射只支持数字枚举，字符串枚举是不支持的
+  #+BEGIN_SRC typescript
+    enum Status {
+      Success = 200,
+      NotFound = 404,
+      Error = 500
+    }
+    console.log(Status["Success"]); // 200
+    console.log(Status[200]); // 'Success'
+    console.log(Status[Status["Success"]]); // 'Succes's
+
+  #+END_SRC
++ TypeScript 中定义的枚举，编译之后其实是对象,TypeScript 会把我们定义的枚举值的字段名分别作为对象的属性名和值，把枚举值的字段值分别作为对象的值和属性名，同时添加到对象中。这样我们既可以通过枚举值的字段名得到值，也可以通过枚举值的值得到字段名
+  #+BEGIN_SRC js
+    {
+        200: "Success",
+        404: "NotFound",
+        500: "Error",
+        Error: 500,
+        NotFound: 404,
+        Success: 200
+    }
+
+  #+END_SRC
+*** 字符串枚举
++ 字符串枚举值要求每个字段的值都必须是字符串字面量，或者是该枚举值中另一个字符串枚举成员
+  #+BEGIN_SRC typescript
+    enum Message {
+      Error = "Sorry, error",
+      Success = "Hoho, success"
+    }
+    console.log(Message.Error); // 'Sorry, error'
+
+  #+END_SRC
+
++ 使用枚举值中其他枚举成员的例子,这里的其他枚举成员指的是同一个枚举值中的枚举成员，因为字符串枚举不能使用常量或者计算值，所以也不能使用其他枚举值中的成员
+  #+BEGIN_SRC typescript
+    enum Message {
+      Error = "error message",
+      ServerError = Error,
+      ClientError = Error
+    }
+    console.log(Message.Error); // 'error message'
+    console.log(Message.ServerError); // 'error message'
+
+  #+END_SRC
+*** 异构枚举
++ 简单来说异构枚举就是枚举值中成员值既有数字类型又有字符串类型,但是这种如果不是真的需要，不建议使用。因为往往我们将一类值整理为一个枚举值的时候，它们的特点是相似的。比如我们在做接口请求时的返回状态码，如果是状态码都是数值，如果是提示信息，都是字符串，所以在使用枚举的时候，往往是可以避免使用异构枚举的，重点是做好类型的整理
+  #+BEGIN_SRC typescript
+    enum Result {
+      Faild = 0,
+      Success = "Success"
+    }
+
+  #+END_SRC
+*** 枚举成员类型和联合枚举类型
++ 如果枚举值里所有成员的值都是字面量类型的值，那么这个枚举的每个成员和枚举值本身都可以作为类型来使用，先来看下满足条件的枚举成员的值有哪些,当我们的枚举值的所有成员的值都是上面这三种情况的时候，枚举值和成员就可以作为类型来用
+  - 不带初始值的枚举成员，例如enum E { A }
+  - 值为字符串字面量，例如enum E { A = ‘a’ }
+  - 值为数值字面量，或者带有-符号的数值字面量，例如enum E { A = 1 }、enum E { A = -1 }
+**** 枚举成员类型
++ 可以把符合条件的枚举值的成员作为类型来使用
+  #+BEGIN_SRC typescript
+    enum Animal {
+      Dog = 1,
+      Cat = 2
+    }
+    interface Dog {
+      type: Animal.Dog; // 这里使用Animal.Dog作为类型，指定接口Dog的必须有一个type字段，且类型为Animal.Dog
+    }
+    interface Cat {
+      type: Animal.Cat; // 这里同上
+    }
+    let cat1: Cat = {
+      type: Animal.Dog // error [ts] 不能将类型“Animal.Dog”分配给类型“Animal.Cat”
+    };
+    let dog: Dog = {
+      type: Animal.Dog
+    };
+
+  #+END_SRC
+**** 联合枚举类型
++ 当我们的枚举值符合条件时，这个枚举值就可以看做是一个包含所有成员的联合类型,例子定义接口 Light 的 status 字段的类型为枚举值 Status，那么此时 status 的属性值必须为 Status.Off 和 Status.On 中的一个，也就是相当于status: Status.Off | Status.On
+  #+BEGIN_SRC typescript
+    enum Status {
+      Off,
+      On
+    }
+    interface Light {
+      status: Status;
+    }
+    enum Animal {
+      Dog = 1,
+      Cat = 2
+    }
+    const light1: Light = {
+      status: Animal.Dog // error 不能将类型“Animal.Dog”分配给类型“Status”
+    };
+    const light2: Light = {
+      status: Status.Off
+    };
+    const light3: Light = {
+      status: Status.On
+    };
+
+  #+END_SRC
+*** 运行时的枚举
++ 枚举在编译成 JavaScript 之后实际是一个对象。这个我们前面讲过了，既然是对象，那么就可以当成对象来使用
+  #+BEGIN_SRC typescript
+    enum E {
+      A,
+      B
+    }
+    const getIndex = (enumObj: { A: number }): number => {
+      return enumObj.A;
+    };
+    console.log(getIndex(E)); // 0
+
+  #+END_SRC
+
++ 上面这个例子要求 getIndex 的参数为一个对象，且必须包含一个属性名为’A’的属性，其值为数值类型，只要有这个属性即可。当我们调用这个函数，把枚举值 E 作为实参传入是可以的，因为它在运行的时候是一个对象，包含’A’这个属性，因为它在运行的时候相当于下面这个对象
+  #+BEGIN_SRC js
+    {
+        0: "A",
+        1: "B",
+        A: 0,
+        B: 1
+    }
+
+  #+END_SRC
+***  const enum
++ 定义了枚举值之后，编译成 JavaScript 的代码会创建一个对应的对象，这个对象我们可以在程序运行的时候使用。但是如果我们使用枚举只是为了让程序可读性好，并不需要编译后的对象呢？这样会增加一些编译后的代码量。所以 TypeScript 在 1.4 新增 const enum*(完全嵌入的枚举)*，在之前讲的定义枚举的语句之前加上const关键字，这样编译后的代码不会创建这个对象，只是会从枚举里拿到相应的值进行替换
+  #+BEGIN_SRC typescript
+    enum Status {
+      Off,
+      On
+    }
+    const enum Animal {
+      Dog,
+      Cat
+    }
+    const status = Status.On;
+    const animal = Animal.Dog;
+//    上面的例子编译成 JavaScript 之后是这样的：
+
+    var Status;
+    (function(Status) {
+      Status[(Status["Off"] = 0)] = "Off";
+      Status[(Status["On"] = 1)] = "On";
+    })(Status || (Status = {}));
+    var status = Status.On;
+    // var animal = 0; /* Dog */
+  #+END_SRC
++ 看下 Status 的处理，先是定义一个变量 Status，然后定义一个立即执行函数，在函数内给 Status 添加对应属性，首先Status[“Off”] = 0是给Status对象设置Off属性，并且值设为 0，这个赋值表达式的返回值是等号右边的值，也就是 0，所以Status[Status[“Off”] = 0] = "Off"相当于Status[0] = “Off”。创建了这个对象之后，将 Status 的 On 属性值赋值给 status；再来看下 animal 的处理，我们看到编译后的代码并没有像Status创建一个Animal对象，而是直接把Animal.Dog的值0替换到了const animal = Animal.Dog表达式的Animal.Dog位置，这就是const enum的用法
+** 使用类型断言达到预期
+*** 类型断言概念
++ 虽然 TypeScript 很强大，但有时它还是不如我们了解一个值的类型，这时候我们更希望 TypeScript 不要帮我们进行类型检查，而是交给我们自己来，所以就用到了类型断言。类型断言有点像是一种类型转换，它把某个值强行指定为特定类型
+  #+BEGIN_SRC typescript
+    const getLength = target => {
+      if (target.length) {
+        return target.length;
+      } else {
+        return target.toString().length;
+      }
+    };
+
+  #+END_SRC
++ 这个函数能够接收一个参数，并返回它的长度，我们可以传入字符串、数组或数值等类型的值。如果有 length 属性，说明参数是数组或字符串类型，如果是数值类型是没有 length 属性的，所以需要把数值类型转为字符串然后再获取 length 值。现在我们限定传入的值只能是字符串或数值类型的值
+  #+BEGIN_SRC typescript
+    const getLength = (target: string | number): number => {
+      if (target.length) { // error 报错信息看下方
+        return target.length; // error 报错信息看下方
+      } else {
+        return target.toString().length;
+      }
+    };
+
+  #+END_SRC
++ 当 TypeScript 不确定一个联合类型的变量到底是哪个类型的时候，我们只能访问此联合类型的所有类型里共有的属性或方法，所以现在加了对参数target和返回值的类型定义之后就会报错
+  #+BEGIN_SRC typescript
+  // 类型"string | number"上不存在属性"length"
+  // 类型"number"上不存在属性"length"
+  #+END_SRC
++ 判断如果 target.length 不为 undefined， 说明它是有 length 属性的，但我们的参数是string | number联合类型，所以在我们开始做判断的时候就会报错。这个时候就要用类型断言，将tagrget的类型断言成string类型。它有两种写法，一种是<type>value，一种是value as type，下面例子中我们用两种形式都写出来
+  #+BEGIN_SRC typescript
+    const getStrLength = (target: string | number): number => {
+      if ((<string>target).length) { // 这种形式在JSX代码中不可以使用，而且也是TSLint不建议的写法
+        return (target as string).length; // 这种形式是没有任何问题的写法，所以建议大家始终使用这种形式
+      } else {
+        return target.toString().length;
+      }
+    };
+
+  #+END_SRC
+** 接口
+*** 简介
++ 通过使用接口，可以定义绝大部分的数据结构，从而限定值的结构。可以通过修饰符来指定结构中某个字段的可选性和只读性，以及默认情况下必选性。而接口的校验是严格的，在定义一个实现某个接口的值的时候，对于接口中没有定义的字段是不允许出现的
+*** 基本用法
++ 在定义接口的时候，你不要把它理解为是在定义一个对象，而要理解为{}括号包裹的是一个代码块，里面是一条条声明语句，只不过声明的不是变量的值而是类型。声明也不用等号赋值，而是冒号指定类型。每条声明之前用换行分隔即可，或者也可以使用分号或者逗号，都是可以的
+  #+BEGIN_SRC typescript
+    interface Info {
+      firstName: string;
+      lastName: string;
+    }
+    const getFullName = ({ firstName, lastName }: Info) =>
+      `${firstName} ${lastName}`;
+
+  #+END_SRC
+*** 可选属性
++ 当我们定义一些结构的时候，一些结构对于某些字段的要求是可选的，有这个字段就做处理，没有就忽略，所以针对这种情况，typescript为我们提供了可选属性,在属性名后面加个?即可
+  #+BEGIN_SRC typescript
+    interface Vegetables {
+      color?: string;
+      type: string;
+    }
+    const getVegetables = ({ color, type }) => {
+      return `A ${color ? color + " " : ""}${type}`;
+    };
+  #+END_SRC
+*** 多余属性检查
++ 接口上不存在你多余的这个属性。只要接口中没有定义这个属性，就会报错，但如果你定义了可选属性 size，那么上面的例子就不会报错
+*** 绕开多余属性检查
++ 有时我们并不希望 TypeScript 这么严格地对我们的数据进行检查，比如我们只需要保证传入getVegetables的对象有type属性就可以了，至于实际使用的时候传入对象有没有多余的属性，多余属性的属性值是什么类型，这些都无所谓，那就需要绕开多余属性检查，有如下三个方法
+**** 使用类型断言
++ 类型断言就是用来明确告诉 TypeScript，我们已经自行进行了检查，确保这个类型没有问题，希望 TypeScript 对此不进行检查，所以最简单的方式就是使用类型断言
+  #+BEGIN_SRC typescript
+    interface Vegetables {
+      color?: string;
+      type: string;
+    }
+    const getVegetables = ({ color, type }: Vegetables) => {
+      return `A ${color ? color + " " : ""}${type}`;
+    };
+    getVegetables({
+      type: "tomato",
+      size: 12,
+      price: 1.2
+    } as Vegetables);
+
+  #+END_SRC
+**** 添加索引签名
++ 更好的方式是添加字符串索引签名
+  #+BEGIN_SRC typescript
+    interface Vegetables {
+      color: string;
+      type: string;
+      [prop: string]: any;
+    }
+    const getVegetables = ({ color, type }: Vegetables) => {
+      return `A ${color ? color + " " : ""}${type}`;
+    };
+    getVegetables({
+      color: "red",
+      type: "tomato",
+      size: 12,
+      price: 1.2
+    });
+
+  #+END_SRC
+**** 利用类型兼容性
++ 这种方法现在还不是很好理解，也是不推荐使用的
+  #+BEGIN_SRC typescript
+    interface Vegetables {
+      type: string;
+    }
+    const getVegetables = ({ type }: Vegetables) => {
+      return `A ${type}`;
+    };
+
+    const option = { type: "tomato", size: 12 };
+    getVegetables(option);
+
+  #+END_SRC
+*** 只读属性
++ 接口也可以设置只读属性
+  #+BEGIN_SRC typescript
+    interface Role {
+      readonly 0: string;
+      readonly 1: string;
+    }
+
+  #+END_SRC
++ 那readonly和const在使用时该如何选择呢？这主要看你这个值的用途，如果是定义一个常量，那用const，如果这个值是作为对象的属性，那请用readonly
+  #+BEGIN_SRC typescript
+    const NAME: string = "Lison";
+    NAME = "Haha"; // Uncaught TypeError: Assignment to constant variable
+
+    const obj = {
+      name: "lison"
+    };
+    obj.name = "Haha";
+
+    interface Info {
+      readonly name: string;
+    }
+    const info: Info = {
+      name: "Lison"
+    };
+    info["name"] = "Haha"; // Cannot assign to 'name' because it is a read-only property
+    // 可以看到上面使用const定义的常量NAME定义之后再修改会报错，但是如果使用const定义一个对象，然后修改对象里属性的值是不会报错的。所以如果我们要保证对象的属性值不可修改，需要使用readonly
+  #+END_SRC
+*** 函数类型
++ 接口可以描述普通对象，还可以描述函数类型
+  #+BEGIN_SRC typescript
+    interface AddFunc {
+      (num1: number, num2: number): number;
+    }
+
+  #+END_SRC
++ 定义了一个AddFunc结构，这个结构要求实现这个结构的值，必须包含一个和结构里定义的函数一样参数、一样返回值的方法，或者这个值就是符合这个函数要求的函数。我们管花括号里包着的内容为调用签名，它由带有参数类型的参数列表和返回值类型组成
+  #+BEGIN_SRC typescript
+  const add: AddFunc = (n1, n2) => n1 + n2;
+  const join: AddFunc = (n1, n2) => `${n1} ${n2}`; // 不能将类型'string'分配给类型'number'
+  add("a", 2); // 类型'string'的参数不能赋给类型'number'的参数
+  #+END_SRC
++ 上面我们定义的add函数接收两个数值类型的参数，返回的结果也是数值类型，所以没有问题。而join函数参数类型没错，但是返回的是字符串，所以会报错。而当我们调用add函数时，传入的参数如果和接口定义的类型不一致，也会报错。你应该注意到了，实际定义函数的时候，名字是无需和接口中参数名相同的，只需要位置对应即可
+*** 索引类型
++ 可以使用接口描述索引的类型和通过索引得到的值的类型，比如一个数组[‘a’, ‘b’]，数字索引0对应的通过索引得到的值为’a’。我们可以同时给索引和值都设置类型
+  #+BEGIN_SRC typescript
+    interface RoleDic {
+      [id: number]: string;
+    }
+    const role1: RoleDic = {
+      0: "super_admin",
+      1: "admin"
+    };
+    const role2: RoleDic = {
+      s: "super_admin",  // error 不能将类型"{ s: string; a: string; }"分配给类型"RoleDic"。
+      a: "admin"
+    };
+    const role3: RoleDic = ["super_admin", "admin"];
+
+  #+END_SRC
++ 例子中 role3 定义了一个数组，索引为数值类型，值为字符串类型。你也可以给索引设置readonly，从而防止索引返回值被修改
+  #+BEGIN_SRC typescript
+    interface RoleDic {
+      readonly [id: number]: string;
+    }
+    const role: RoleDic = {
+      0: "super_admin"
+    };
+    role[0] = "admin"; // error 类型"RoleDic"中的索引签名仅允许读取
+
+  #+END_SRC
++ 需要注意，你可以设置索引类型为 number。但是这样如果你将属性名设置为字符串类型，则会报错；但是如果你设置索引类型为字符串类型，那么即便你的属性名设置的是数值类型，也没问题。因为 JS 在访问属性值的时候，如果属性名是数值类型，会先将数值类型转为字符串，然后再去访问
+  #+BEGIN_SRC typescript
+    const obj = {
+      123: "a", // 这里定义一个数值类型的123这个属性
+      "123": "b" // 这里在定义一个字符串类型的123这个属性，这里会报错：标识符“"123"”重复。
+    };
+    console.log(obj); // { '123': 'b' }
+
+  #+END_SRC
++ 如果数值类型的属性名不会转为字符串类型，那么这里数值123和字符串123是不同的两个值，则最后对象obj应该同时有这两个属性；但是实际打印出来的obj只有一个属性，属性名为字符串"123"，而且值为"b"，说明数值类型属性名123被覆盖掉了，就是因为它被转为了字符串类型属性名"123"；又因为一个对象中多个相同属性名的属性，定义在后面的会覆盖前面的，所以结果就是obj只保留了后面定义的属性值
+*** 继承接口
++ 接口可以继承，这和类一样，这提高了接口的可复用性
+  #+BEGIN_SRC typescript
+    interface Vegetables {
+      color: string;
+    }
+    interface Tomato {
+      color: string;
+      radius: number;
+    }
+    interface Carrot {
+      color: string;
+      length: number;
+    }
+    // 三个接口中都有对color的定义，但是这样写很繁琐，所以我们可以用继承来改写：
+
+    interface Vegetables {
+      color: string;
+    }
+    interface Tomato extends Vegetables {
+      radius: number;
+    }
+    interface Carrot extends Vegetables {
+      length: number;
+    }
+    const tomato: Tomato = {
+      radius: 1.2 // error  Property 'color' is missing in type '{ radius: number; }'
+    };
+    const carrot: Carrot = {
+      color: "orange",
+      length: 20
+    };
+
+  #+END_SRC
+
++ 一个接口可以被多个接口继承，同样，一个接口也可以继承多个接口，多个接口用逗号隔开
+  #+BEGIN_SRC typescript
+    interface Vegetables {
+      color: string;
+    }
+    interface Food {
+      type: string;
+    }
+    interface Tomato extends Food, Vegetables {
+      radius: number;
+    }
+
+    const tomato: Tomato = {
+      type: "vegetables",
+      color: "red",
+      radius: 1.2
+    };  // 在定义tomato变量时将继承过来的color和type属性同时声明
+
+  #+END_SRC
+*** 混合类型接口
++ JS 的类型是灵活的。在 JS 中，函数是对象类型。对象可以有属性，所以有时我们的一个对象，它既是一个函数，也包含一些属性
+  #+BEGIN_SRC typescript
+  let count = 0;
+  const countUp = () => count++;
+  #+END_SRC
++ 但是上面的方法需要在函数外面定义一个变量，更优一点的方法是使用闭包
+  #+BEGIN_SRC typescript
+    // javascript
+    const countUp = (() => {
+      let count = 0;
+      return () => {
+        return ++count;
+      };
+    })();
+    console.log(countUp()); // 1
+    console.log(countUp()); // 2
+
+  #+END_SRC
++ TypeScript 支持直接给函数添加属性
+  #+BEGIN_SRC typescript
+    // javascript
+    let countUp = () => {
+      return ++countUp.count;
+    };
+    countUp.count = 0;
+    console.log(countUp()); // 1
+    console.log(countUp()); // 2
+
+  #+END_SRC
++ 可以使用混合类型接口来指定上面例子中 countUp 的类型
+  #+BEGIN_SRC typescript
+    interface Counter {
+      (): void; // 这里定义Counter这个结构必须包含一个函数，函数的要求是无参数，返回值为void，即无返回值
+      count: number; // 而且这个结构还必须包含一个名为count、值的类型为number类型的属性
+    }
+    const getCounter = (): Counter => { // 这里定义一个函数用来返回这个计数器
+      const c = () => { // 定义一个函数，逻辑和前面例子的一样
+        c.count++;
+      };
+      c.count = 0; // 再给这个函数添加一个count属性初始值为0
+      return c; // 最后返回这个函数对象
+    };
+    const counter: Counter = getCounter(); // 通过getCounter函数得到这个计数器
+    counter();
+    console.log(counter.count); // 1
+    counter();
+    console.log(counter.count); // 2
+
+  #+END_SRC
+** 函数
+*** 为函数定义类型
++ 可以给函数定义类型，这个定义包括对参数和返回值的类型定义，我们先来看简单的定义写法
+  #+BEGIN_SRC typescript
+    function add(arg1: number, arg2: number): number {
+      return x + y;
+    }
+    // 或者
+    const add = (arg1: number, arg2: number): number => {
+      return x + y;
+    };
+
+  #+END_SRC
++ 省略参数的类型，TypeScript 会默认这个参数是 any 类型；如果省略返回值的类型，如果函数无返回值，那么 TypeScript 会默认函数返回值是 void 类型；如果函数有返回值，那么 TypeScript 会根据我们定义的逻辑推断出返回类型
+*** 完整的函数类型
++ 一个函数的定义包括函数名、参数、逻辑和返回值。我们为一个函数定义类型时，完整的定义应该包括参数类型和返回值类型
+  #+BEGIN_SRC typescript
+  let add: (x: number, y: number) => number;
+  add = (arg1: number, arg2: number): number => arg1 + arg2;
+  add = (arg1: string, arg2: string): string => arg1 + arg2; // error
+  
+  #+END_SRC
++ 上面这个例子中，我们首先定义了一个变量 add，给它指定了函数类型，也就是(x: number, y: number) => number，这个函数类型包含参数和返回值的类型。然后我们给 add 赋了一个实际的函数，这个函数参数类型和返回类型都和函数类型中定义的一致，所以可以赋值。后面我们又给它赋了一个新函数，而这个函数的参数类型和返回值类型都是 string 类型，这时就会报如下错误：不能将类型"(arg1: string, arg2: string) => string"分配给类型"(x: number, y: number) => number"。
+  参数"arg1"和"x" 的类型不兼容。不能将类型"number"分配给类型"string"
+*** 使用接口定义函数类型
++ 使用接口可以清晰地定义函数类型
+  #+BEGIN_SRC typescript
+    interface Add {
+      (x: number, y: number): number;
+    }
+    let add: Add = (arg1: string, arg2: string): string => arg1 + arg2; // error 不能将类型“(arg1: string, arg2: string) => string”分配给类型“Add”
+    // 通过接口的形式定义函数类型，这个接口Add定义了这个结构是一个函数，两个参数类型都是number类型，返回值也是number类型。然后我们指定变量add类型为Add时，再要给add赋值，就必须是一个函数，且参数类型和返回值类型都要满足接口Add，显然例子中这个函数并不满足条件，所以报错了
+  #+END_SRC
+*** 使用类型别名
++ 可以使用类型别名来定义函数类型，使用类型别名定义函数类型更直观易读
+  #+BEGIN_SRC typescript
+  type Add = (x: number, y: number) => number;
+  let add: Add = (arg1: string, arg2: string): string => arg1 + arg2; // error 不能将类型“(arg1: string, arg2: string) => string”分配给类型“Ad”d
+  
+  #+END_SRC
++ 使用type关键字可以为原始值、联合类型、元组以及任何我们定义的类型起一个别名
+*** 参数
+**** 可选参数
++ TypeScript 会帮我们在编写代码的时候就检查出调用函数时参数中存在的一些错误
+  #+BEGIN_SRC typescript
+    type Add = (x: number, y: number) => number;
+    let add: Add = (arg1: string, arg2: string): string => arg1 + arg2;
+
+    add(1, 2); // right
+    add(1, 2, 3); // error 应有 2 个参数，但获得 3 个
+    add(1); // error 应有 2 个参数，但获得 1 个
+
+  #+END_SRC
+
++ 接口形式定义的函数类型必选参数和可选参数的位置前后是无所谓的，但是今天学到的定义形式，可选参数必须放在必选参数后面，这和在 JS 中定义函数是一致的
+  #+BEGIN_SRC typescript
+  type Add = (x?: number, y: number) => number; // error 必选参数不能位于可选参数后。
+  #+END_SRC
+**** 默认参数
++ 可选参数和带默认值的参数在函数调用时都是可以不传实参的，但是区别在于定义函数的时候，可选参数必须放在必选参数后面，而带默认值的参数则可放在必须参数前后都可
++ 为参数指定了默认参数的时候，TypeScript 会识别默认参数的类型；当我们在调用函数时，如果给这个带默认值的参数传了别的类型的参数则会报错
+  #+BEGIN_SRC typescript
+    const add = (x: number, y = 2) => {
+      return x + y;
+    };
+    add(1, "a"); // error 类型"string"的参数不能赋给类型"number"的参数
+
+  #+END_SRC
++ 可以显式地给 y 设置类型
+  #+BEGIN_SRC typescript
+    const add = (x: number, y: number = 2) => {
+      return x + y;
+    };
+
+  #+END_SRC
+**** 剩余参数
++ 在 TypeScript 中你可以为剩余参数指定类型
+  #+BEGIN_SRC typescript
+    const handleData = (arg1: number, ...args: number[]) => {
+      //
+    };
+    handleData(1, "a"); // error 类型"string"的参数不能赋给类型"number"的参数
+
+  #+END_SRC
+*** 函数重载
++ 在其他一些强类型语言中，函数重载是指定义几个函数名相同，但参数个数或类型不同的函数，在调用时传入不同的参数，编译器会自动调用适合的函数。但是 JavaScript 作为一个动态语言是没有函数重载的，只能我们自己在函数体内通过判断参数的个数、类型来指定不同的处理逻辑
+  #+BEGIN_SRC typescript
+    const handleData = value => {
+      if (typeof value === "string") {
+        return value.split("");
+      } else {
+        return value
+          .toString()
+          .split("")
+          .join("_");
+      }
+    };
+
+  #+END_SRC
++ 在 TypeScript 中有函数重载的概念，但并不是定义几个同名实体函数，然后根据不同的参数个数或类型来自动调用相应的函数。TypeScript的函数重载是在类型系统层面的，是为了更好地进行类型推断。TypeScript的函数重载通过为一个函数指定多个函数类型定义，从而对函数调用的返回值进行检查
+  #+BEGIN_SRC typescript
+    function handleData(x: string): string[]; // 这个是重载的一部分，指定当参数类型为string时，返回值为string类型的元素构成的数组
+    function handleData(x: number): string; // 这个也是重载的一部分，指定当参数类型为number时，返回值类型为string
+    function handleData(x: any): any { // 这个就是重载的内容了，他是实体函数，不算做重载的部分
+      if (typeof x === "string") {
+        return x.split("");
+      } else {
+        return x
+          .toString()
+          .split("")
+          .join("_");
+      }
+    }
+    handleData("abc").join("_");
+    handleData(123).join("_"); // error 类型"string"上不存在属性"join"
+    handleData(false); // error 类型"boolean"的参数不能赋给类型"number"的参数
+
+  #+END_SRC
++ 首先我们使用function关键字定义了两个同名的函数，但不同的是，函数没有实际的函数体逻辑，而是只定义函数名、参数及参数类型以及函数的返回值类型；而第三个使用function定义的同名函数，是一个完整的实体函数，包含函数名、参数及参数类型、返回值类型和函数体；这三个定义组成了一个函数——完整的带有类型定义的函数，前两个function定义的就称为函数重载，而第三个function并不算重载
++ 然后我们来看下匹配规则，当调用这个函数并且传入参数的时候，会从上而下在函数重载里匹配和这个参数个数和类型匹配的重载。如例子中第一个调用，传入了一个字符串"abc"，它符合第一个重载，所以它的返回值应该是一个字符串组成的数组，数组是可以调用join方法的，所以这里没问题；第二个调用传入的是一个数值类型的123，从上到下匹配重载是符合第二个的，返回值应该是字符串类型。但这里拿到返回值后调用了数组方法join，这肯定会报错了，因为字符串无法调用这个方法；最后调用时传入了一个布尔类型值false，匹配不到重载，所以会报错
++ 要注意的是，这里重载只能用 function 来定义，不能使用接口、类型别名等
+** 泛型
++ 使用泛型来弥补使用any造成的类型信息缺失；当我们的类型是灵活任意的，又要准确使用类型信息时，就需要使用泛型来关联类型信息，其中离不开的是泛型变量；泛型变量可以是多个，且命名随意；如果需要对泛型变量的类型做进一步的限制，则需要用到我们最后讲的泛型约束；使用泛型约束通过extends关键字指定要符合的类型，从而满足更多场景的需求
+*** 简单使用
++ 泛型（Generics）是指在定义函数、接口或类的时候，不预先指定具体的类型，而在使用的时候再指定类型的一种特性,我们既要允许传入任意类型的值，又要正确指定返回值类型，就要使用泛型
+  #+BEGIN_SRC typescript
+    const getArray = <T>(value: T, times: number = 5): T[] => {
+      return new Array(times).fill(value);
+    };
+
+  #+END_SRC
++ 在定义函数之前，使用<>符号定义了一个泛型变量 T，这个 T 在这次函数定义中就代表某一种类型，它可以是基础类型，也可以是联合类型等高级类型。定义了泛型变量之后，你在函数中任何需要指定类型的地方使用 T 都代表这一种类型。比如当我们传入 value 的类型为数值类型，那么返回的数组类型T[]就表示number[]
+  #+BEGIN_SRC typescript
+    getArray<number[]>([1, 2], 3).forEach(item => {
+      console.log(item.length);
+    });
+    getArray<number>(2, 3).forEach(item => {
+      console.log(item.length); // 类型“number”上不存在属性“length”
+    });
+
+  #+END_SRC
+*** 泛型变量
++ 示例中的T并不是固定的，你可以写为A、B或者其他名字，而且还可以在一个函数中定义多个泛型变量
+  #+BEGIN_SRC typescript
+    const getArray = <T, U>(param1: T, param2: U, times: number): [T, U][] => {
+      return new Array(times).fill([param1, param2]);
+    };
+    getArray(1, "a", 3).forEach(item => {
+      console.log(item[0].length); // error 类型“number”上不存在属性“length”
+      console.log(item[1].toFixed(2)); // error 属性“toFixed”在类型“string”上不存在
+    });
+
+  #+END_SRC
++ 这个例子中，我们定义了两个泛型变量T和U。第一个参数的类型为 T，第二个参数的类型为 U，最后函数返回一个二维数组，函数返回类型我们指定是一个元素类型为[T, U]的数组。所以当我们调用函数，最后遍历结果时，遍历到的每个元素都是一个第一个元素是数值类型、第二个元素是字符串类型的数组
+*** 泛型函数类型
++ 可以定义一个泛型函数类型
+  #+BEGIN_SRC typescript
+    // ex1: 简单定义
+    const getArray: <T>(arg: T, times: number) => T[] = (arg, times) => {
+      return new Array(times).fill(arg);
+    };
+    // ex2: 使用类型别名
+    type GetArray = <T>(arg: T, times: number) => T[];
+    const getArray: GetArray = <T>(arg: T, times: number): T[] => {
+      return new Array(times).fill(arg);
+    };
+    // 当然了，我们也可以使用接口的形式来定义泛型函数类型：
+
+    interface GetArray {
+      <T>(arg: T, times: number): T[];
+    }
+    const getArray: GetArray = <T>(arg: T, times: number): T[] => {
+      return new Array(times).fill(arg);
+    };
+
+  #+END_SRC
++ 还可以把接口中泛型变量提升到接口最外层，这样接口中所有属性和方法都能使用这个泛型变量
+  #+BEGIN_SRC typescript
+    interface GetArray<T> {
+      (arg: T, times: number): T[];
+      tag: T;
+    }
+    const getArray: GetArray<number> = <T>(arg: T, times: number): T[] => {
+      // error 不能将类型“{ <T>(arg: T, times: number): T[]; tag: string; }”分配给类型“GetArray<number>”。
+      // 属性“tag”的类型不兼容。
+      return new Array(times).fill(arg);
+    };
+    getArray.tag = "a"; // 不能将类型“"a"”分配给类型“number”
+    getArray("a", 1); // 不能将类型“"a"”分配给类型“number”
+
+  #+END_SRC
+*** 泛型约束
++ 当我们使用了泛型时，就意味着这个这个类型是任意类型。但在大多数情况下，我们的逻辑是对特定类型处理的,泛型约束就是使用一个类型和extends对泛型进行约束
+  #+BEGIN_SRC typescript
+    interface ValueWithLength {
+      length: number;
+    }
+    const getLength = <T extends ValueWithLength>(param: T): number => {
+      return param.length;
+    };
+    getLength("abc"); // 3
+    getLength([1, 2, 3]); // 3
+    getLength({ length: 3 }); // 3
+    getLength(123); // error 类型“123”的参数不能赋给类型“ValueWithLength”的参数
+
+  #+END_SRC
+*** 在泛型约束中使用类型参数
++ 示例
+  #+BEGIN_SRC typescript
+    const getProp = <T, K extends keyof T>(object: T, propName: K) => {
+      return object[propName];
+    };
+    const obj = { a: "aa", b: "bb" };
+    getProp(obj, "c"); // 类型“"c"”的参数不能赋给类型“"a" | "b"”的参数
+    // 这里我们使用让K来继承索引类型keyof T，你可以理解为keyof T相当于一个由泛型变量T的属性名构成的联合类型，在这里 K 就被约束为了只能是"a"或"b"，所以当我们传入字符串"c"想要获取对象obj的属性"c"时就会报错。
+
+  #+END_SRC
+** 类
+*** 基础
++ 在 TS 中定义类
+  #+BEGIN_SRC typescript
+    class Point {
+      x: number;
+      y: number;
+      constructor(x: number, y: number) {
+        this.x = x;
+        this.y = y;
+      }
+      getPosition() {
+        return `(${this.x}, ${this.y})`;
+      }
+    }
+    const point = new Point(1, 2);
+
+  #+END_SRC
+
++ 使用继承来复用一些特性
+  #+BEGIN_SRC typescript
+    class Parent {
+      name: string;
+      constructor(name: string) {
+        this.name = name;
+      }
+    }
+    class Child extends Parent {
+      constructor(name: string) {
+        super(name);
+      }
+    }
+
+  #+END_SRC
+*** 修饰符
+**** public
++ public表示公共的，用来指定在创建实例后可以通过实例访问的，也就是类定义的外部可以访问的属性和方法。默认是 public
+  #+BEGIN_SRC typescript
+    class Point {
+      public x: number;
+      public y: number;
+      constructor(x: number, y: number) {
+        this.x = x;
+        this.y = y;
+      }
+      public getPosition() {
+        return `(${this.x}, ${this.y})`;
+      }
+    }
+
+  #+END_SRC
+**** private
++ private修饰符表示私有的，它修饰的属性在类的定义外面是没法访问的
+  #+BEGIN_SRC typescript
+    class Parent {
+      private age: number;
+      constructor(age: number) {
+        this.age = age;
+      }
+    }
+    const p = new Parent(18);
+    console.log(p); // { age: 18 }
+    console.log(p.age); // error 属性“age”为私有属性，只能在类“Parent”中访问
+    console.log(Parent.age); // error 类型“typeof ParentA”上不存在属性“age”
+    class Child extends Parent {
+      constructor(age: number) {
+        super(age);
+        console.log(super.age); // 通过 "super" 关键字只能访问基类的公共方法和受保护方法
+      }
+    }
+
+  #+END_SRC
++ 这里你可以看到，age 属性使用 private 修饰符修饰，说明他是私有属性，我们打印创建的实例对象 p，发现他是有属性 age 的，但是当试图访问 p 的 age 属性时，编译器会报错，告诉我们私有属性只能在类 Parent 中访问。这里我们需要特别说下 super.age 这里的报错，我们在之前学习 ES6 的类的时候，讲过在不同类型的方法里 super 作为对象代表着不同的含义，这里在 constructor 中访问 super，这的 super 相当于父类本身，这里我们看到使用 private 修饰的属性，在子类中是没法访问的
+**** protected
++ protected修饰符是受保护修饰符，和private有些相似，但有一点不同，protected修饰的成员在继承该类的子类中可以访问
+  #+BEGIN_SRC typescript
+    class Parent {
+      protected age: number;
+      constructor(age: number) {
+        this.age = age;
+      }
+      protected getAge() {
+        return this.age;
+      }
+    }
+    const p = new Parent(18);
+    console.log(p.age); // error 属性“age”为私有属性，只能在类“ParentA”中访问
+    console.log(Parent.age); // error 类型“typeof ParentA”上不存在属性“age”
+    class Child extends Parent {
+      constructor(age: number) {
+        super(age);
+        console.log(super.age); // undefined
+        console.log(super.getAge());
+      }
+    }
+    new Child(18)
+
+  #+END_SRC
++ protected还能用来修饰 constructor 构造函数，加了protected修饰符之后，这个类就不能再用来创建实例，只能被子类继承
+  #+BEGIN_SRC typescript
+    class Parent {
+      protected constructor() {
+        //
+      }
+    }
+    const p = new Parent(); // error 类“Parent”的构造函数是受保护的，仅可在类声明中访问
+    class Child extends Parent {
+      constructor() {
+        super();
+      }
+    }
+    const c = new Child();
+
+  #+END_SRC
+**** readonly 修饰符
++ 在类里可以使用readonly关键字将属性设置为只读
+  #+BEGIN_SRC typescript
+    class UserInfo {
+      readonly name: string;
+      constructor(name: string) {
+        this.name = name;
+      }
+    }
+    const user = new UserInfo("Lison");
+    user.name = "haha"; // error Cannot assign to 'name' because it is a read-only property
+
+  #+END_SRC
+*** 参数属性
++ 之前的例子中，我们都是在类的定义的顶部初始化实例属性，在 constructor 里接收参数然后对实力属性进行赋值，我们可以使用参数属性来简化这个过程。参数属性简单来说就是在 constructor 构造函数的参数前面加上访问限定符，也就是前面讲的 public、private、protected 和 readonly 中的任意一个
+  #+BEGIN_SRC typescript
+    class A {
+      constructor(name: string) {}
+    }
+    const a = new A("aaa");
+    console.log(a.name); // error 类型“A”上不存在属性“name”
+    class B {
+      constructor(public name: string) {}
+    }
+    const b = new B("bbb");
+    console.log(b.name); // "bbb"
+    // 可以看到，在定义类 B 时，构造函数有一个参数 name，这个 name 使用访问修饰符 public 修饰，此时即为 name 声明了参数属性，也就无需再显示地在类中初始化这个属性了
+  #+END_SRC
+*** 静态属性
++ 在 TS 中一样使用static关键字来指定属性或方法是静态的，实例将不会添加这个静态属性，也不会继承这个静态方法，你可以使用修饰符和 static 关键字来指定一个属性或方法
+  #+BEGIN_SRC typescript
+    class Parent {
+      public static age: number = 18;
+      public static getAge() {
+        return Parent.age;
+      }
+      constructor() {
+        //
+      }
+    }
+    const p = new Parent();
+    console.log(p.age); // error Property 'age' is a static member of type 'Parent'
+    console.log(Parent.age); // 18
+    // 如果使用了 private 修饰道理和之前的一样：
+
+    class Parent {
+      public static getAge() {
+        return Parent.age;
+      }
+      private static age: number = 18;
+      constructor() {
+        //
+      }
+    }
+    const p = new Parent();
+    console.log(p.age); // error Property 'age' is a static member of type 'Parent'
+    console.log(Parent.age); // error 属性“age”为私有属性，只能在类“Parent”中访问。
+
+  #+END_SRC
+*** 可选类属性
++ 
+*** 存取器
++ 这个也就 ES6 标准中的存值函数和取值函数，也就是在设置属性值的时候调用的函数，和在访问属性值的时候调用的函数，用法和写法和 ES6 的没有区别
+  #+BEGIN_SRC typescript
+    class UserInfo {
+      private _fullName: string;
+      constructor() {}
+      get fullName() {
+        return this._fullName;
+      }
+      set fullName(value) {
+        console.log(`setter: ${value}`);
+        this._fullName = value;
+      }
+    }
+    const user = new UserInfo();
+    user.fullName = "Lison Li"; // "setter: Lison Li"
+    console.log(user.fullName); // "Lison Li"
+
+  #+END_SRC
+*** 抽象类
++ 抽象类一般用来被其他类继承，而不直接用它创建实例。抽象类和类内部定义抽象方法，使用abstract关键字
+  #+BEGIN_SRC typescript
+    abstract class People {
+      constructor(public name: string) {}
+      abstract printName(): void;
+    }
+    class Man extends People {
+      constructor(name: string) {
+        super(name);
+        this.name = name;
+      }
+      printName() {
+        console.log(this.name);
+      }
+    }
+    const m = new Man(); // error 应有 1 个参数，但获得 0 个
+    const man = new Man("lison");
+    man.printName(); // 'lison'
+    const p = new People("lison"); // error 无法创建抽象类的实例
+
+  #+END_SRC
++ 抽象方法和抽象存取器都不能包含实际的代码块
+*** 实例类型
++ 当我们定义一个类，并创建实例后，这个实例的类型就是创建他的类
+  #+BEGIN_SRC typescript
+    class People {
+      constructor(public name: string) {}
+    }
+    let p: People = new People("lison");
+    // 创建实例的时候这指定 p 的类型为 People 并不是必须的，TS 会推断出他的类型。虽然指定了类型，但是当我们再定义一个和 People 类同样实现的类 Animal，并且创建实例赋值给 p 的时候，是没有问题的
+  #+END_SRC
++ 如果你想实现对创建实例的类的判断，还是需要用到instanceof关键字
+*** 类类型接口
++ 使用接口可以强制一个类的定义必须包含某些内容
+  #+BEGIN_SRC typescript
+    interface FoodInterface {
+      type: string;
+    }
+    class FoodClass implements FoodInterface {
+      // error Property 'type' is missing in type 'FoodClass' but required in type 'FoodInterface'
+      static type: string;
+      constructor() {}
+    }
+
+  #+END_SRC
++ 上面接口 FoodInterface 要求使用该接口的值必须有一个 type 属性，定义的类 FoodClass 要使用接口，需要使用关键字implements。implements关键字用来指定一个类要继承的接口，如果是接口和接口、类和类直接的继承，使用extends，如果是类继承接口，则用implements
++ 有一点需要注意，接口检测的是使用该接口定义的类创建的实例，所以上面例子中虽然定义了静态属性 type，但静态属性不会添加到实例上，所以还是报错，所以我们可以这样改
+  #+BEGIN_SRC typescript
+    interface FoodInterface {
+      type: string;
+    }
+    class FoodClass implements FoodInterface {
+      constructor(public type: string) {}
+    }
+    // 当然这个需求你也可以使用本节课学习的抽象类实现：
+
+    abstract class FoodAbstractClass {
+      abstract type: string;
+    }
+    class Food extends FoodAbstractClass {
+      constructor(public type: string) {
+        super();
+      }
+    }
+
+  #+END_SRC
+*** 接口继承类
++ 接口可以继承一个类，当接口继承了该类后，会继承类的成员，但是不包括其实现，也就是只继承成员以及成员类型。接口还会继承类的private和protected修饰的成员，当接口继承的这个类中包含这两个修饰符修饰的成员时，这个接口只可被这个类或他的子类实现
+  #+BEGIN_SRC typescript
+    class A {
+      protected name: string;
+    }
+    interface I extends A {}
+    class B implements I {} // error Property 'name' is missing in type 'B' but required in type 'I'
+    class C implements I {
+      // error 属性“name”受保护，但类型“C”并不是从“A”派生的类
+      name: string;
+    }
+    class D extends A implements I {
+      getName() {
+        return this.name;
+      }
+    }
+
+  #+END_SRC
+*** 在泛型中使用类类型
++ 示例
+  #+BEGIN_SRC typescript
+    const create = <T>(c: { new (): T }): T => {
+      return new c();
+    };
+    class Info {
+      age: number;
+    }
+    create(Info).age;
+    create(Info).name; // error 类型“Info”上不存在属性“name”
+    // 在这个例子里，我们创建了一个一个 create 函数，传入的参数是一个类，返回的是一个类创建的实例，这里有几个点要讲：参数 c 的类型定义中，new()代表调用类的构造函数，他的类型也就是类创建实例后的实例的类型。return new c()这里使用传进来的类 c 创建一个实例并返回，返回的实例类型也就是函数的返回值类型。所以通过这个定义，TS 就知道，调用 create 函数，传入的和返回的值都应该是同一个类类型
+  #+END_SRC
+** 类型推论
++ 三种常见的类型推论。在我们日常开发中，必写的类型还是要明确指定的，这样我们才能更准确地得到类型信息和开发辅助
+*** 基础
++ 在一些定义中如果你没有明确指定类型，编译器会自动推断出适合的类型,最基本的类型推论，根据右侧的值推断左侧变量的类型
+  #+BEGIN_SRC typescript
+  let name = "lison";
+  name = 123; // error 不能将类型“123”分配给类型“string”
+  #+END_SRC
+*** 多类型联合
++ 当我们定义一个数组或元组这种包含多个元素的值的时候，多个元素可以有不同的类型，这种时候 TypeScript 会将多个类型合并起来，组成一个联合类型
+  #+BEGIN_SRC typescript
+  let arr = [1, "a"];
+  arr = ["b", 2, false]; // error 不能将类型“false”分配给类型“string | number”
+  // 可以看到，此时的 arr 的元素被推断为string | number，也就是元素可以是 string 类型也可以是 number 类型，除此两种类型外的类型是不可以的
+
+  // 再来看个例子：
+  let value = Math.random() * 10 > 5 ? 'abc' : 123
+  value = false // error 不能将类型“false”分配给类型“string | number”
+  // 这里我们给value赋值为一个三元操作符表达式，Math.random() * 10的值为0-10的随机数。这里判断，如果这个随机值大于
+  #+END_SRC
+*** 上下文类型
++ 上面讲的两个例子都是根据=符号右边值的类型，推断左侧值的类型。现在要讲的上下文类型则相反，它是根据左侧的类型推断右侧的一些类型
+  #+BEGIN_SRC typescript
+    window.onmousedown = function(mouseEvent) {
+      console.log(mouseEvent.a); // error 类型“MouseEvent”上不存在属性“a”
+    };
+    // 表达式左侧是 window.onmousedown(鼠标按下时发生事件)，因此 TypeScript 会推断赋值表达式右侧函数的参数是事件对象，因为左侧是 mousedown 事件，所以 TypeScript 推断 mouseEvent 的类型是 MouseEvent。在回调函数中使用 mouseEvent 的时候，你可以访问鼠标事件对象的所有属性和方法，当访问不存在属性的时候，就会报错
+  #+END_SRC
+** 类型兼容性
+*** 函数兼容性
++ 函数参数个数
+  - 函数参数个数如果要兼容，需要满足一个要求：如果对函数 y 进行赋值，那么要求 x 中的每个参数都应在 y 中有对应，也就是 x 的参数个数小于等于 y 的参数个数
+    #+BEGIN_SRC typescript
+    let x = (a: number) => 0;
+    let y = (b: number, c: string) => 0;
+    // 上面定义的两个函数，如果进行赋值的话，来看下两种情况的结果：
+    y = x; // 没问题
+    // 将 x 赋值给 y 是可以的，因为如果对函数 y 进行赋值，那么要求 x 中的每个参数都应在 y 中有对应，也就是 x 的参数个数小于等于 y 的参数个数，而至于参数名是否相同是无所谓的。
+    x = y; // error Type '(b: number, s: string) => number' is not assignable to type '(a: number) => number'
+    // 这个例子中，y 要赋值给 x，但是 y 的参数个数要大于 x，所以报错
+    #+END_SRC
+  - 传给 forEach 的回调函数的参数是三个，但是可以只用一个，这样就只需写一个参数。我们传入的 forEach 的函数是 forEach 的参数，它是一个函数，这个函数的参数列表是定义在 forEach 方法内的，我们可以传入一个参数少于等于参数列表的函数，但是不能传入一个比参数列表参数个数还多的函数
+    #+BEGIN_SRC typescript
+      const arr = [1, 2, 3];
+      arr.forEach((item, index, array) => {
+        console.log(item);
+      });
+      arr.forEach(item => {
+        console.log(item);
+      });
+
+    #+END_SRC
++ 函数参数类型
+  - 除了参数个数，参数的类型需要对应
+    #+BEGIN_SRC typescript
+    let x = (a: number) => 0;
+    let y = (b: string) => 0;
+    let z = (c: string) => false;
+    x = y; // error 不能将类型“(b: string) => number”分配给类型“(a: number) => number”。
+    x = z; // error 不能将类型“(c: string) => boolean”分配给类型“(a: number) => number”。
+    // 我们看到 x 和 y 两个函数的参数个数和返回值都相同，只是参数类型对不上，所以也是不行的。如果函数 z 想要赋值给 x，要求 y 的返回值类型必须是 x 的返回值类型的子类型，这个例子中 x 函数的返回值是联合类型，也就是返回值既可以是 string 类型也可以是 number 类型。而 y 的返回值类型是 number 类型，参数个数和类型也没问题，所以可以赋值给 x。而 z 的返回值类型 false 并不是 string 也不是 number，所以不能赋值
+    #+END_SRC
+
++ 剩余参数和可选参数
+  - 当要被赋值的函数参数中包含剩余参数（…args）时，赋值的函数可以用任意个数参数代替，但是类型需要对应
+    #+BEGIN_SRC typescript
+      const getNum = ( // 这里定义一个getNum函数，他有两个参数
+        arr: number[], // 第一个参数是一个数组
+        callback: (...args: number[]) => number // 第二个参数是一个函数，这个函数的类型要求可以传入任意多个参数，但是类型必须是数值类型，返回值必须是数值类型
+      ): number => {
+        return callback(...arr); // 这个getNum函数直接返回调用传入的第二个参数这个函数，以第一个参数这个数组作为参数的函数返回值
+      };
+      getNum(
+        [1, 2],
+        (...args: number[]): number => args.length // 这里传入一个函数，逻辑是返回参数的个数
+      );
+      // 剩余参数其实可以看做无数个可选参数，所以在兼容性方面是差不多的，我们来看个可选参数和剩余参数结合的例子：
+
+      const getNum = (
+        arr: number[],
+        callback: (arg1: number, arg2?: number) => number // 这里指定第二个参数callback是一个函数，函数的第二个参数为可选参数
+      ): number => {
+        return callback(...arr); // error 应有 1-2 个参数，但获得的数量大于等于 0
+      };
+      // 这里因为arr可能为空数组或不为空，如果为空数组则…arr不会给callback传入任何实际参数，所以这里报错。如果我们换成return callback(arr[0], …arr)就没问题了
+
+    #+END_SRC
+
++ 函数参数双向协变
+  - 函数参数双向协变即参数类型无需绝对相同
+    #+BEGIN_SRC typescript
+    let funcA = function(arg: number | string): void {};
+    let funcB = function(arg: number): void {};
+    // funcA = funcB 和 funcB = funcA都可以,在这个例子中，funcA 和 funcB 的参数类型并不完全一样，funcA 的参数类型为一个联合类型 number | string，而 funcB 的参数类型为 number | string 中的 number，他们两个函数也是兼容的
+    #+END_SRC
+
++ 函数返回值类型
+  - 示例
+    #+BEGIN_SRC typescript
+    let x = (a: number): string | number => 0;
+    let y = (b: number) => "a";
+    let z = (c: number) => false;
+    x = y;
+    x = z; // 不能将类型“(c: number) => boolean”分配给类型“(a: number) => string | number”
+    #+END_SRC
+
++ 函数重载
+  - 带有重载的函数，要求被赋值的函数的每个重载都能在用来赋值的函数上找到对应的签名
+    #+BEGIN_SRC typescript
+      function merge(arg1: number, arg2: number): number; // 这是merge函数重载的一部分
+      function merge(arg1: string, arg2: string): string; // 这也是merge函数重载的一部分
+      function merge(arg1: any, arg2: any) { // 这是merge函数实体
+        return arg1 + arg2;
+      }
+      function sum(arg1: number, arg2: number): number; // 这是sum函数重载的一部分
+      function sum(arg1: any, arg2: any): any { // 这是sum函数实体
+        return arg1 + arg2;
+      }
+      let func = merge;
+      func = sum; // error 不能将类型“(arg1: number, arg2: number) => number”分配给类型“{ (arg1: number, arg2: number): number; (arg1: string, arg2: string): string; }”
+      // 上面例子中，sum函数的重载缺少参数都为string返回值为string的情况，与merge函数不兼容，所以赋值时会报错
+
+    #+END_SRC
+*** 枚举
++ 数字枚举成员类型与数字类型互相兼容
+  #+BEGIN_SRC typescript
+    enum Status {
+      On,
+      Off
+    }
+    let s = Status.On;
+    s = 1;
+    s = 3;
+    //虽然Status.On的值是0，但是这里数字枚举成员类型和数值类型互相兼容，所以这里给s赋值为3也没问题。但是不同枚举值之间是不兼容的：
+    enum Status {
+      On,
+      Off
+    }
+    enum Color {
+      White,
+      Black
+    }
+    let s = Status.On;
+    s = Color.White; // error Type 'Color.White' is not assignable to type 'Status'
+    // 可以看到，虽然 Status.On 和 Color.White 的值都是 0，但它们是不兼容的。字符串枚举成员类型和字符串类型是不兼容的，来看例子：
+
+    enum Status {
+      On = 'on',
+      Off = 'off'
+    }
+    let s = Status.On
+    s = 'Lison' // error 不能将类型“"Lison"”分配给类型“Status”
+    // 这里会报错，因为字符串字面量类型'Lison'和Status.On是不兼容的
+
+  #+END_SRC
+*** 类
++ 基本比较:比较两个类类型的值的兼容性时，只比较实例的成员，类的静态成员和构造函数不进行比较
+  #+BEGIN_SRC typescript
+    class Animal {
+      static age: number;
+      constructor(public name: string) {}
+    }
+    class People {
+      static age: string;
+      constructor(public name: string) {}
+    }
+    class Food {
+      constructor(public name: number) {}
+    }
+    let a: Animal;
+    let p: People;
+    let f: Food;
+    a = p; // right
+    a = f; // error Type 'Food' is not assignable to type 'Animal'
+
+  #+END_SRC
+
++ 类的私有成员和受保护成员会影响兼容性。当检查类的实例兼容性时，如果目标（也就是要被赋值的那个值）类型（这里实例类型就是创建它的类）包含一个私有成员，那么源（也就是用来赋值的值）类型必须包含来自同一个类的这个私有成员，这就允许子类赋值给父类
+  #+BEGIN_SRC typescript
+    class Parent {
+      private age: number;
+      constructor() {}
+    }
+    class Children extends Parent {
+      constructor() {
+        super();
+      }
+    }
+    class Other {
+      private age: number;
+      constructor() {}
+    }
+
+    const children: Parent = new Children();
+    const other: Parent = new Other(); // 不能将类型“Other”分配给类型“Parent”。类型具有私有属性“age”的单独声明
+
+  #+END_SRC
+*** 泛型
++ 泛型包含类型参数，这个类型参数可能是任意类型，使用时类型参数会被指定为特定的类型，而这个类型只影响使用了类型参数的部分
+  #+BEGIN_SRC typescript
+  interface Data<T> {}
+  let data1: Data<number>;
+  let data2: Data<string>;
+
+  data1 = data2;
+  //在这个例子中，data1 和 data2 都是 Data 接口的实现，但是指定的泛型参数的类型不同，TS 是结构性类型系统，所以上面将 data2 赋值给 data1 是兼容的，因为 data2 指定了类型参数为 string 类型，但是接口里没有用到参数 T，所以传入 string 类型还是传入 number 类型并没有影响
+
+  interface Data<T> {
+    data: T;
+  }
+  let data1: Data<number>;
+  let data2: Data<string>;
+
+  data1 = data2; // error 不能将类型“Data<string>”分配给类型“Data<number>”。不能将类型“string”分配给类型“number”
+  // 现在结果就不一样了，赋值时报错，因为 data1 和 data2 传入的泛型参数类型不同，生成的结果结构是不兼容的
+  #+END_SRC
+** 类型保护
+*** 基础
+*** 自定义类型保护
+*** typeof 类型保护
+*** instanceof 类型保护
+** 显式复制断言
+*** 严格模式下null和undefined赋值给其它类型值
+*** 可选参数和可选属性
+**** 显式赋值断言
+
+** 类型别名
++ 类型别名就是给一种类型起个别的名字，之后只要使用这个类型的地方，都可以用这个名字作为类型代替，但是它只是起了一个名字，并不是创建了一个新类型。这种感觉就像 JS 中对象的赋值，你可以把一个对象赋给一个变量，使用这个对象的地方都可以用这个变量代替，但你并不是创建了一个新对象，而是通过引用来使用这个对象
+  #+BEGIN_SRC typescript
+    type TypeString = string;
+    let str: TypeString;
+    str = 123; // error Type '123' is not assignable to type 'string'
+    // 类型别名也可以使用泛型，来看例子：
+
+    type PositionType<T> = { x: T; y: T };
+    const position1: PositionType<number> = {
+      x: 1,
+      y: -1
+    };
+    const position2: PositionType<string> = {
+      x: "right",
+      y: "top"
+    };
+    // 使用类型别名时也可以在属性中引用自己：
+
+    type Child<T> = {
+      current: T;
+      child?: Child<T>;
+    };
+    let ccc: Child<string> = {
+      current: "first",
+      child: {
+        // error
+        current: "second",
+        child: {
+          current: "third",
+          child: "test" // 这个地方不符合type，造成最外层child处报错
+        }
+      }
+    };
+    // 但是要注意，只可以在对象属性中引用类型别名自己，不能直接使用，比如下面这样是不对的：
+
+    type Child = Child[]; // error 类型别名“Child”循环引用自身
+    // 另外要注意，因为类型别名只是为其它类型起了个新名字来引用这个类型，所以当它为接口起别名时，不能使用 extends 和 implements 。
+
+    // 接口和类型别名有时可以起到同样作用，比如下面这个例子：
+
+    type Alias = {
+      num: number;
+    };
+    interface Interface {
+      num: number;
+    }
+    let _alias: Alias = {
+      num: 123
+    };
+    let _interface: Interface = {
+      num: 321
+    };
+    _alias = _interface;
+
+  #+END_SRC
+
++ 可以看到用类型别名和接口都可以定义一个只包含 num 属性的对象类型，而且类型是兼容的。那么什么时候用类型别名，什么时候用接口呢？可以通过两点来选择：当你定义的类型要用于拓展，即使用 implements 等修饰符时，用接口。当无法通过接口，并且需要使用联合类型或元组类型，用类型别名
+** 字面量类型
+*** 字符串字面量类型
++ 字符串字面量类型其实就是字符串常量，与字符串类型不同的是它是具体的值
+  #+BEGIN_SRC typescript
+    type Name = "Lison";
+    const name1: Name = "test"; // error 不能将类型“"test"”分配给类型“"Lison"”
+    const name2: Name = "Lison";
+    你还可以使用联合类型来使用多个字符串：
+
+    type Direction = "north" | "east" | "south" | "west";
+    function getDirectionFirstLetter(direction: Direction) {
+      return direction.substr(0, 1);
+    }
+    getDirectionFirstLetter("test"); // error 类型“"test"”的参数不能赋给类型“Direction”的参数
+    getDirectionFirstLetter("east");
+
+  #+END_SRC
+*** 数字字面量类型
++ 数字字面量类型，它和字符串字面量类型差不多，都是指定类型为具体的值
+  #+BEGIN_SRC typescript
+    type Age = 18;
+    interface Info {
+      name: string;
+      age: Age;
+    }
+    const info: Info = {
+      name: "Lison",
+      age: 28 // error 不能将类型“28”分配给类型“18”
+    };
+    这里补充一个比较经典的逻辑错误，来看例子：
+
+    function getValue(index: number) {
+      if (index !== 0 || index !== 1) {
+        // error This condition will always return 'true' since the types '0' and '1' have no overlap
+        // ...
+      }
+    }
+    这个例子中，在判断逻辑处使用了 || 符，当 index !== 0 不成立时，说明 index 就是 0，则不应该再判断 index 是否不等于 1；而如果 index !== 0 成立，那后面的判断也不会再执行；所以这个地方会报错
+
+  #+END_SRC
+** 使用可辨识联合并保证每个case都被处理
++ 我们可以把单例类型、联合类型、类型保护和类型别名这几种类型进行合并，来创建一个叫做可辨识联合的高级类型，它也可称作标签联合或代数数据类型
++ 所谓单例类型，你可以理解为符合单例模式的数据类型，比如枚举成员类型，字面量类型
++ 可辨识联合要求具有两个要素
+  - 具有普通的单例类型属性（这个要作为辨识的特征，也是重要因素）
+  - 一个类型别名，包含了那些类型的联合（即把几个类型封装为联合类型，并起一个别名）
+  - 示例
+    #+BEGIN_SRC typescript
+        interface Square {
+        kind: "square"; // 这个就是具有辨识性的属性
+        size: number;
+      }
+      interface Rectangle {
+        kind: "rectangle"; // 这个就是具有辨识性的属性
+        height: number;
+        width: number;
+      }
+      interface Circle {
+        kind: "circle"; // 这个就是具有辨识性的属性
+        radius: number;
+      }
+      type Shape = Square | Rectangle | Circle; // 这里使用三个接口组成一个联合类型，并赋给一个别名Shape，组成了一个可辨识联合。
+      function getArea(s: Shape) {
+        switch (s.kind) {
+          case "square":
+            return s.size * s.size;
+          case "rectangle":
+            return s.height * s.width;
+          case "circle":
+            return Math.PI * s.radius ** 2;
+        }
+      }
+      上面这个例子中，我们的 Shape 即可辨识联合，它是三个接口的联合，而这三个接口都有一个 kind 属性，且每个接口的 kind 属性值都不相同，能够起到标识作用。
+
+      这里有个 ES7 的新特性：** 运算符，两个*符号组成的这个运算符就是求幂运算符，2 ** 3 ==> 8
+
+    #+END_SRC
+*** 利用 strictNullChecks
++ 
+*** 使用 never 类型
+** this类型
+*** JavaScript中的this
+**** 基础知识
++ 在JavaScript中我们将this这个关键词当成快捷方式，当成指示词。它指代的是一个物体–上下文环境中的主语（上下文指的是执行代码的主语），this总是返回一个对象，简单说，就是返回属性或方法“当前”所在的对象
+  #+BEGIN_SRC js
+    var person = {
+        firstName: "Penelope",
+        lastName: "Barrymore",
+        fullName: function () {
+            //注意this的使用方式与上文使用“他”这个代词的方式一样：
+            console.log(this.firstName + " " + this.lastName);
+            //我们也可以这样子写：
+            console.log(person.firstName + " " + person.lastName);
+        }
+    }
+
+  #+END_SRC
++ this这个引用总是指代对象并储存着它的值（只能指代一个对象），一般都在函数或者对象方法里使用，但是也能用在函数外的全局作用域里。需要注意的是，如果在函数里使用严格模式，全局函数里this的值就是undefined。而在匿名函数里则不会绑定任何对象
++ 假设在函数A里使用this，它就储存着调用函数A的对象的值。要获取调用函数A的对象的属性和方法，就需要用到this，特别是当我们不知道改对象的名称或者没有名称可以指代该对象。所以，需要用this作为一个快捷方式来指代“先行对象”，也就是调用函数的对象
++ 只有当定义this的函数被对象调用时，this才会被赋值，在大部分情况下，this储存的都是调用对象的值。然而少数情况下this储存的却不是调用对象的值
++ 由于其运行期绑定的特性，JavaScript 中的 this 含义要丰富得多，它可以是全局对象、当前对象或者任意对象，这完全取决于函数的调用方式。JavaScript 中函数的调用有以下几种方式：作为对象方法调用，作为函数调用，作为构造函数调用，和使用 apply 或 call 调用
+**** 作为对象方法调用
++ 在 JavaScript 中，函数也是对象，因此函数可以作为一个对象的属性，此时该函数被称为该对象的方法，在使用这种调用方式时，this 被自然绑定到该对象
+  #+BEGIN_SRC js
+    var point = { 
+    x : 0, 
+    y : 0, 
+    moveTo : function(x, y) { 
+        this.x = this.x + x; 
+        this.y = this.y + y; 
+        } 
+    }; 
+ 
+    point.moveTo(1, 1)//this 绑定到当前对象，即 point 对象
+
+  #+END_SRC
+**** 作为函数调用
++ 函数也可以直接被调用，此时 this 绑定到全局对象。在浏览器中，window 就是该全局对象。比如下面的例子：函数被调用时，this 被绑定到全局对象，接下来执行赋值语句，相当于隐式的声明了一个全局变量，这显然不是调用者希望的
++ 如果普通函数是在全局环境中被调用，在非严格模式下，普通函数中 this 也指向全局对象；如果是在严格模式下，this 将会是 undefined。ES5 为了使 JavaScript 运行在更有限制性的环境而添加了严格模式，严格模式为了消除安全隐患，禁止了 this 关键字指向全局对象
+  #+BEGIN_SRC js
+    function makeNoSense(x) { 
+    this.x = x; 
+    } 
+ 
+    makeNoSense(5); 
+    x;// x 已经成为一个值为 5 的全局变量
+
+  #+END_SRC
++ 对于内部函数，即声明在另外一个函数体内的函数，这种绑定到全局对象的方式会产生另外一个问题。我们仍然以前面提到的 point 对象为例，这次我们希望在 moveTo 方法内定义两个函数，分别将 x，y 坐标进行平移。结果可能出乎大家意料，不仅 point 对象没有移动，反而多出两个全局变量 x，y
+  #+BEGIN_SRC js
+    var point = { 
+    x : 0, 
+    y : 0, 
+    moveTo : function(x, y) { 
+        // 内部函数
+        var moveX = function(x) { 
+        this.x = x;//this 绑定到了哪里？
+       }; 
+       // 内部函数
+       var moveY = function(y) { 
+       this.y = y;//this 绑定到了哪里？
+       }; 
+ 
+       moveX(x); 
+       moveY(y); 
+       } 
+    }; 
+    point.moveTo(1, 1); 
+    point.x; //==>0 
+    point.y; //==>0 
+    x; //==>1 
+    y; //==>1
+
+  #+END_SRC
++ 这属于 JavaScript 的设计缺陷，正确的设计方式是内部函数的 this 应该绑定到其外层函数对应的对象上，为了规避这一设计缺陷，聪明的 JavaScript 程序员想出了变量替代的方法，约定俗成，该变量一般被命名为 that
+  #+BEGIN_SRC js
+    var point = { 
+    x : 0, 
+    y : 0, 
+    moveTo : function(x, y) { 
+         var that = this; 
+        // 内部函数
+        var moveX = function(x) { 
+        that.x = x; 
+        }; 
+        // 内部函数
+        var moveY = function(y) { 
+        that.y = y; 
+        } 
+        moveX(x); 
+        moveY(y); 
+        } 
+    }; 
+    point.moveTo(1, 1); 
+    point.x; //==>1 
+    point.y; //==>1
+
+  #+END_SRC
+**** 作为构造函数调用
++ JavaScript 支持面向对象式编程，与主流的面向对象式编程语言不同，JavaScript 并没有类（class）的概念，而是使用基于原型（prototype）的继承方式。相应的，JavaScript 中的构造函数也很特殊，如果不使用 new 调用，则和普通函数一样。作为又一项约定俗成的准则，构造函数以大写字母开头，提醒调用者使用正确的方式调用。如果调用正确，this 绑定到新创建的对象上
+  #+BEGIN_SRC js
+    function Point(x, y){ 
+        this.x = x; 
+        this.y = y; 
+    }
+
+  #+END_SRC
+**** 使用 apply 或 call 调用
++ 在 JavaScript 中函数也是对象，对象则有方法，apply 和 call 就是函数对象的方法。这两个方法异常强大，他们允许切换函数执行的上下文环境（context），即 this 绑定的对象。很多 JavaScript 中的技巧以及类库都用到了该方法
+  #+BEGIN_SRC js
+    function Point(x, y){ 
+       this.x = x; 
+       this.y = y; 
+       this.moveTo = function(x, y){ 
+           this.x = x; 
+           this.y = y; 
+       } 
+    } 
+ 
+    var p1 = new Point(0, 0); 
+    var p2 = {x: 0, y: 0}; 
+    p1.moveTo(1, 1); 
+    p1.moveTo.apply(p2, [10, 10]);
+
+  #+END_SRC
+**** bind 方法调用
++ 调用 f.bind(someObject) 会创建一个与 f 具有相同函数体和作用域的函数，但是在这个新函数中，新函数的 this 会永久的指向 bind 传入的第一个参数，无论这个函数是如何被调用的
+**** 箭头函数中this指向
++ 箭头函数没有自己的this绑定。箭头函数中使用的this，其实是直接包含它的那个函数或函数表达式中的this
++ 和普通函数不一样，箭头函数中的 this 指向了 obj，这是因为它从上一层的函数中继承了 this，你可以理解为箭头函数修正了 this 的指向。所以箭头函数的this不是调用的时候决定的，而是在定义的时候处在的对象就是它的this
++ 箭头函数的this看外层的是否有函数，如果有，外层函数的this就是内部箭头函数的this，如果没有，则this是window
+*** TypeScript中的this
++ 在 JavaScript 中，this 可以用来获取对全局对象、类实例对象、构建函数实例等的引用，在 TypeScript 中，this 也是一种类型
++ 对于对象来说，对象的属性值可以是一个函数，那么这个函数也称为方法，在方法内如果访问this，默认情况下是对这个对象的引用，this类型也就是这个对象的字面量类型
+  #+BEGIN_SRC typescript
+    let info = {
+      name: 'Lison',
+      getName () {
+          return this.name // "Lison" 这里this的类型为 { name: string; getName(): string; }
+      }
+    }
+
+  #+END_SRC
++ 如果显式地指定了this的类型，那么this的类型就改变了
+  #+BEGIN_SRC typescript
+    let info = {
+      name: "Lison",
+      getName(this: { age: number }) {
+        this; // 这里的this的类型是{ age: number }
+      }
+    };
+
+  #+END_SRC
+** 索引类型
+*** 索引类型查询操作符
++ keyof操作符，连接一个类型，会返回一个由这个类型的所有属性名组成的联合类型
+  #+BEGIN_SRC typescript
+    interface Info {
+      name: string;
+      age: number;
+    }
+    let infoProp: keyof Info;
+    infoProp = "name";
+    infoProp = "age";
+    infoProp = "no"; // error 不能将类型“"no"”分配给类型“"name" | "age"”
+    // 通过例子可以看到，这里的keyof Info其实相当于"name" | “age”。通过和泛型结合使用，TS 就可以检查使用了动态属性名的代码
+
+  #+END_SRC
+*** 索引访问操作符
++ 索引访问操作符也就是[]，其实和我们访问对象的某个属性值是一样的语法，但是在 TS 中它可以用来访问某个属性的类型
+  #+BEGIN_SRC typescript
+    interface Info {
+      name: string;
+      age: number;
+    }
+    type NameType = Info["name"];
+    let name: NameType = 123; // error 不能将类型“123”分配给类型“string”
+
+  #+END_SRC
+** 映射类型
+*** 基础
++ TS 提供了借助旧类型创建一个新类型的方式，也就是映射类型，它可以用相同的形式去转换旧类型中每个属性
+*** 由映射类型进行推断
++
+*** 增加或移除特定修饰符
+*** keyof 和映射类型在 2.9 的升级
+*** 元组和数组上的映射类型
+** 条件类型
+*** 基础使用
++ 从语法上看它像是三元操作符。它会以一个条件表达式进行类型关系检测，然后在后面两种类型中选择一个
+  #+BEGIN_SRC typescript
+  T extends U ? X : Y
+  // 这个表达式的意思是，如果 T 可以赋值给 U 类型，则是 X 类型，否则是 Y 类型。来看个实际例子：
+
+  type Type<T> = T extends string | number
+  let index: Type<'a'> // index的类型为string
+  let index2: Type<false> // index2的类型为number
+  #+END_SRC
+*** 分布式条件类型
++ 当待检测的类型是联合类型，则该条件类型被称为“分布式条件类型”，在实例化时会自动分发成联合类型
+  #+BEGIN_SRC typescript
+  type TypeName<T> = T extends any ? T : never;
+  type Type1 = TypeName<string | number>; // Type1的类型是string|number
+  //既然想指定 Type1 的类型为 string|number，为什么不直接指定，而要使用条件类型？其实这只是简单的示范，条件类型可以增加灵活性
+  #+END_SRC
+*** 条件类型的类型推断-infer
+*** 预定义条件型类
+** 装饰器
++ 同样在 TS 中，装饰器仍然是一项实验性特性，未来可能有所改变，所以如果你要使用装饰器，需要在 tsconfig.json 的编译配置中开启experimentalDecorators，将它设为 true
+*** 基础
++ 装饰器定义
+  装饰器是一种新的声明，它能够作用于类声明、方法、访问符、属性和参数上。使用@符号加一个名字来定义，如@decorat，这的 decorat 必须是一个函数或者求值后是一个函数，这个 decorat 命名不是写死的，是你自己定义的，这个函数在运行的时候被调用，被装饰的声明作为参数会自动传入。要注意装饰器要紧挨着要修饰的内容的前面，而且所有的装饰器不能用在声明文件(.d.ts)中，和任何外部上下文中
+  #+BEGIN_SRC typescript
+    function setProp (target) {
+        // ...
+    }
+    @setProp
+
+  #+END_SRC
+
++ 装饰器工厂
+  装饰器工厂也是一个函数，它的返回值是一个函数，返回的函数作为装饰器的调用函数。如果使用装饰器工厂，那么在使用的时候，就要加上函数调用
+  #+BEGIN_SRC typescript
+    function setProp () {
+        return function (target) {
+            // ...
+        }
+    }
+
+    @setProp()
+
+  #+END_SRC
+
++ 装饰器组合
+  - 装饰器可以组合，也就是对于同一个目标，引用多个装饰器
+    #+BEGIN_SRC typescript
+    // 可以写在一行
+    @setName @setAge target
+    // 可以换行
+    @setName
+    @setAge
+    target
+    #+END_SRC
+
+  - 但是这里要格外注意的是，多个装饰器的执行顺序：装饰器工厂从上到下依次执行，但是只是用于返回函数但不调用函数；装饰器函数从下到上依次执行，也就是执行工厂函数返回的函数
+    #+BEGIN_SRC typescript
+      function setName () {
+          console.log('get setName')
+          return function (target) {
+              console.log('setName')
+          }
+      }
+      function setAge () {
+          console.log('get setAge')
+          return function (target) {
+              console.log('setAge')
+          }
+      }
+      @setName()
+      @setAge()
+      class Test {}
+      // 打印出来的内容如下：
+      /**
+       'get setName'
+       'get setAge'
+       'setAge'
+       'setName'
+      ,*/
+
+    #+END_SRC
+
++ 装饰器求值
+  - 类的定义中不同声明上的装饰器将按以下规定的顺序引用：参数装饰器，方法装饰器，访问符装饰器或属性装饰器应用到每个实例成员；参数装饰器，方法装饰器，访问符装饰器或属性装饰器应用到每个静态成员；参数装饰器应用到构造函数；类装饰器应用到类
+*** 类装饰器
++ 类装饰器在类声明之前声明，要记着装饰器要紧挨着要修饰的内容，类装饰器应用于类的声明。类装饰器表达式会在运行时当做函数被调用，它由唯一一个参数，就是装饰的这个类
+  #+BEGIN_SRC typescript
+    let sign = null;
+    function setName(name: string) {
+      return function(target: Function) {
+        sign = target;
+        console.log(target.name);
+      };
+    }
+    @setName("lison") // Info
+    class Info {
+      constructor() {}
+    }
+    console.log(sign === Info); // true
+    console.log(sign === Info.prototype.constructor); // true
+
+  #+END_SRC
+
++ 通过装饰器，我们就可以修改类的原型对象和构造函数：
+  #+BEGIN_SRC typescript
+    function addName(constructor: { new (): any }) {
+      constructor.prototype.name = "lison";
+    }
+    @addName
+    class A {}
+    const a = new A();
+    console.log(a.name); // error 类型“A”上不存在属性“name”
+
+  #+END_SRC
+*** 方法装饰器
++ 方法装饰器用来处理类中方法，它可以处理方法的属性描述符，可以处理方法定义。方法装饰器在运行时也是被当做函数调用，含 3 个参数：装饰静态成员时是类的构造函数，装饰实例成员时是类的原型对象；成员的名字；成员的属性描述符
+*** 访问器装饰器
++ 访问器也就是我们之前讲过的 set 和 get 方法，一个在设置属性值的时候触发，一个在获取属性值的时候触发
+*** 参数装饰器
++ 参数装饰器有 3 个参数，前两个和方法装饰器的前两个参数一模一样：装饰静态成员时是类的构造函数，装饰实例成员时是类的原型对象；成员的名字；参数在函数参数列表中的索引。参数装饰器的返回值会被忽略
+** 模块
+*** export
++ 使用 export 来导出声明，而且能够导出的不仅有变量、函数、类，还包括 TypeScript 特有的类型别名和接口
+  #+BEGIN_SRC typescript
+    // funcInterface.ts
+    export interface Func {
+      (arg: number): string;
+    }
+    export class C {
+      constructor() {}
+    }
+    class B {}
+    export { B };
+    export { B as ClassB };
+
+  #+END_SRC
+
++ 可以使用 export 直接导出一个声明，也可以先声明一个类或者其它内容，然后使用 export {}的形式导出，也可以使用 as 来为导出的接口换个名字再导出一次。你也可以像 ES6 模块那样重新导出一个模块，也就是 export 一个引入内容，也可以重新导出部分内容，也可以重命名重新导出
+  #+BEGIN_SRC typescript
+    // main.ts
+    export * from "./moduleB";
+    // main.ts
+    export { name } from "./moduleB";
+    // main.ts
+    export { name as nameProp } from "./moduleB";
+
+  #+END_SRC
+*** import
++ 引入模块是使用 import
+  #+BEGIN_SRC typescript
+  // main.ts
+  import { name } from "./moduleB";
+  // main.ts
+  import * as info from "./moduleB";
+  //main.ts
+  import { name as nameProp } from "./moduleB";
+  #+END_SRC
+*** export default
++ 在 TypeScript 中使用 export default 默认导出
+  #+BEGIN_SRC typescript
+  // moduleB.ts
+  export default "lison";
+  // main.ts
+  import name from "./moduleB.ts";
+  console.log(name); // 'lison'
+  #+END_SRC
+***  export = 和 import = require()
++ TypeScript可以将代码编译为CommonJS、AMD或其它模块系统代码，同时会生成对应的声明文件。我们知道CommonJS和AMD两种模块系统语法是不兼容的，所以TypeScript为了兼容这两种语法，使得我们编译后的声明文件同时支持这两种模块系统，增加了export =和import xx = require()两个语句
+  #+BEGIN_SRC typescript
+    //当我们想要导出一个模块时，可以使用export =来导出：
+
+    // moduleC.ts
+    class C {}
+    export = C;
+    //然后使用这个形式导出的模块，必须使用import xx = require()来引入：
+
+    // main.ts
+    import ClassC = require("./moduleC");
+    const c = new ClassC();
+    //如果你的模块不需要同时支持这两种模块系统，可以不使用export =来导出内容
+
+  #+END_SRC
+*** 相对和非相对模块导入
++ 根据引入模块的路径是相对还是非相对，模块的导入会以不同的方式解析：相对导入是以./或…/开头的，./表示当前目录，而…/表示当前目录的上一级目录
+*** 命名空间
++ 当我们是在程序内部用于防止全局污染，想把相关的内容都放在一起的时候，使用命名空间；当我们封装了一个工具或者库，要适用于模块系统中引入使用时，适合使用模块
+**** 定义和使用
++ 命名空间的定义实际相当于定义了一个大的对象，里面可以定义变量、接口、类、方法等等，但是如果不使用export 关键字指定此内容要对外可见的话，外部是没法访问到的
+  #+BEGIN_SRC typescript
+    namespace Validation {
+      const isLetterReg = /^[A-Za-z]+$/; // 这里定义一个正则
+      export const isNumberReg = /^[0-9]+$/; // 这里再定义一个正则，与isLetterReg的区别在于他使用export导出了
+      export const checkLetter = (text: any) => {
+        return isLetterReg.test(text);
+      };
+    }
+
+  #+END_SRC
+
++ 命名空间如果不是使用 webpack 等工具编译，而是使用 tsc 编译，那只需要在使用外部命名空间的地方使用/// <reference path=“namespace.ts”/>来引入，注意三斜线 ”///“ 开头，然后在 path 属性指定相对于当前文件，这个命名空间文件的路径。然后编译时，需要指定一个参数outFile，这个参数来制定输出的文件名
+**** 拆分为多个文件
++ 可以将同一个命名空间拆成多个文件分开维护，尽管分成了多个文件，但它们仍然是同一个命名空间
+  #+BEGIN_SRC typescript
+    下面我们将 Validation.ts 拆开成 LetterValidation.ts 和 NumberValidation.ts：
+
+    // LetterValidation.ts
+    namespace Validation {
+      export const isLetterReg = /^[A-Za-z]+$/;
+      export const checkLetter = (text: any) => {
+        return isLetterReg.test(text);
+      };
+    }
+    // NumberValidation.ts
+    namespace Validation {
+      export const isNumberReg = /^[0-9]+$/;
+      export const checkNumber = (text: any) => {
+        return isNumberReg.test(text);
+      };
+    }
+    // index.ts
+    /// <reference path="./LetterValidation.js"/>
+    /// <reference path="./NumberValidation.js"/>
+    let isLetter = Validation.checkLetter("sdfsd");
+    const reg = Validation.isNumberReg;
+    console.log(isLetter); // true
+    我们使用命令行来编译一下：
+
+    tsc --outFile src/index.js src/index.ts
+    最后输出的 index.js 文件是这样的：
+
+    var Validation;
+    (function(Validation) {
+      Validation.isLetterReg = /^[A-Za-z]+$/;
+      Validation.checkLetter = function(text) {
+        return Validation.isLetterReg.test(text);
+      };
+    })(Validation || (Validation = {}));
+    var Validation;
+    (function(Validation) {
+      Validation.isNumberReg = /^[0-9]+$/;
+      Validation.checkNumber = function(text) {
+        return Validation.isNumberReg.test(text);
+      };
+    })(Validation || (Validation = {}));
+    /// <reference path="./LetterValidation.ts"/>
+    /// <reference path="./NumberValidation.ts"/>
+    var isLetter = Validation.checkLetter("sdfsd");
+    var reg = Validation.isNumberReg;
+    console.log(isLetter); // true
+    可以看到，我们使用 reference 引入的两个命名空间都被编译在了一个文件，而且是按照引入的顺序编译的。我们先引入的是 LetterValidation，所以编译后的 js 文件中，LetterValidation 的内容在前面。而且看代码可以看出，两个验证器最后都合并到了一起，所以 Validation 对象有两个正则表达式，两个方法
+
+  #+END_SRC
+*** 别名
++ 使用 import 给常用的对象起一个别名，但是要注意，这个别名和类型别名不是一回事，而且这儿的 import 也只是为了创建别名不是引入模块
+  #+BEGIN_SRC typescript
+    namespace Shapes {
+      export namespace Polygons {
+        export class Triangle {}
+        export class Squaire {}
+      }
+    }
+    import polygons = Shapes.Polygons; // 使用 import 关键字给 Shapes.Polygons 取一个别名polygons
+    let sq = new polygons.Square();
+    // 通过这个例子我们可以看到，使用 import 关键字来定义命名空间中某个输出元素的别名，可以减少我们深层次获取属性的成本
+  #+END_SRC
+** 声明合并
++ 声明合并是指 TypeScript 编译器会将名字相同的多个声明合并为一个声明，合并后的声明同时拥有多个声明的特性。我们知道在 JavaScrip 中，使用var关键字定义变量时，定义相同名字的变量，后面的会覆盖前面的值。使用let 定义变量和使用 const 定义常量时，不允许名字重复。在 TypeScript 中，接口、命名空间是可以多次声明的，最后 TypeScript 会将多个同名声明合并为一个
+  #+BEGIN_SRC typescript
+    interface Info {
+        name: string
+    }
+    interface Info {
+        age: number
+    }
+    let info: Info
+    info = { // error 类型“{ name: string; }”中缺少属性“age”
+        name: 'lison'
+    }
+    info = { // right
+        name: 'lison',
+        age: 18
+    }
+
+  #+END_SRC
+*** 合并接口
+*** 不同类型合并
++ 命名空间和类
+  - 要求同名的类和命名空间在定义的时候，类的定义必须在命名空间前面，最后合并之后的效果，一个包含一些以命名空间导出内容为静态属性的类
+    #+BEGIN_SRC typescript
+      class Validation {
+          checkType() { }
+      }
+      namespace Validation {
+          export const numberReg = /^[0-9]+$/
+          export const stringReg = /^[A-Za-z]+$/
+          export const checkString = () => { }
+      }
+      namespace Validation {
+          export const checkNumber = (value: any) => {
+              return numberReg.test(value)
+          }
+      }
+      console.log(Validation.prototype) // { checkType: fun () {} }
+      console.log(Validation.prototype.constructor) 
+      /**
+      {
+          checkNumber: ...
+          checkString: ...
+          numberReg: ...
+          stringReg: ...
+      }
+      ,*/
+
+    #+END_SRC
+
+  - 命名空间和函数
+    在JavaScript中，函数也是对象，所以可以给一个函数设置属性，在TypeScript中，就可以通过声明合并实现。但同样要求，函数的定义要在同名命名空间前面
+    #+BEGIN_SRC typescript
+      function countUp () {
+          countUp.count++
+      }
+      namespace countUp {
+          export let count = 0
+      }
+      countUp()
+      countUp()
+      console.log(countUp.count) // 2
+
+    #+END_SRC
+
+  - 命名空间和枚举
+    可以通过命名空间和枚举的合并，为枚举拓展内容，枚举和同名命名空间的先后顺序是没有要求的
+    #+BEGIN_SRC typescript
+      enum Colors {
+          red,
+          green,
+          blue
+      }
+      namespace Colors {
+          export const yellow = 3
+      }
+      console.log(Colors)
+      /*
+      {
+          0: "red",
+          1: "green",
+          2: "blue",
+          red: 0,
+          green: 1,
+          blue: 2,
+          yellow: 3 
+      }
+      ,*/
+
+    #+END_SRC
+** 混入，兼顾值和类型的合并操作
++ 混入即把两个对象或者类的内容，混合起来，从而实现一些功能的复用。如果你使用过 Vue，你应该知道 Vue 的 mixins 这个 api，它可以允许你将一些抽离到对象的属性、方法混入到一些组件
+  #+BEGIN_SRC typescript
+    class A {
+      constructor() {}
+      funcA() {
+        console.log("here");
+      }
+    }
+    class B {
+      constructor() {}
+      funcB() {}
+    }
+    const mixin = (target, from) => { // 这里定义一个函数来将一个类混入到目标类
+      Object.getOwnPropertyNames(from).forEach(key => { // 通过Object.getOwnPropertyNames可以获取一个对象自身定义的而非继承来的属性名组成的数组
+        target[key] = from[key]; // 将源类原型对象上的属性拿来添加到目标类的原型对象上
+      });
+    };
+    mixin(B.prototype, A.prototype); // 传入两个类的原型对象
+    const b = new B();
+    b.funcA(); // here
+    // 我们通过Object.getOwnPropertyNames方法获取一个对象自身的属性，这里自身指除去继承的属性，获取到属性后将属性赋值给目标对象
+  #+END_SRC
++ 在 TypeScript 中我们知道，除了值还有类型的概念，所以简单地将属性赋值到目标元素是不行的，还要处理类型定义
+  #+BEGIN_SRC typescript
+    class ClassAa {
+      isA: boolean;
+      funcA() {}
+    }
+    class ClassBb {
+      isB: boolean;
+      funcB() {}
+    }
+    // 定义一个类类型接口AB，我们在讲类的时候补充过类和接口之间的继承，也讲过类类型接口
+    // 这里是让类AB继承ClassAa和ClassBb的类型，所以使用implements关键字，而不是用extends
+    class AB implements ClassAa, ClassBb {        
+      constructor() {}
+      isA: boolean = false; // 定义两个实例属性
+      isB: boolean = false;
+      funcA: () => void; // 定义两个方法，并指定类型
+      funcB: () => void;
+    }
+    function mixins(base: any, from: any[]) { // 这里我们改造一下，直接传入类，而非其原型对象，base是我们最后要汇总而成的类，from是个数组，是我们要混入的源类组成的数组
+      from.forEach(fromItem => {
+        Object.getOwnPropertyNames(fromItem.prototype).forEach(key => {
+          base.prototype[key] = fromItem.prototype[key];
+        });
+      });
+    }
+    mixins(AB, [ClassAa, ClassBb]);
+    const ab = new AB();
+    console.log(ab);
+    /*
+    {
+        isA: false,
+        isB: false,
+        __proto__: {
+            funcA: f ()
+            funcB: f ()
+            constructor: f
+        }
+    }
+    ,*/
+
+  #+END_SRC
+** Promise及其语法糖async和await
++ 在 TypeScript 中如何使用 async 和 await
+  #+BEGIN_SRC typescript
+    interface Res { // 我们定义一个接口，用来定义接口返回结果的结构
+      data: {
+        [key: string]: any;
+      };
+    }
+    namespace axios { // 现在我们来定义一个命名空间，用来模拟axios实现接口调用
+      export function post(url: string, config: object): Promise<Res> { // 返回值类型是一个Promise，resolve传的参数的类型是Res
+        return new Promise((resolve, reject) => { // 然后这里返回一个Promise
+          setTimeout(() => { // 通过setTimeout实现异步效果
+            let res: Res = { data: {} };
+            if (url === "/login") res.data.user_id = 111; // 我们这里通过简单判断，来模拟调用不同接口返回不同数据的效果
+            else res.data.role = "admin";
+            console.log(2);
+            resolve(res); // 在这里传入res结果
+          }, 1000);
+        });
+      }
+    }
+    interface Info {
+      user_name: string;
+      password: string;
+    }
+    async function loginReq({ user_name, password }: Info) { // 这里使用async关键字修饰这个函数，那么他内部就可以包含异步逻辑了
+      try {
+        console.log(1);
+        const res = await axios.post("/login", { // 这里调用/login接口
+          data: {
+            user_name,
+            password
+          }
+        });
+        console.log(3);
+        return res;
+      } catch (error) {
+        throw new Error(error);
+      }
+    }
+    async function getRoleReq(user_id: number) {
+      try {
+        const res = await axios.post("/user_roles", {
+          data: {
+            user_id
+          }
+        });
+        return res;
+      } catch (error) {
+        throw new Error(error);
+      }
+    }
+    loginReq({ user_name: "lison", password: "123" }).then(res => {
+      const {
+        data: { user_id }
+      } = res;
+      getRoleReq(user_id).then(res => {
+        const {
+          data: { role }
+        } = res;
+        console.log(role);
+      });
+    });
+
+  #+END_SRC
+** tsconfig.json配置
++ tsconfig.json 是放在项目根目录，用来配置一些编译选项等。当我们使用 tsc 命令编译项目，且没有指定输入文件时，编译器就会去查找 tsconfig.json 文件。如果在当前目录没找到，就会逐级向父文件夹查找。我们也可以通过在 tsc 命令中加上–project 参数，来指定一个包含 tsconfig.json 文件的目录。如果命令行上指定了输入文件时，tsconfig.json 的配置会被忽略
+  #+BEGIN_SRC shell
+  # 直接在项目根目录下执行tsc命令，会自动根据tsconfig.json配置项编译
+  tsc
+  # 指定要编译的项目，即tsconfig.json所在文件目录
+  tsc --project ./dir/project
+  # 指定要编译的文件，忽略tsconfig.json文件配置
+  tsc ./src/main.ts
+  #+END_SRC
++ tsconfig.json 文件里有几个主要的配置项
+  #+BEGIN_SRC json
+    {
+      "compileOnSave": true,
+      "files": [],
+      "include": [],
+      "exclude": [],
+      "extends": "",
+      "compilerOptions": {}
+    }
+
+  #+END_SRC
++ compileOnSave
+  compileOnSave 的值是 true 或 false。如果设为 true，在我们编辑了项目中文件保存的时候，编辑器会根据 tsconfig.json 的配置重新生成文件，不过这个要编辑器支持
++ files
+  files 可以配置一个数组列表，里面包含指定文件的相对或绝对路径。编译器在编译的时候只会编译包含在 files 中列出的文件。如果不指定，则取决于有没有设置 include 选项；如果没有 include 选项，则默认会编译根目录以及所有子目录中的文件。这里列出的路径必须是指定文件，而不是某个文件夹，而且不能使用*、?、**/等通配符
++ include
+  include 也可以指定要编译的路径列表，但和 files 的区别在于，这里的路径可以是文件夹，也可以是文件，可以使用相对和绝对路径，而且可以使用通配符。比如"./src"即表示要编译 src 文件夹下的所有文件以及子文件夹的文件
++ exclude
+  exclude 表示要排除的、不编译的文件，它也可以指定一个列表，规则和 include 一样，可以是文件可以是文件夹，可以是相对路径或绝对路径，可以使用通配符
++ extends
+  extends 可以通过指定一个其它的 tsconfig.json 文件路径，来继承这个配置文件里的配置，继承来的文件配置会覆盖当前文件定义的配置。TS 在 3.2 版本开始，支持继承一个来自 Node.js 包的 tsconfig.json 配置文件
++ compilerOptions
+  用来设置编译选项。因为它包含很多的可配置项
+  - target
+    target 用于指定编译之后的版本目标，可选值有：ES3(默认值)、ES5、ES2015、ES2016、ES2017、ESNEXT。如果不配置 target 项，默认是讲代码转译为 ES3 的版本，如果设为 ESNEXT，则为最新 ES 规范版本
+  - module
+    module 用来指定要使用的模块标准，可选值有commonjs、amd、system、umd、es2015(或写 es6)。如果不设置 module 选项，则如果 target 设为 ES6，那么 module 默认值为 ES6，否则是 commonjs
+  - lib
+    lib 用于指定要包含在编译中的库文件。如果你要使用一些 ES6 的新语法，你需要引入 ES6 这个库，或者也可以写 ES2015。如果没有指定 lib 配置，默认会加载一些库，而加载什么库是受 target 影响的。如果 target 为 ES5，默认包含的库有DOM、ES5和ScriptHost；如果 target 是 ES6，默认引入的库有DOM、ES6、DOM.Iterable和ScriptHost
+  - allowJs
+    allowJs 设置的值为 true 或 false，用来指定是否允许编译 JS 文件，默认是 false，即不编译 JS 文件
+  - checkJs
+    checkJs 的值为 true 或 false，用来指定是否检查和报告 JS 文件中的错误，默认是 false
+  - declaration
+    declaration 的值为 true 或 false，用来指定是否在编译的时候生成响应的".d.ts"声明文件。如果设为 true，编译每个 ts 文件之后会生成一个 js 文件和一个声明文件。但是 declaration 和 allowJs 不能同时设为 true
+  - sourceMap
+    sourceMap 的值为 true 或 false，用来指定编译时是否生成.map 文件
+  - outFile
+    outFile 用于指定将输出文件合并为一个文件，它的值为一个文件路径名，比如设置为"./dist/main.js"，则输出的文件为一个 main.js 文件。但是要注意，只有设置 module的值为 amd 和 system 模块时才支持这个配置
+  - outDir
+    outDir 用来指定输出文件夹，值为一个文件夹路径字符串，输出的文件都将放置在这个文件夹
+  - rootDir
+    用来指定编译文件的根目录，编译器会在根目录查找入口文件，如果编译器发现 1 以 rootDir 的值作为根目录查找入口文件并不会把所有文件加载进去的话会报错，但是不会停止编译
+  - removeComments
+    removeComments 值为 true 或 false，用于指定是否将编译后的文件中的注释删掉，设为 true 的话即删掉注释，默认为 false
+  - noEmit
+    不生成编译文件，这个一般很少用了
+  - importHelpers
+    importHelpers 的值为 true 或 false，指定是否引入 tslib 里的辅助工具函数，默认 Wie
+  - isolatedModules
+    isolatedModules 的值为 true 或 false，指定是否将每个文件作为单独的模块，默认为 true，它不可以和 declaration 同时设定。第二类是和严格类型检查相关的，开启了这些检查如果有错会报错
+  - noImplicitAny
+    noImplicitAny 的值为 true 或 false，如果我们没有为一些值设置明确的类型，编译器会默认这个值为 any 类型，如果将 noImplicitAny 设为 true，则如果没有设置明确的类型会报错，默认值为 false
+  - alwaysStrict
+    alwaysStrict 的值为 true 或 false，指定始终以严格模式检查每个模块，并且在编译之后的 JS 文件中加入"use strict"字符串，用来告诉浏览器该 JS 为严格模式
+  - strictNullChecks
+    strictNullChecks 的值为 true 或 false，当设为 true 时，null 和 undefined 值不能赋值给非这两种类型的值，别的类型的值也不能赋给它们。 除了 any 类型，还有个例外就是 undefined 可以赋值给 void 类型
+  - strictFunctionTypes
+    strictFunctionTypes 的值为 true 或 false，用来指定是否使用函数参数双向协变检查
+  - strictPropertyInitialization
+    strictPropertyInitialization 的值为 true 或 false，设为 true 后会检查类的非 undefined 属性是否已经在构造函数里初始化，如果要开启这项，需要同时开启 strictNullChecks，默认为 false
+  - strictBindCallApply
+    strictBindCallApply 的值为 true 或 false，设为 true 后会对 bind、call 和 apply 绑定方法参数的检测是严格检测的
+  - strict
+    strict 的值为 true 或 false，用于指定是否启动所有类型检查，如果设为 true 则会同时开启前面这几个严格类型检查，默认为 false。第三类为额外的一些检查，开启了这些检查如果有错会提示不会报错
+  - noUnusedLocals
+    noUnusedLocals 的值为 true 或 false，用于检查是否有定义了但是没有使用的变量，对于这一点的检测，使用 ESLint 可以在你书写代码的时候做提示，你可以配合使用。它的默认值为 false
+  - noUnusedParameters
+    noUnusedParameters 的值为 true 或 false，用于检查是否有在函数体中没有使用的参数，这个也可以配合 ESLint 来做检查，它默认是 false
+  - noImplicitReturns
+    noImplicitReturns 的值为 true 或 false，用于检查函数是否有返回值，设为 true 后，如果函数没有返回值则会提示，默认为 false
+  - noFallthroughCasesInSwitch
+    noFallthroughCasesInSwitch 的值为 true 或 false，用于检查 switch 中是否有 case 没有使用 break 跳出 switch，默认为 false
+  - moduleResolution
+    moduleResolution 用于选择模块解析策略，有"node"和"classic"两种类型
+  - baseUrl
+    baseUrl 用于设置解析非相对模块名称的基本目录，这个我们在讲《模块和命名空间》的“模块解析配置项”一节时已经讲过了，相对模块不会受 baseUrl 的影响
+  - paths
+    paths 用于设置模块名到基于 baseUrl 的路径映射
+    #+BEGIN_SRC json
+      {
+        "compilerOptions": {
+          "baseUrl": ".", // 如果使用paths，必须设置baseUrl
+          "paths": {
+            "jquery": ["node_modules/jquery/dist/jquery"] // 此处映射是相对于"baseUrl"
+          }
+        }
+      }
+      还有当我们要为没有声明文件的第三方模块写声明文件时，我们可以先如下设置：
+
+      {
+        "compilerOptions": {
+          "baseUrl": ".", // 如果使用paths，必须设置baseUrl
+          "paths": {
+            "*": ["./node_modules/@types/*", "./typings/*"]
+          }
+        }
+      }
+
+    #+END_SRC
+    tsconfig.json 文件所在的目录里建一个 typings 文件夹，然后为要写声明文件的模块建一个同名文件夹，比如我们要为 make-dir 这个模块写声明文件，那么就在 typings 文件夹下新建一个文件夹，命名为 make-dir，然后在 make-dir 文件夹新建一个 index.d.ts 声明文件来为这个模块补充声明
+  - rootDirs
+    rootDirs 可以指定一个路径列表，在构建时编译器会将这个路径列表中的路径内容都放到一个文件夹中
+  - typeRoots
+    typeRoots 用来指定声明文件或文件夹的路径列表，如果指定了此项，则只有在这里列出的声明文件才会被加载
+  - types
+    types 用来指定需要包含的模块，只有在这里列出的模块声明文件才会被加载进来
+  - allowSyntheticDefaultImports
+    allowSyntheticDefaultImports 的值为 true 或 false，用来指定允许从没有默认导出的模块中默认导入
+  - sourceRoot
+    sourceRoot 用于指定调试器应该找到 TypeScript 文件而不是源文件位置，这个值会被写进.map 文件里
+  - mapRoot
+    mapRoot 用于指定调试器找到映射文件而非生成文件的位置，指定 map 文件的根路径，该选项会影响.map 文件中的 sources 属性
+  - inlineSourceMap
+    inlineSourceMap 值为 true 或 false，指定是否将 map 文件的内容和 js 文件编译在同一个 js 文件中。如果设为 true，则 map 的内容会以//# sourceMappingURL=然后接 base64 字符串的形式插入在 js 文件底部
+  - inlineSources
+    inlineSources 的值是 true 或 false，用于指定是否进一步将.ts 文件的内容也包含到输出文件中
+  - experimentalDecorators
+    experimentalDecorators 的值是 true 或 false，用于指定是否启用实验性的装饰器特性
+  - emitDecoratorMetadata
+    emitDecoratorMetadata 的值为 true 或 false，用于指定是否为装饰器提供元数据支持
+** 识别库类型
++ 两种常见模块标准，即 CommonJS 和 RequireJS。不同的模块在实现方式上是不一样的。我们要为已有的第三方 JS 库编写声明文件，以便在 TS 中更好地使用类型系统，所以首先需要知道我们使用的 JS 库被编译成了什么类型
+*** 全局库
++ 不需要我们引入什么变量，只需要将库引入即可使用的库，就叫做全局库。后面讲到 UMD 模块的时候要注意，UMD 模块既可以作为模块使用，又可以作为全局库使用的模块，所以在判断一个库的时候，如果它可以像例子中那样全局使用，首先要确定它是不是 UMD 模块；如果不是，那它可能就是一个单纯的全局库
++ 通过看库的源码，来判断它是什么类型，一个全局库，通常会包含下面内容中的一个或多个：顶级的 var 语句或 function 声明,一个或多个赋值给 window.someName 的赋值语句；判断 document 或 window 是否存在的判断逻辑
++ 顶级的 var 或 function 是直接在全局环境声明变量或函数，不使用立即执行函数包裹会影响到全局，所以有这种一般会是全局库；当出现给 window 设置某个属性名 someName ，然后给这个属性赋值的语句时，是在给全局对象 window 赋值。引入这个库后直接通过 window.someName 即可在全局任何地方访问到这个属性值；如果出现 if 语句或三元操作符这种判断 document 或 window 是否存在的语句，也有可能是要给这两个全局对象添加内容，所以也有可能是全局库。但是由于把一个全局库转变成 UMD 库较为容易，所以现在全局库较少
+  #+BEGIN_SRC js
+    function setTitle(title) {
+      document && (document.title = title);
+    }
+
+    function getTitle() {
+      return (document && document.title) || "";
+    }
+
+    let documentTitle = getTitle();
+    //为这个 handle-title.js 全局库编写一个声明文件handle-title.d.ts
+    //为 handle-title.js 库编写一个声明文件：
+
+    // handle-title.d.ts
+    declare function setTitle(title: string | number): void;
+
+    declare function getTitle(): string;
+
+    declare let documentTitle: string;
+  #+END_SRC
++ 局库的模板是global.d.ts
+  #+BEGIN_SRC typescript
+    // 如果这个库有一个全局暴露的函数，他可能可以传入不同类型的参数，返回不同的值，所以可以为它定义函数重载
+    declare function myLib(a: string): string;
+    declare function myLib(a: number): number;
+    // 如果你想让这个库名作为一种类型，可以定义一个接口
+    declare interface myLib {
+      name: string;
+      length: number;
+      extras?: string[];
+    }
+    // 如果这个库有一些需要在全局暴露的属性，可以定义这个命名空间，将值、接口和类型别名等定义在这里
+    // 这样，在下面命名空间中没有列出的内容，通过myLib.xxx访问时在编译阶段会报错，但是运行时是可以访问的，只要这个JS库里定义了。
+    declare namespace myLib {
+      let timeout: number; // 通过myLib.timeout访问，也可以修改: myLib.timeout = 123
+      const version: string; // 可通过myLib.version访问，但不能修改，因为是const声明的
+      class Cat {
+        constructor(n: number);
+        readonly age: number;
+        purr(): void;
+      }
+      interface CatSettings {
+        weight: number;
+        name: string;
+        tailLength?: number;
+      }
+      type VetID = string | number;
+      function checkCat(c: Cat, s?: VetID);
+    }
+    // 这个handle-title.js文件我们可以直接在 index.html 文件里引入，如果不定义声明文件，我们直接在 index.ts 里使用
+  #+END_SRC
++  tsconfig.json 里，通过设置 include 来让编译器自动引入"./src/"文件夹下的所有声明文件
+  #+BEGIN_SRC json
+    "include": [
+        "./src/**/*.ts",
+        "./src/**/*.d.ts"
+    ]
+
+  #+END_SRC
+*** 模块化库
++ 模块化库即依赖模块解析器的库。之前讲模块的时候讲到过 CommonJS 和 ES6 模块，接下来我们看下如何判断一个库是模块化库。在模块库代码中，你一般会看到下面的情况之一
+  - 无条件地调用 require 或 define 方法
+  - 像 import * as a from 'b’或者 export c 这样的声明
+  - 赋值给 exports.someName 或 module.exports
++ 因为模块化库依赖模块解析器环境，在使用这种库的时候，就已经引入模块解析器的 require 或 define 等方法了，所以模块化库会直接调用这些方法来加载代码；库中包括 import * as a from 'b’和 export c 这种模块中才有的引入和导出语句的话，基本就是模块库了；如果有赋值语句赋值给 exports.someName 或 module.exports，这种就是 CommonJS 模块的导出语句了。你极少会在模块化库中看到对 window或global的赋值，当然这不是绝对的，比如有的库需要操作 window 的一些属性，这就难免了
++ 针对模块，官方有三个模板声明文件，分别是 module.d.ts、module-class.d.ts 和 module-function.d.ts：
+  - 如果这个模块引入后，可以直接当做函数调用，那可以参考 module-function.d.ts 文件；
+  - 如果模块引入后，可以直接当做类使用 new 关键字创建实例，可以参考 module-class.d.ts 文件；
+  - 如果模块不能被调用也不能当做类，参考 module.d.ts
+*** UMD 库
++ UMD 库将全局库和模块库的功能进行了结合，它会先判断环境中有没有模块加载器的一些特定方法。如果有，说明是模块加载器环境，UMD 库就会使用模块的方式导出；如果没有检测到这些方法，则会将内容添加到全局环境,一般你会在 UMD 库中看到这种逻辑判断
+  #+BEGIN_SRC typescript
+    (function(root, factory) {
+      if (typeof define === "function" && define.amd) {
+        define(["libName"], factory);
+      } else if (typeof module === "object" && module.exports) {
+        module.exports = factory(require("libName"));
+      } else {
+        root.returnExports = factory(root.libName);
+      }
+    })(this, function(b) {
+      // ...
+    });
+
+  #+END_SRC
+
++ 现在很多库都是 UMD 库，比如 jQuery、moment 等，你既可以在 html 文件中直接通过<script>标签引入它，也可以通过模块的形式引入
+** 为不同类型库书写声明文件
+*** 模块插件或 UMD 插件
++ 一些模块和插件是支持插件机制的，比如我们常见的 jQuery，它的插件有非常多。我们可以为库书写声明文件的同时，为库的插件定义声明文件，可以参考官方模板 module-plugin.d.ts
+*** 全局插件
++ 全局插件往往会修改全局中一些对象，在这些对象上添加或修改属性方法
+* TypeScript开发环境搭建
+** npm初始化项目
++ 命令
+  #+BEGIN_SRC shell
+  npm init 
+  # 按照提示交互式进行，生成package.json文件
+  npm init -y
+  # 直接生成package.json文件，后手动修改
+  #+END_SRC
++ 说明
+  - entry point
+    默认为index.js，修改为ts文件，比如./src/index.ts
+  - test command
+    可以跳过
+  - git repository
+    可以跳过
+  - keywords
+    关键词，可以跳过
+  - author
+    作者
+  - license
+    协议
++ 常规目录设置
+  + build 存放开发、上线部署的配置，通常时webpack的配置
+  + src 源码目录
+    + utils 与业务相关的可复用的方法
+    + tools 与业务无关的通用方法
+    + assets 存放静态资源
+      + font
+      + img
+    + api 存放可以复用的接口请求方法
+    + config 涉及修改的配置，抽离出来，单独处理
+  + typings 模块的声明文件
+** 全局安装typescript
++ 命令
+  #+BEGIN_SRC shell
+  npm install -g typescript
+  #+END_SRC
+** typescript初始化项目
++ 命令
+  #+BEGIN_SRC shell
+  tsc --init
+  # 生成tsconfig.json
+  #+END_SRC
++ tsconfig.json详解
+  - 
+** 安装webpack及相关
++ 命令
+  #+BEGIN_SRC shell
+  npm install webpack webpack-cli webpack-dev-server -D (开发依赖)
+  #+END_SRC
++ 创建并编辑webpack.config.json(存放在build文件夹中)

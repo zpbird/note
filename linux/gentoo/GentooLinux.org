@@ -1,0 +1,3462 @@
+* 安装
+** 准备安装文件
+*** Minimal installation CD 最小化安装盘，下载、校验写入usb启动盘，下面两个文件可以合并到iso文件中一起写入usb启动盘，也可以通过sftp或CRT上传到要安装的系统中
+*** A stage3 tarball 包含一个最小化的gentoo环境 
+*** portage-latest(可选) 包含最新的portage软件列表
+** 启动安装盘(启动画面出现时回车启动默认内核)
+*** 系统引导类型(BIOS、UEFI)
+如果想安装使用UEFI引导的Gentoo，建议立即使用UEFI启动，如果不用UEFI来启动，可能就要在最后完成Gentoo Linux的安装之前制作一个可以启动的UEFI的U盘
+*** Kernel 选择内核类型
+**** gentoo 使用默认内核
+**** gentoo-nofb 不启用framebuffer支持，其他与默认内核相同
+**** memtest86 测试本地内存
+*** Boot options 启动选项(例如：关闭acpi)
++ 启动程序在检查设置选项时no*的选项会先于do*选项，所以存在覆盖效应
++ 例如
+  #+BEGIN_SRC shell
+  # boot:gentoo dopcmcia   #选择默认模块 开启dopcmcia选项
+  #+END_SRC
++ 启动程序默认为US keyboard键盘，Alt+F1~Alt+F4可以切换不同的控制台
+**** Hardware options 硬件选项
+***** acpi=on
+This loads support for ACPI and also causes the acpid daemon to be started by the CD on boot. This is only needed if the system requires ACPI to function properly. This is not required for Hyperthreading support. 
+***** acpi=off
+Completely disables ACPI. This is useful on some older systems and is also a requirement for using APM. This will disable any Hyperthreading support of your processor. 
+***** console=X
+This sets up serial console access for the CD. The first option is the device, usually ttyS0 on x86, followed by any connection options, which are comma separated. The default options are 9600,8,n,1.
+***** dmraid=X
+This allows for passing options to the device-mapper RAID subsystem. Options should be encapsulated in quotes. 
+***** doapm
+This loads APM driver support. This also requires that acpi=off. 
+***** dopcmcia
+This loads support for PCMCIA and Cardbus hardware and also causes the pcmcia cardmgr to be started by the CD on boot. This is only required when booting from PCMCIA/Cardbus devices. 
+***** doscsi
+This loads support for most SCSI controllers. This is also a requirement for booting most USB devices, as they use the SCSI subsystem of the kernel. 
+***** sda=stroke
+This allows the user to partition the whole hard disk even when the BIOS is unable to handle large disks. This option is only used on machines with an older BIOS. Replace sda with the device that requires this option. 
+***** ide=nodma
+This forces the disabling of DMA in the kernel and is required by some IDE chipsets and also by some CDROM drives. If the system is having trouble reading from the IDE CDROM, try this option. This also disables the default hdparm settings from being executed.
+***** noapic
+This disables the Advanced Programmable Interrupt Controller that is present on newer motherboards. It has been known to cause some problems on older hardware. 
+***** nodetect
+This disables all of the autodetection done by the CD, including device autodetection and DHCP probing. This is useful for doing debugging of a failing CD or driver. 
+***** nodhcp
+This disables DHCP probing on detected network cards. This is useful on networks with only static addresses. 
+***** nodmraid
+Disables support for device-mapper RAID, such as that used for on-board IDE/SATA RAID controllers. 
+***** nofirewire
+This disables the loading of Firewire modules. This should only be necessary if your Firewire hardware is causing a problem with booting the CD. 
+***** nogpm
+This disables gpm console mouse support. 
+***** nohotplug
+This disables the loading of the hotplug and coldplug init scripts at boot. This is useful for doing debugging of a failing CD or driver. 
+***** nokeymap
+This disables the keymap selection used to select non-US keyboard layouts. 
+***** nolapic
+This disables the local APIC on Uniprocessor kernels. 
+***** nosata
+This disables the loading of Serial ATA modules. This is used if the system is having problems with the SATA subsystem. 
+***** nosmp
+This disables SMP, or Symmetric Multiprocessing, on SMP-enabled kernels. This is useful for debugging SMP-related issues with certain drivers and motherboards. 
+***** nosound
+This disables sound support and volume setting. This is useful for systems where sound support causes problems. 
+***** nousb
+This disables the autoloading of USB modules. This is useful for debugging USB issues. 
+***** slowusb
+This adds some extra pauses into the boot process for slow USB CDROMs, like in the IBM BladeCenter. 
+**** Logical volume/device management (分区及设备管理)
+***** dolvm
+This enables support for Linux's Logical Volume Management. 
+**** Other options (其他选项)
+***** debug
+Enables debugging code. This might get messy, as it displays a lot of data to the screen. 
+***** docache
+This caches the entire runtime portion of the CD into RAM, which allows the user to umount /mnt/cdrom and mount another CDROM. This option requires that there is at least twice as much available RAM as the size of the CD. 
+***** doload=X
+This causes the initial ramdisk to load any module listed, as well as dependencies. Replace X with the module name. Multiple modules can be specified by a comma-separated list. 
+***** dosshd
+Starts sshd on boot, which is useful for unattended installs. 
+***** passwd=foo
+Sets whatever follows the equals as the root password, which is required for dosshd since the root password is by default scrambled.
+***** noload=X
+This causes the initial ramdisk to skip the loading of a specific module that may be causing a problem. Syntax matches that of doload. 
+***** nonfs
+Disables the starting of portmap/nfsmount on boot. 
+***** nox
+This causes an X-enabled LiveCD to not automatically start X, but rather, to drop to the command line instead. 
+***** scandelay
+This causes the CD to pause for 10 seconds during certain portions the boot process to allow for devices that are slow to initialize to be ready for use. 
+***** scandelay=X
+This allows the user to specify a given delay, in seconds, to be added to certain portions of the boot process to allow for devices that are slow to initialize to be ready for use. Replace X with the number of seconds to pause. 
+*** 一般情况下gentoo会自动侦测电脑硬件并在内核中自动加载驱动，如果出现某个硬件未加载的话，可以手动加载相应驱动
+#+BEGIN_SRC shell
+# root # modprobe 8139too  #例如网卡驱动
+#+END_SRC
+** 用户账号 
+*** Root用户
+指定root用户密码，否则远程用户无法登录
+#+BEGIN_SRC shell
+# passwd root
+#+END_SRC
+*** 普通用户
+#+BEGIN_SRC shell
+root #useradd -m -G users john
+root #passwd john
+#+END_SRC
+*** 切换用户
+#+BEGIN_SRC shell
+root #su - john
+#+END_SRC
+** 安装过程中查看手册
+*** TTYs
++ 创建普通用户
++ Alt+F2切换terminal
++ 查看手册
+  #+BEGIN_SRC shell
+  user $links https://wiki.gentoo.org/wiki/Handbook:AMD64
+  #+END_SRC
+*** GNU Screen(默认已经安装)
+上下分屏：ctrl + a  再按shift + s
+切换屏幕：ctrl + a  再按tab键
+新建一个终端：ctrl + a  再按c
+关闭一个终端：ctrl + a  再按x （或直接按exit退出）
+** ssh
+*** 为root用户设置密码
+#+BEGIN_SRC shell
+# passwd root
+#+END_SRC
+*** 启动ssh服务
+**** OpenRC-init 
+#+BEGIN_SRC shell
+root #rc-service sshd start
+#+END_SRC
+**** 直接执行
+#+BEGIN_SRC shelll
+# /etc/init.d/sshd start(stop、restart)
+#+END_SRC
+**** 如果启动不成功则需要对ssh进行配置
+***** /etc/ssh/sshd_config 服务器端配置文件
+开启root用户登录
+***** /etc/ssh/ssh_config  客户端配置文件
+**** 查看ssh服务启动状态
+service sshd status
+**** 配置防火墙
+***** 查看防火墙是否开启
+service iptables status
+***** 如果开启，要配置防火墙通过ssh端口或关闭防火墙
+** 配置网络
+*** 自动获取网络(DHCP)
+**** 如果主机是连接到存在DHCP服务的网络环境中时，gentoo会自动获取ip地址启动网络连接
+此时系统中包含多个与网络有关的命令就已经可以使用了:ssh, scp, ping, irssi, wget, and links..
+**** 查看网卡名称
+***** ifconfig 此命令会显示系统中使用的网卡信息，参数 -a会显示所有网卡包括未开启的网卡
+***** ip addr 此命令也会显示系统中的网卡信息
+**** 配置代理上网
+在linux中配置代理上网就是定义一个包含代理服务器信息的变量
+***** HTTP(HTTPS)代理上网
+root # export http_proxy="http://proxy.gentoo.org:8080"
+如果需要使用用户名和密码则为如下格式
+root # export http_proxy="http://username:password@proxy.gentoo.org:8080"
+***** FTP代理
+root #export ftp_proxy="ftp://proxy.gentoo.org:8080"
+***** RSYNC代理
+root #export RSYNC_PROXY="proxy.gentoo.org:8080"
+**** 测试网络
+root #ping -c 3 www.gentoo.org
+*** 自动配置网络
+**** net-setup 有线网和无线网
+net-setup eth0
+**** pppoe-setup 宽带拨号
+pppoe-setup
+pppoe-start
+如果无法连接需要查看/etc/ppp/pap-secrets或者/etc/ppp/chap-secrets中的用户名及密码是否正确，并检查是否使用了正确的网卡
+**** pptp PPTP(VPN)网络
+编辑/etc/ppp/chap-secrets及/etc/ppp/options.pptp中的用户名、密码
+root #pptp <server ip>
+*** 手动配置网络
+**** 加载正确的网卡驱动模块
++ 正常情况下linux系统会自动侦测硬件并加载对应的驱动模块，在特殊情况下没有成功加载时则需要手动加载
++ 查看linux内核提供的所有网卡驱动模块，root #ls /lib/modules/`uname -r`/kernel/drivers/net
++ 如果其中包含正在使用网卡的驱动模块则进行手动加载，root #modprobe pcnet32
++ 查看系统中可用的网卡名，root #ls /sys/class/net
++ 使用ifconfig eth0 查看网卡是否正常开启，如果正常开启则进行下一步配置，否则说明选择的驱动模块不正确或没有正常加载到系统中
+**** 配置DHCP
+***** # rc-list 查看dhcpcd服务是否开启
+***** # rc-update start dhcpcd
+***** root #dhcpcd eth0
+***** root #dhcpcd -HD eth0
+**** 配置无线网络
+***** 查看无线网卡名 root #iwconfig
+***** 查看无线网卡状态 root #iwconfig wlan0
+***** 设置无线网名称 root #iwconfig eth0 essid GentooNode
+***** 设置无线网密码(hex WEP key) root #iwconfig eth0 key 1234123412341234abcd
+***** 设置无线网密码(ASCII WEP key) root #iwconfig eth0 key s:some-password
+***** 如果使用WPA或者WPA2类型的密码，需要使用wpa_supplicant
+**** 使用ifconfig和route
+***** 指定IP地址
+root #ifconfig eth0 ${IP_ADDR} broadcast ${BROADCAST} netmask ${NETMASK} up
+***** 指定网关
+root #route add default gw ${GATEWAY}
+***** 添加DNS服务器
+编辑/etc/resolv.conf文件添加DNS服务器地址
+nameserver 223.210.128.2
+nameserver 223.210.128.6
+** 磁盘分区
+*** 基础知识
+**** 块设备
++ 在linux中SCSI、SerialATA、IDE硬盘会被标记为/dev/sd*的块设备，在很老的版本中IDE硬盘会被标记为/dev/hd*
++ 块设备是对物理硬盘设备的抽象接口，便于系统和软件操作硬盘数据
+**** 分区表
+  正常情况下不会将整个硬盘整体使用，而是通过分区表划分为更小的块设备使用，分区表有如下两种标准类型
+***** MBR(Master Boot Record)
++ 使用32位标识符存储开始扇区和分区长度，支持3种类型的分区：主分区、扩展分区、逻辑分区。
++ 一块硬盘最多支持4个主分区(/dev/sda1-sda4)
++ 为了使用更多的分区，可以将一个主分区标记成扩展分区，扩展分区中可以包含多个逻辑分区
++ 每个分区的最大尺寸为2TB
++ MBR分区表本身不提供备份机制，如果被用户或程序覆盖，则所有分区的信息都会丢失
+***** GPT(GUID Partition table) 
++ 使用64位标识符存储分区信息
++ 没有分区总数的限制
++ 如果计算的引导系统是UEFI(BIOS的升级版本),则几乎必须使用GPT，MBR存在很多兼容性问题
++ GPT分区表本身存在备份机制，存储在硬盘的最后，如果硬盘头部的主GPT分区表损害，则可以进行恢复，同时提供了分区表的CRC校验功能来检查分区表可能出现的错误
+***** 注意问题
++ 在一台基于BIOS的计算机上使用GPT虽然可以工作，但将无法与windows系统进行双重引导，因为windows检测到存在GPT分区时回以EFI模式进行引导
++ 一些存在bug的BIOS和配置成以BIOS/CSM/legacy模式引导的EFI也对GPT分区表支持的不好，虽然有一个替代的办法...但不推荐使用
++ 当在一个使用了UEFI的系统中安装gentoo时，很重要的一点是必须创建一个EFI的系统分区(Boot partition)，这个系统分区必须是FAT32(Linux中叫做vfat)的类型，如果引导分区没有使用FAT32(vfat)文件系统，UEFI固件将无法找到Linux内核来启动系统
+  root #mkfs.vfat /dev/sda2
+**** 高级存储
+***** Btrfs RAID
+***** LVM2
+**** 默认分区方案
++ Partition 	Filesystem 	       Size 	              Description
+  /dev/sda1 	(bootloader) 	     2M 	            BIOS boot partition (事件中未使用)
+  /dev/sda2 	ext2 (or vfat) 	     128M 	            Boot partition
+  /dev/sda3 	(swap) 	             512M or higher 	Swap partition
+  /dev/sda4 	ext4 	             Rest of the disk 	Root partition 
++ 分区工具
+  MBR：fdisk、cfdisk
+  GPT：parted、gdisk
+**** 设计分区方案
+***** 分区个数与大小
++ 分区的数目主要考虑系统的用途：如果是多用户系统，一般将/home单独分区，以增强安全性和易于备份；如果系统是邮件服务器，则将/var单独分区，保持邮件数据；游戏服务器应该将/opt独立分区；多数情况下应该保证/usr大一些，因为多数应用软件安装在这里，而且Portage树本身就需要至少500M(还不包括许多存储在内的源码)。
++ 独立分区的好处：
+  . 可以为每个分区单独选择不同的文件类型，优化系统性能
+  . 当一个失控的工具持续向一个分区或卷写文件时，也不至于让整个系统由于无可用空间而无法运行。
+  . 如果有必要，可以简化文件系统检查，多个检查可以并行的完成（其实在这一点上，有多个磁盘比多个分区更有优势）。
+  . 可以通过在挂载一些分区或卷时使用只读、nosuid（忽略setuid属性）、noexec（忽略可执行属性）等来增加安全性。
++ 独立分区注意问题：
+  . 如果不能合理的配置，系统可能会在一个分区上有很多空闲空间，而其他分区却没有空间。
+  . 独立的分区——尤其是像/usr/或/var/这样的重要挂载点——经常需要管理员在引导时通过一个initramfs来在其他引导脚本启动前挂载这些分区。在不同的情况下，结果也可能不同。 
+  . 对于SCSI和SATA还有一个最多15分区的限制，除非使用GPT分区表。
+***** SWAP分区
+对于swap空间，没有一个完美值。swap空间的目的是当内存（RAM）有压力时为内核提供磁盘存储。swap空间还用来在休眠时储存整个内存。如果一个系统需要休眠，则需要大一点的swap空间，通常至少为系统安装的内存数量。 
+***** BIOS boot partition (BIOS引导分区)
+BIOS引导分区是一个非常小的分区（1到2MB），引导器软件如GRUB2可以将不适于存放在引导扇区（MBR中只有几百个字节）里并且不能存放在其它位置的额外数据存放于此。这种分区并不总是需要的，但是考虑到低地址空间消耗以及记录大量不同的分区的难度，我们建议最好还是创建一个。为了完整，当GPT分区方案与GRUB2一起使用，或者当MBR分区方案与GRUB2一起使用且第一个分区开始于磁盘上1MB位置之前时，BIOS引导分区是需要的。 
+*** 分区操作
+**** GPT分区划分 parted
+***** 建议您让parted 来优化分区对齐(尤其是SSD硬盘)：
+root #parted -a optimal /dev/sda
+对齐意思就是分区在磁盘上开始于一个众所周知的边界，从而确保操作系统层面（从磁盘获取页面）使用最少的磁盘内部开销。没有对齐的分区可能需要磁盘去抓取两个页面而不是一个，即使操作系统只请求了一个页面。 
+***** 查看当前的分区信息
+(parted)print
+***** 设置GPT标签
+改变分区类型将会移除磁盘上的所有分区，磁盘上的所有数据也将丢失。
+设置GPT分区表，使用(parted)mklabel gpt命令。
+设置MBR分区表，使用 mklabel msdos命令。 
+***** 使用parted移除全部分区
+rm <N> 中N是需要移除的分区号码。
+(parted)rm 2
+对其它不需要的分区采取同样的操作。但是在这里请确保不要犯任何错误，因为parted是立即执行改变的，这一点不像fdisk是分步操作，允许用户在保存或者退出fdisk时可以"undo"。 
+***** 创建分区
++ 要使用的分区类型。通常是“Primary”。如果您用的是msdos(MBR)分区表，请注意最多只有4个主(Primary)分区能够被使用。如果您需要使用多于4个分区，请使用其中的一个主分区将其转换为扩展分区以便在其中创建足够使用的逻辑分区。
++ 首先设置parted使用的容量单位是megabytes（实际上是mebibytes，其标准缩写符号是MiB，但是我们会通篇使用MB因为它用得更普遍一些）
+  (parted)unit mib
++ 分区的开始位置（可以被表示为MB, GB, ...）
++ 分区的结束位置（可以被表示为MB, GB, ...）
++ 创建一个2MB的分区，它后面将被GRUB2引导器使用。使用mkpart 完成这个操作，并且通知 parted 从1MB开始到3MB结束（创建一个大小为2MB的分区）
+  (parted)mkpart primary 1 3
+  (parted)name 1 grub
+  (parted)set 1 bios_grub on
+  (parted)print
+  Model: Virtio Block Device (virtblk)
+  Disk /dev/sda: 20480MiB
+  Sector size (logical/physical): 512B/512B
+  Partition Table: gpt
+  Number   Start      End      Size     File system  Name   Flags
+   1       1.00MiB    3.00MiB  2.00MiB               grub   bios_grub
++ 创建引导分区（128MB），交换分区（在这个例子中是512MB）和使用了剩下所有磁盘空间根分区（结束位置被标记为-1，意味着磁盘尾部减去1MB，那里是分区最远能够所达之处） 
+  (parted)mkpart primary 3 131
+  (parted)name 2 boot
+  (parted)mkpart primary 131 643
+  (parted)name 3 swap
+  (parted)mkpart primary 643 -1
+  (parted)name 4 rootfs
++ 使用UEFI接口来引导系统时（取代BIOS），要将引导分区标识为EFI系统分区。当“boot”选项在这个分区被设置时，Parted可以自动完成此事。 
+  (parted)set 2 boot on
++ 分区结果
+  (parted)print
+  Model: Virtio Block Device (virtblk)
+  Disk /dev/sda: 20480MiB
+  Sector size (logical/physical): 512B/512B
+  Partition Table: gpt
+  Number   Start      End      Size     File system  Name   Flags
+   1       1.00MiB    3.00MiB  2.00MiB               grub   bios_grub
+   2       3.00MiB    131MiB   128MiB                boot   boot
+   3       131MiB     643MiB   512MiB                swap
+   4       643MiB     20479MiB 19836MiB              rootfs
+  在UEFI安装时，引导标志将出现在引导分区。
++ 使用 quit 命令退出parted。
+**** MBR分区划分 cfdisk /dev/sda
+***** 通常使用cfdisk /dev/sda进行分区操作
+***** 查看当前分区布局
+root #fdisk -l /dev/sda 
+Command (m for help):p
+Disk /dev/sda: 240 heads, 63 sectors, 2184 cylinders
+Units = cylinders of 15120 * 512 bytes
+Device    Boot    Start       End    Blocks   Id  System
+/dev/sda1   *         1        14    105808+  83  Linux
+/dev/sda2            15        49    264600   82  Linux swap
+/dev/sda3            50        70    158760   83  Linux
+/dev/sda4            71      2184  15981840    5  Extended
+/dev/sda5            71       209   1050808+  83  Linux
+/dev/sda6           210       348   1050808+  83  Linux
+/dev/sda7           349       626   2101648+  83  Linux
+/dev/sda8           627       904   2101648+  83  Linux
+/dev/sda9           905      2184   9676768+  83  Linux
+***** 移除全部分区
+Command (m for help):d
+Partition number (1-4): 1
+这个分区已经计划被删除了，当您用p键打印分区清单时它将不会被显示了，但此时它还未被实际删除，直到改变被真正保存。这将允许用户在操作错误后中止——此时，敲击q键并回车可以立即防止分区被删除。重复敲击 p来打印分区清单，然后敲击 d键和分区号码来删除它。
+***** 创建BIOS引导分区
++ 首先创建一个很小的BIOS引导分区。敲击 n 键来创建一个新分区，然后敲击p 键来选择是主分区类型，后面跟一个1 键来选择是第一个主分区。当提示“first sector”选项时，请确保它开始于2048（这是引导器所必须的）然后敲回车。当提示“last sector”时，键入+2M来创建一个大小为2Mbyte的分区。
++ 开始于2048扇区是一个容错机制，当引导器无法检测这个分区为可用时尽量保持功能正常。
+         Command (m for help):n
+         Command action
+         e   extended
+         p   primary partition (1-4)
+         p
+         Partition number (1-4): 1
+         First sector (64-10486533532, default 64): 2048
+         Last sector, +sectors +size{M,K,G} (4096-10486533532, default 10486533532): +2M
+***** 创建引导分区
+敲击 n 键来创建一个新分区，然后敲击p 键来选择是主分区类型，后面跟一个2 键来选择是第二个主分区。当提示“first sector”选项时，敲回车以接受默认值。当提示“last sector”时，键入+128M来创建一个大小为128Mbyte的分区。
+Command (m for help):n
+Command action
+  e   extended
+  p   primary partition (1-4)
+p
+Partition number (1-4): 2
+First sector (5198-10486533532, default 5198): (Hit enter)
+Last sector, +sectors +size{M,K,G} (4096-10486533532, default 10486533532): +128M
+敲击 a 键来切换一个分区是否为可引导的标记，然后敲击 2。之后再一次敲 p键，您可以发现一个“*”被放置于相应分区的“boot"列。
+***** 创建swap分区
+为了创建交换分区，敲击 n 来创建一个新分区，然后是 p 键来告诉fdisk要创建一个主分区。然后敲击 3 来创建第三个分区，/dev/sda3。当提示输入“ the first sector”时，敲击 Enter键。当提示输入“the last sector”时，键入+512M（或者按需给交换分区分配任意容量）来创建一个512MB大小的分区。
+这些做完之后，敲击 t来设置分区类型， 3来选择刚刚创建的这个分区，然后敲击“82”设置分区类型为“Linux Swap”。 
+***** 创建根分区
+最后创建根分区，敲击 n来创建一个新分区，然后敲击 p 告诉l fdisk 要创建一个主分区。然后敲击 4 来创建第四个主分区 /dev/sda4。当提示输入“the first sector”时，敲击Enter。当提示输入“the last sector”时，敲击Enter来创建一个占用了所有剩余磁盘空间的分区。
+***** 保存分区布局
+要保存分区布局并退出 fdisk，请敲击 w。
+Command (m for help):w
+*** 创建文件系统（格式化）
+**** 文件系统简介
++ btrfs
++ ext2
++ ext3
++ ext4 最常用的文件系统
++ f2fs
++ JFS
++ ReiserFS
++ XFS
++ vfat
++ NTFS
+**** 创建文件系统（格式化）
+***** inodes 
++ 当使用ext2、ext3、ext4文件系统的分区小于8GB时,需要使用-T small参数预留足够的inodes
+  ext2：root #mkfs.ext2 -T small /dev/<device>
+  ext4：root #mkfs.ext4 -T small /dev/sda1
+  这一般将是对于给定的文件系统inode数量的四倍，它的“字节每inode”从16kB每个减少到4kB每个。这个可以通过提供比例进行调整：
+  root #mkfs.ext4 -i <ratio> /dev/<device>
+  mkfs.ext4 -i 1024 /dev/sdb  mkfs.ext4 -i 2048  /dev/sdb   mkfs.ext4 -i 4096  /dev/sdb 这样来格盘调整Inodes值
++ Inodes限定了linux下能存放的文件夹和文件总数,如果Inodes被占用满了，即便分区本身还有剩余空间但也将报错无法使用,分区中存储的数据为数量极大的小文件时会出现这种情况，例如web应用环境下，会有大量的文本、图片文件、缩略图文件。
+  . 查看每个硬盘分区的inode总数和已经使用的数量，可以使用df命令,df -i
+  当inodes使用满时，可以通过删除无用文件来释放inodes，最好是在格式化分区是提供inodes数量。
+  . ext4的inodes数值是固定的，后期无法调整。可以将大量的小文件存储到数据库中及其他办法解决(loop)。xfs,jfs可以动态增加inodes。
+***** 格式化分区
++ 格式化boot分区(目前有建议可以不单独给boot目录单独分区)
+  mkfs.ext4(ext2) /dev/sda2
++ 格式化/分区
+  mkfs.ext4 /dev/sda4
++ 格式化和激活swap分区
+  mkswap /dev/sda2
+  swapon /dev/sda2
+*** 加载分区
+**** 手动加载分区
+***** 加载/分区
+# mount /dev/sda4 /mnt/gentoo
+***** 加载boot分区(通常不需要单独划分boot分区)
++ 创建加载目录
+  mkdir /mnt/gentoo/boot
++ 加载boot分区
+  mount /dev/sda2 /mnt/gentoo/boot
+***** 如果/tmp/需要放在一个独立分区，确保在挂载后变更它的权限：
+chmod 1777 /mnt/gentoo/tmp，这同样适用于/var/tmp
+** 安装gentoo的安装文件
+*** 准备stage3包和portage包
+**** 设置日期和时间
+***** 查看当期日期和时间
++ 在安装gentoo之前最好要校正日期和时间，如果日期和时间偏差太大，会造成无法下载安装文件。
++ 显示当前日期和时间
+  date
+***** 自动设置
+root #ntpd -q -g
+***** 手动设置
+date MMDDhhmmYYYY (Month, Day, hour, minute and Year)
+root #date 100313162016 (October 3rd, 13:16 in the year 2016: )
+**** 选择stage tarball
+***** Multilib (32 and 64-bit)
++ 绝大多数情况下，应该选择此包
++ 该压缩包multilib尽可能使用64位的库，只必要时对32位版本兼容。这对于大多数安装一个很好的选择，因为它在未来的定制提供了极大的灵活性。
++ 绝大多数用户应该不需要使用“高级” tarball包选项；它们用于特定的软件或硬件配置。
+***** No-multilib (pure 64-bit)
+提供了一个完整的64位操作系统环境。这使得切换到multilib的profile是不可能的。
+**** 下载stage tarball
++ 切换到root目录
+  # cd /mnt/gentoo
++ gentoo安装盘中提供了多个下载工具，其中之一是links,访问Gentoo镜像服务器
+  # links https://www.gentoo.org/downloads/mirrors/
++ 如果需要使用http代理，则使用如下命令
+  # links -http-proxy proxy.server.com:8080 https://www.gentoo.org/downloads/mirrors/
++ 终端浏览器lynx
+  # lynx https://www.gentoo.org/downloads/mirrors/
++ 附加文件
+  A .CONTENTS 文件包含stage压缩包内的所有文件的列表
+  A .DIGESTS 文件，其中包含的阶段文件的校验和，具有不同的算法
+  A .DIGESTS.asc 像.DIGESTS文件一样, 包含不同的stage文件的校验和，但有加密签名，以确保它是由Gentoo项目提供的。
+**** 使用安装镜像中预先下载的stage3包
++ cp /mnt/cdrom/stage3*.* /mnt/gentoo 
+**** 校验stage tarball
++ 在下载stage文件后，就可以验证所下载的stage包的完整性。使用 openssl 并比较,提供的校验输出与.DIGESTS或者.DIGESTS.asc 文件的内容是否一致。
++ 验证SHA512校验值
+  root #openssl dgst -r -sha512 stage3-amd64-<release>.tar.bz2
++ 验证Whirlpool校验值
+  root #openssl dgst -r -whirlpool stage3-amd64-<release>.tar.bz2
+  该值需要匹配，否则下载的文件可能已损坏（或摘要文件）。比较这些命令的输出与.DIGESTS(.asc)中的值。该值需要匹配，否则下载的文件可能已损坏（或digests文件）。
++ 在ISO文件中，它也可以来验证加密签名的.DIGESTS.asc。使用 gpg 以确保DIGESTS.asc文件校验和未被篡改
+  root #gpg --verify stage3-amd64-<release>.tar.bz2.DIGESTS.asc
+**** 解压stage tarball
++ root #tar xpf stage3-*.tar.{bz2,xz} --xattrs-include='*.*' --numeric-owner
++ # tar xvjpf stage3-*.tar.bz2 --xattrs(过时命令)
++ 确保你使用了同样的参数 (xvjpf 即使用--xattrs)。 x表示解开（Extract），v表示详细信息（Verbose）可以用来查看解压缩时发生了什么（可选参数）， j 表示使用bzip2解压缩，thep 表示保留权限（Preserve permissions），还有f 表示我们要解开一个文件，而不是标准输入。最后，--xattrs的是包括存储在归档以及扩展属性。
+*** 配置编译器选项
+**** 编辑编译配置文件
+root #nano -w /mnt/gentoo/etc/portage/make.conf
+**** 范例(本机安装实测过)
+#+BEGIN_SRC conf
+# These settings were set by the catalyst build script that automatically
+# built this stage.
+# Please consult /usr/share/portage/config/make.conf.example for a more
+# detailed example.
+CFLAGS="-march=native -O2 -pipe"
+CXXFLAGS="${CFLAGS}"
+# WARNING: Changing your CHOST is not something that should be done lightly.
+# Please consult http://www.gentoo.org/doc/en/change-chost.xml before changing.
+CHOST="x86_64-pc-linux-gnu"
+# These are the USE and USE_EXPAND flags that were used for
+# buidling in addition to what is provided by the profile.
+USE="bindist mmx mmxext sse sse2 sse3 xft jpeg -qt -qt3 -qt4 -qt5 -gnome -kde"
+CPU_FLAGS_X86="mmx mmxext sse sse2 sse3"
+PORTDIR="/usr/portage"
+DISTDIR="${PORTDIR}/distfiles"
+PKGDIR="${PORTDIR}/packages"
+
+
+MAKEOPTS="-j3"
+
+GENTOO_MIRRORS="http://mirrors.163.com/gentoo/"
+
+VIDEO_CARDS="intel"
+
+INPUT_DEVICES="evdev synaptics"
+#+END_SRC
+**** 介绍
++ 可以通过设置不同的变量，影响Portage包管理器的行为来优化gentoo
++ 这些参数可以通过export命令临时设置，如果需要永久生效，则需要修改Portage包管理器的配置文件/etc/portage/make.conf
++ gentoo中所有可以设置的变量可以在/mnt/gentoo/usr/share/portage/config/make.conf.example中找到，但通常只要设置以下几个变量就可以。
+**** CFLAGS和CXXFLAGS
+***** 设置和优化C和C++编译器，但不能过度优化，否则会造成编译错误和不可预知的行为
+*****  -march= 或-mtune=
+-march=native是通常的设置值，设置编译器使用当前的系统
+***** -O（大写的o，不是数字0）指定编译器的优化类型，可以设置为0、1、2、3(0为不优化)，-O2是推荐的默认值
+***** -pipe 可以加快编译速度，但在一个内存很小的系统中不要使用，否则会造成编译器进程挂死
+***** 推荐设置
+CFLAGS="-march=native -O2 -pipe"
+# Use the same settings for both variables
+CXXFLAGS="${CFLAGS}"
+**** MAKEOPTS
++ 编译时使用的cpu核心个数，通常比较好的设置是系统中cpu的核心数加1
++ MAKEOPTS="-j2"
+**** 配置USE
+ USE="bindist mmx mmxext sse sse2 sse3 xft jpeg -qt -qt3 -qt4 -qt5 -gnome -kde"
+**** 编辑/mnt/gentoo/etc/portage/make.conf后保存文件,完成设置
+**** 使用top命令查看cpu使用率及系统资源使用情况
+** 安装基本系统
+*** 选择镜像服务器
++ 在下载源代码之前最好选择一个较快的镜像服务器，离系统距离最近的服务器
++ 可以使用gentoo提供的mirrorselect工具进行选择
+  # mirrorselect -i -o >> /mnt/gentoo/etc/portage/make.conf
++ 配置gentoo主仓库(main gentoo repository)
+  - 创建目录
+    # mkdir --parents /mnt/gentoo/etc/portage/repos.conf
+  - copy the Gentoo repository configuration file provided by Portage to the (newly created) repos.conf directory
+    配置/etc/portage/repos.conf/gentoo.conf文件，此文件包含Portage tree升级时包含的同步信息
+    # cp /mnt/gentoo/usr/share/portage/config/repos.conf /mnt/gentoo/etc/portage/repos.conf/gentoo.conf
+  - 查看信息gentoo.conf文件，里面的内容应该与下面的一致
+    FILE /mnt/gentoo/etc/portage/repos.conf/gentoo.conf
+    [gentoo]
+    location = /usr/portage
+    sync-type = rsync
+    sync-uri = rsync://rsync.gentoo.org/gentoo-portage
+    auto-sync = yes
+*** 拷贝编辑DNS信息
+# cp --dereference /etc/resolv.conf /mnt/gentoo/etc/
+*** 加载必要的文件系统
+# mount --types proc /proc /mnt/gentoo/proc
+# mount --rbind /sys /mnt/gentoo/sys
+# mount --make-rslave /mnt/gentoo/sys
+# mount --rbind /dev /mnt/gentoo/dev
+# mount --make-rslave /mnt/gentoo/dev 
+Note： The --make-rslave operations are needed for systemd support later in the installation.
+Warning：When using non-Gentoo installation media, this might not be sufficient. Some distributions make /dev/shm a symbolic link to /run/shm/ which, after the chroot, becomes invalid. Making /dev/shm/ a proper tmpfs mount up front can fix this:
+  root #rm /dev/shm && mkdir /dev/shm
+  root #mount -t tmpfs -o nosuid,nodev,noexec shm /dev/shm
+  Also ensure that mode 1777 is set
+  root # chmod 1777 /dev/shm
+*** 切换系统
+# chroot /mnt/gentoo /bin/bash
+# source /etc/profile
+# export PS1="(chroot) ${PS1}"
+*** 配置Portage
+**** 安装Portage snapshot
+# emerge-webrsync  （最近24小时）
+**** 升级Portage tree
+# emerge --sync（最近1小时）
+# emerge --oneshot portage (当portage本身需要更新时执行，emerge --sync命令后会有提示)
+或者
+# emerge --sync --quiet 在某些慢速终端上(如console口)静默模式可以加速升级过程
+**** 查看消息提示
+当Portage tree 升级完成后会出现需要用户注意的消息提示
+root #eselect news list
+root #eselect news read
+More information about the newsreader is available through its manual page:
+root #man news.eselect
+**** 选择正确的profile(安装套件)
+- profile是gentoo的构建模块，他不仅包含USE、CFLAGS的默认值和其他重要变量，同时锁定系统的软件版本区间。可以通过eselect查看当前系统中使用的profile模块
+  # eselect profile list
+  Available profile symlink targets:
+  [1]   default/linux/amd64/13.0 *
+  [2]   default/linux/amd64/13.0/desktop
+  [3]   default/linux/amd64/13.0/desktop/gnome
+  [4]   default/linux/amd64/13.0/desktop/kde
+
+- 选择子模块
+  # eselect profile set 2
+**** 更新 @world set
+当新的系统profile模块被选中时，需要更新profile文件
+# emerge --ask --update --deep --newuse @world
+**** 配置USE
++ USE是gentoo系统中非常有用的变量，在编译软件时可以根据系统本身的情况选择不同的编译参数，添加或去除某项功能或特性。
++ 默认的USE设置存放在系统profile的make.defaults文件中，查看当前系统中激活的USE设置
+  # emerge --info | grep ^USE
+  USE="X acl alsa amd64 berkdb bindist bzip2 cli cracklib crypt cxx dri ..."
++ 查看所以可用的USE标志，可以查看 /usr/portage/profiles/use.desc
+  # less /usr/portage/profiles/use.desc
++ 用户自定义系统USE配置
+  当用户希望自己设置系统的USE设置是，可以修改/etc/portage/make.conf文件，系统中对应的默认值将失效。
+  /etc/portage/make.conf  Enabling USE for a KDE-based system with DVD, ALSA and CD recording support，Ignoring default USE flags
+  USE="-gtk -gnome qt4 kde dvd alsa cdr"
+**** systemd
+如果选择systemd作为init系统，需要选择systemd模块,需要查看相应的配置手册
+*** 设置时区
++ 查看可用时区设置
+  # ls /usr/share/zoneinfo/
++ 编辑 /etc/timezone文件设置时区
+  # echo "Asia/Shanghai" > /etc/timezone
+  使用城市名称设置时区，不要使用GMT-8形式标注
++ 重新配置 sys-libs/timezone-data软件包,以便更新/etc/localtime 
+  # emerge --config sys-libs/timezone-data
+*** 设置本地语言
++ 编辑/etc/locale.gen文件配置本地语言
+  # nano -w /etc/locale.gen
+  #en_US ISO-8859-1
+  en_US.UTF-8 UTF-8
+  zh_CN.UTF-8 UTF-8
+  #de_DE ISO-8859-1
+  #de_DE@euro ISO-8859-15
+  强烈建议至少包含一个UTF-8字符集，应为很多软件包需要使用。
++ 执行locale-gen，使/etc/locale.gen文件中的设置生效
+  # locale-gen
+  + 查看当前系统中的字符集
+   # locale -a
++ 设置系统级的字符集
+  # eselect locale list
+  Available targets for the LANG variable:
+  [1] C
+  [2] POSIX
+  [3] en_US
+  [4] en_US.iso88591
+  [5] en_US.utf8
+  [6] de_DE
+  [7] de_DE.iso88591
+  [8] de_DE.iso885915
+  [9] de_DE.utf8
+  [ ] (free form)
+  # eselect locale set 5
++ 也可以通过手动设置系统级本地语言
+  FILE /etc/env.d/02locale Manually setting system locale definitions
+  LANG="en_US.utf8"
+  LC_COLLATE="C"
++ 更新系统级本地语言设置
+  设置新的字符集后需要进行更新，否则编译内核或软件时会报错
+  # env-update && source /etc/profile && export PS1="(chroot) $PS1"
+** 配置内核
+*** 安装源码
+# emerge --ask sys-kernel/gentoo-sources
+This will install the Linux kernel sources in /usr/src/ in which a symbolic link called linux will be pointing to the installed kernel source
+
+# ls -l /usr/src/linux
+lrwxrwxrwx    1 root   root    12 Oct 13 11:04 /usr/src/linux -> linux-3.16.5-gentoo
+*** 手动配置
+**** 安装 sys-apps/pciutils (包含lspci等命令的工具套件)
+# emerge --ask sys-apps/pciutils
+Note：Inside the chroot, it is safe to ignore any pcilib warnings (like pcilib: cannot open /sys/bus/pci/devices) that lspci might throw out.
+# lsmod 通过查看引导光盘所使用的内核加载的详细情况可以帮助确定配置内核的加载选项
+**** 开启配置内核菜单
+#+BEGIN_SRC shell
+# cd /usr/src/linux
+# make menuconfig
+#+END_SRC
+详细配置信息需要参考https://wiki.gentoo.org/wiki/Kernel/Gentoo_Kernel_Configuration_Guide
+**** 激活需要的选项
++ 确保重要的驱动程序被编译到内核而不是驱动模块中，否则系统将无法正确启动
++ 选择CPU选项，一般情况下建议选择MCE，以便获取系统硬件的错误信息，在某些系统架构中，比如(x86_64)这些错误信息不显示在dmesg中，而是显示在/dev/mcelog中，但需要 app-admin/mcelog软件包的支持
++ 选择Maintain a devtmpfs file system to mount at /dev 选项，系统启动需要的重要文件系统
+  Enabling devtmpfs support
+  Device Drivers --->
+  Generic Driver Options --->
+  [*] Maintain a devtmpfs filesystem to mount at /dev
+  [ ]   Automount devtmpfs at /dev, after the kernel mounted the rootfs
++ 选择需要的文件系统
+  . 一定要将root分区使用的文件系统编译进内核，而不是驱动模块( module)中，否则系统无法加载root分区
+  . Selecting necessary file systems
+    File systems --->
+    (Select one or more of the following options as needed by your system)
+    <*> Second extended fs support
+    <*> Ext3 journalling file system support
+    <*> The Extended 4 (ext4) filesystem
+    <*> Reiserfs support
+    <*> JFS filesystem support
+    <*> XFS filesystem support
+    Pseudo Filesystems --->
+    . 选择Virtual memory and /proc file system.选项
+    [*] /proc file system support
+    [*] Virtual memory file system support (former shm fs)
++ 选择PPPoE
+  Selecting PPPoE necessary drivers
+  Device Drivers --->
+  Network device support --->
+  <*> PPP (point-to-point protocol) support
+  <*>   PPP support for async serial ports
+  <*>   PPP support for sync tty ports
++ 选择有线和无线网卡(Ethernet or wireless) 
++必须要编译到内核中
++ 多核心CPU选项
+  Activating SMP support
+  Processor type and features  --->
+  [*] Symmetric multi-processing support
++ 选择USB输入设备选项  Activating USB Support for input devices
+  Device Drivers --->
+  [*] HID Devices  --->
+  <*>   USB Human Interface Device (full HID) support
++ 选择IA32 Emulation选项
+  如果需要对32位软件包支持的话 (multilib)，需要选择IA32 Emulation选项
+   Selecting processor types and features
+  Processor type and features  --->
+  [ ] Machine Check / overheating reporting 
+  [ ]   Intel MCE Features
+  [ ]   AMD MCE Features
+  Processor family (AMD-Opteron/Athlon64)  --->
+  ( ) Opteron/Athlon64/Hammer/K8
+  ( ) Intel P4 / older Netburst based Xeon
+  ( ) Core 2/newer Xeon
+  ( ) Intel Atom
+  ( ) Generic-x86-64
+  Executable file formats / Emulations  --->
+  [*] IA32 Emulation
++ GPT分区表选项
+  nable support for GPT
+  -*- Enable the block layer --->
+  Partition Types --->
+  [*] Advanced partition selection
+  [*] EFI GUID Partition support
++ EFI stub support和EFI variables 选项
+  Enable support for UEFI
+  Processor type and features  --->
+  [*] EFI runtime service support 
+  [*]   EFI stub support
+  Firmware Drivers  --->
+  <*> EFI Variable Support via sysfs
+**** 编译核安装
++ # make && make modules_install
+  注：支持并行编译，使用make -jX(其中X代表并行个数)，这个与在/etc/portage/make.conf 文件中指定MAKEOPTS变量数值效果相同
++ # make install
+  此命令将把编译完成的内核镜像和System.map、内核配置文件(kernel configuration file)拷贝到/boot/中
+**** 安装initramfs
++ 首先安装sys-kernel/genkernel
+  # emerge --ask sys-kernel/genkernel
++ 安装 initramfs
+  # genkernel --install initramfs
++ 添加lvm或raid需要指定对应参数
+  # genkernel --lvm --mdadm --install initramfs
++ initramfs 保存在/boot/中
+  # ls /boot/initramfs*
+*** 使用genkernel配置内核
++ genkernel可以实现自动配置和编译内核
++ genkernel使用与引导光盘启动后相同的内核配置，缺点是几乎包含所有的硬件驱动，且在系统启动时会侦测一遍系统中的硬件
++ 安装sys-kernel/genkernel
+  root #emerge --ask sys-kernel/genkernel
++ 编辑etc/fstab文件加载/boot分区
+  /etc/fstabConfiguring the /boot mountpoint
+  /dev/sda2	/boot	ext2	defaults	0 2
++ 如果/boot没有使用ext2 or ext3文件系统，需要使用genkernel --menuconfig all添加相应的文件系统
+   root #genkernel all
++ 添加lvm或raid需要指定对应参数
+   root #genkernel --lvm --mdadm --install initramfs
++ 当genkernel完成后查看文件
+  root #ls /boot/kernel* /boot/initramfs*
+*** 内核模块(Kernel modules)
+**** 配置模块
++ 查看/etc/conf.d/modules中自动加载的模块，可以向其中添加需要的模块
++ 查看所有可用模块
+  # find /lib/modules/<kernel version>/ -type f -iname '*.o' -or -iname '*.ko' | less
++ 例如，需要系统启动时自动加载 3c59x.ko模块
+  # nano -w /etc/conf.d/modules
+  modules="3c59x"
+**** 安装firmware
+某些硬件需要额外的firmware才能正常工作，通常时网卡尤其时无线网卡
+# emerge --ask sys-kernel/linux-firmware
+** 配置系统
+*** 配置文件系统
+**** fstab
+***** 加载菜单详解
++ auto选项用于光驱或U盘等可以移除设备的加载
++ user选项用于非root用户加载
++ noatime选项适用于多数用户，特别时使用SSD硬盘的用户，在没有访问该分区的情况下不予加载来加快系统速度
+***** 范例
+File /etc/fstab A full /etc/fstab example
+
+/dev/sda3 / ext4 noatime 0 1
+/dev/sda4 none swap sw 0 0
+安装完成后加入 /dev/sda8 /store ext4 noatime 0 0
+安装完成后加入 /dev/sda5 /mnt/winD ntfs-3g defaults 0 0
+**** Partition labels and UUIDs
++ 如果使用GTP分区表需要在fstab文件中使用'robust' 选项
++ blkid查看分区的Partition labels和UUIDs
++ 最好使用UUIDs配置fstab，对于系统来说最为准确和安全
+*** 配置网络系统
+**** 主机名和域名
++ 主机名(HOST)
+  # nano -w /etc/conf.d/hostname
+
+  # Set the hostname variable to the selected host name
+  hostname="tux"
++ 域名(domain name)
+  # nano -w /etc/conf.d/net
+
+  # Set the dns_domain_lo variable to the selected domain name
+  dns_domain_lo="homenetwork"
+  默认情况下/etc/conf.d/net不存在，需要手动创建
+  如果域名没有配置，用户在登录界面中可能会出现"This is hostname.(none)" 的提示信息，可以删除/etc/issue文件中的'.\O'字符串来解决。
++ NIS域名
+  root #nano -w /etc/conf.d/net
+  # Set the nis_domain_lo variable to the selected NIS domain name
+  nis_domain_lo="my-nisdomain"
+**** 配置网络
++ 所有关于网络的配置信息都存储在 /etc/conf.d/net文件中，在/usr/share/doc/netifrc-*/net.example.bz2中有配置范例
++ 安装net-misc/netifrc软件包
+  # emerge --ask --noreplace net-misc/netifrc
++ DHCP配置
+  系统默认使用HDCP连接网络，？？？需要安装DHCP客户端 net-misc/dhcpcd。
+  /etc/conf.d/netDHCP definition
+  config_eth0="dhcp"
++ 使用静态IP
+  /etc/conf.d/netStatic IP definition
+  config_eth0="192.168.0.2 netmask 255.255.255.0 brd 192.168.0.255"
+  routes_eth0="default via 192.168.0.1"
++ 启动时自动联网
+  root #cd /etc/init.d
+  root #ln -s net.lo net.eth0
+  root #rc-update add net.eth0 default
+  如果存在多块网卡，重复上面的操作
+  如果网卡启动时报告网卡名称错误，则执行下面的流程
+  Update the /etc/conf.d/net file with the correct interface name (like enp3s0 instead of eth0).
+  Create new symbolic link (like /etc/init.d/net.enp3s0).
+  Remove the old symbolic link (rm /etc/init.d/net.eth0).
+  Add the new one to the default runlevel.
+  Remove the old one using rc-update del net.eth0 default.
++ 配置hosts文件/etc/hosts，此文件中设置会代替DNS服务器解析的地址
+  /etc/hostsFilling in the networking information
+  # This defines the current system and must be set
+  127.0.0.1     tux.homenetwork tux localhost
+  # Optional definition of extra systems on the network
+  192.168.0.5   jenny.homenetwork jenny
+  192.168.0.6   benny.homenetwork benny
++ PCMCIA网卡
+  PCMCIA网卡用户需要安装相应的软件包
+  root #emerge --ask sys-apps/pcmciautils
+**** 配置系统信息
+***** Root password
+# passwd
+***** 初始化和启动设置(Init and boot)
++ gentoo使用/etc/rc.conf 配置系统中的服务、启动和关闭设置
+  # nano -w /etc/rc.conf
++ 键盘设置
+  # nano -w /etc/conf.d/keymaps
++ 时钟设置
+  # nano -w /etc/conf.d/hwclock
+  如果硬件时钟没有使用UTC，需要设置clock="local"
+** 安装系统工具
+*** System logger(系统日志工具)
++ gentoo提供了多个系统日志工具
++ app-admin/sysklogd 需要配合 app-admin/logrotate使用
++ app-admin/syslog-ng  需要配合 app-admin/logrotate使用
++ app-admin/metalog
++ 安装及更新
+  # emerge --ask app-admin/sysklogd
+  # rc-update add sysklogd default
+*** 定时任务(Cron daemon)
++ 有多种定时任务软件包可供选择
+   sys-process/bcron, sys-process/dcron, sys-process/fcron, and sys-process/cronie
++ 安装定时任务
+  root #emerge --ask sys-process/cronie
+  root #rc-update add cronie default
++ 如果选用 dcron or fcron 需要执行如下初始化命令
+  root #crontab /etc/crontab
+*** 文件索引(File indexing)
+用于快速查找文件
+root #emerge --ask sys-apps/mlocate
+*** 远程访问(Remote access)
++ SSH访问
+ root #rc-update add sshd default
++ 串口访问(serial console )
+  root #nano -w /etc/inittab
+  # SERIAL CONSOLES
+  s0:12345:respawn:/sbin/agetty 9600 ttyS0 vt100
+  s1:12345:respawn:/sbin/agetty 9600 ttyS1 vt100
+*** 文件系统工具
+文件系统工具用于检查文件系统完整性、创建新文件系统等工作，gentoo默认包含了ext2, ext3, ext4文件系统的工具
+Filesystem 	            Package
+Ext2, 3, and 4          	sys-fs/e2fsprogs
+XFS                         	sys-fs/xfsprogs
+ReiserFS 	                sys-fs/reiserfsprogs
+JFS 	                            sys-fs/jfsutils
+VFAT (FAT32, ...)   	sys-fs/dosfstools
+Btrfs 	                        sys-fs/btrfs-progs
+*** 网络工具
++ DHCP客户端
+  # emerge --ask net-misc/dhcpcd
++ PPPoE 客户端
+  # emerge --ask net-dialup/ppp
+** 配置启动器(GRUB)
+*** 选择启动器
+**** GRUB2 or LILO for BIOS  based systems, GRUB2 or efibootmgr for UEFI systems
+**** 默认使用GRUB2
+***** Emerge
++ BIOS system
+  # emerge --ask --verbose sys-boot/grub:2
++ UEFI system
+  root #echo 'GRUB_PLATFORMS="efi-64"' >> /etc/portage/make.conf
+  root #emerge --ask sys-boot/grub:2
+***** 安装
++ BIOS system
+  # grub-install /dev/sda
+  # grub-mkconfig -o /boot/grub/grub.cfg
++ UEFI system
+  root #grub-install --target=x86_64-efi --efi-directory=/boot
+  Note： Modify the efi-directory setting to the root of the vfat EFI System Partition. This is necessary if the /boot partition was not formatted as vfat.
+  Important：Make sure the EFI system partition has been mounted before running grub-install. It is possible for grub-install to install the GRUB EFI file (grubx64.efi) into the wrong directory without providing indication the wrong directory was used.
+***** 配置
++ 配置文件
+  /etc/default/grub
+  /etc/grub.d scripts
++ 通常情况下GRUB2会自动配置，不需要用户参与,当手动修改配置后，需要重新让GRUB2生成配置文件
+  #+BEGIN_SRC shell
+  # grub-mkconfig -o /boot/grub/grub.cfg
+  Generating grub.cfg ...
+  Found linux image: /boot/vmlinuz-3.16.5-gentoo
+  Found initrd image: /boot/initramfs-genkernel-amd64-3.16.5-gentoo
+  done
+  #+END_SRC
++ 自定义配置(加载windows系统)
+  - 由于/boot/grub/grub.cfg会被grub-mkconfig命令覆盖，所以建议使用/etc/grub.d/40_custom或者/boot/grub/custom.cfg文件管理手动添加到配置内容,但需要在grub-mkconfig -o /boot/grub/grub.cfg命令之前，或从新执行该命令
+  - 范例
+    如果grub-mkconfig没有自动侦测出windows启动分区,则可以手动添加
+    #+BEGIN_SRC conf
+    menuentry 'Windows' {
+        insmod ntfs
+        set root='hd0,msdos6'
+        search --no-floppy --fs-uuid --set=root 74A430ABA43071AA
+        chainloader +1
+    }
+    #+END_SRC
+    或者
+    #+BEGIN_SRC conf
+    menuentry 'Windows 10' --class windows --class os $menuentry_id_option 'osprober-chain-028C5B818C5B6DE3' {
+        insmod part_msdos
+	      insmod ntfs
+	      set root='hd0,msdos1'
+	      if [ x$feature_platform_search_hint = xy ]; then
+		        search --no-floppy --fs-uuid --set=root --hint-bios=hd0,msdos1 --hint-efi=hd0,msdos1 --hint-baremetal=ahci0,msdos1 028C5B818C5B6DE3
+        else
+		        search --no-floppy --fs-uuid --set=root 028C5B818C5B6DE3
+	      fi
+	      parttool ${root} hidden-
+	      drivemap -s (hd0) ${root}
+	      chainloader +1
+    }
+    #+END_SRC
+*** 设置关闭acpi对于老旧设备可能对acpi支持不好需要关闭
+GRUB_CMDLINE_LINUX="acpi=off"
+*** 设置显示分辨率当使用开源显卡驱动xrandr设置分辨率无效时使用，一般默认为auto
+# GRUB_GFXMODE=auto
+GRUB_GFXMODE=1920x1080
+** 重启系统
+#+BEGIN_SRC shell
+root # exit
+cdimage ~# cd
+cdimage ~# umount -l /mnt/gentoo/dev{/shm,/pts,}
+cdimage ~# umount /mnt/gentoo{/boot,/sys,/proc,}
+ncdimage ~# reboot
+#+END_SRC
+** 最后步骤
+*** 添加日常用户
+     - 查看系统中存在的用户组
+        less /etc/group
+     - 查看当前用户的id和归属组
+       id
+     - 新建用户组
+       groupadd 选项 用户组
+       可以使用的选项有：
+       -g GID 指定新用户组的组标识号（GID）。
+       -o 一般与-g选项同时使用，表示新用户组的GID可以与系统已有用户组的GID相同。
+       代码:
+       # groupadd group1
+       此命令向系统中增加了一个新组group1，新组的组标识号是在当前已有的最大组标识号的基础上加1。
+       代码:
+       #groupadd -g 101 group2
+       此命令向系统中增加了一个新组group2，同时指定新组的组标识号是101。
+     - 新建用户
+       useradd 选项 用户名
+　　-c：加上备注文字，备注文字保存在passwd的备注栏中。
+　　-d：指定用户登入时的主目录，替换系统默认值/home/<用户名>
+　　-D：变更预设值。
+　　-e：指定账号的失效日期，日期格式为MM/DD/YY，例如06/30/12。缺省表示永久有效。
+　　-f：指定在密码过期后多少天即关闭该账号。如果为0账号立即被停用；如果为-1则账号一直可用。默认值为-1.
+　　-g：指定用户所属的群组。值可以使组名也可以是GID。用户组必须已经存在的，期默认值为100，即users。
+　　-G：指定用户所属的附加群组。
+　　-m：自动建立用户的登入目录。
+　　-M：不要自动建立用户的登入目录。
+　　-n：取消建立以用户名称为名的群组。
+　　-r：建立系统账号。
+　　-s：指定用户登入后所使用的shell。默认值为/bin/bash。
+　　-u：指定用户ID号。该值在系统中必须是唯一的。0~499默认是保留给系统用户账号使用的，所以该值必须大于499。       
+        root #useradd -m -G users,wheel,audio -s /bin/bash larry
+        root #passwd larry
+        Password: (Enter the password for larry)
+        Re-enter password: (Re-enter the password to verify)
+*** 磁盘清理
+如果系统安装完毕，重新启动后一切正常，可以删除stage3包
+#+BEGIN_SRC shell
+# rm /stage3-*.tar.bz2*
+#+END_SRC
+** 安装过程终止后继续步骤
+*** ssh
+**** 为root用户设置密码
+# passwd root
+**** 启动ssh服务
+***** OpenRC-init 
+# rc-service sshd start
+*** 加载分区
+**** 加载/分区
+# mount /dev/sda3 /mnt/gentoo
+*** 加载必要的文件系统
+# mount --types proc /proc /mnt/gentoo/proc
+# mount --rbind /sys /mnt/gentoo/sys
+# mount --make-rslave /mnt/gentoo/sys
+# mount --rbind /dev /mnt/gentoo/dev
+# mount --make-rslave /mnt/gentoo/dev
+*** 切换系统
+# chroot /mnt/gentoo /bin/bash
+# source /etc/profile
+# export PS1="(chroot) ${PS1}"
+* 使用
+** Users(用户)
+*** sudo
+**** 安装
+#+BEGIN_SRC shell
+# emerge --ask app-admin/sudo
+#+END_SRC
+**** 配置
++ 添加用户名到配置文件中
+  #+BEGIN_SRC shell
+  # visudo
+  zpbird ALL=(ALL) ALL
+  #+END_SRC
++ 密码过期时间
+  #+BEGIN_SRC shell
+  # visudo
+  Defaults:zpbird timestamp_timeout=20
+  sudo将记录密码20分钟
+  #+END_SRC
++ 添加特定权限命令
+  在root用户下用visudo命令添加以下代码到/etc/sudoers文件的末端,替换其中的user为你的用户名,hostname为你的主机名（可以使用hostname命令查询）
+  #+BEGIN_SRC conf
+  zpbird zp-laptop=NOPASSWD: /sbin/shutdown -h now
+  zpbird zp-laptop=NOPASSWD: /sbin/reboot
+  #+END_SRC
+*** 添加用户
+# useradd -m -G users,wheel,audio -s /bin/bash zpbird
+# passwd zpbird
+*** 用户权限
+*** 普通用户添加重启、关机命令
+**** 使用visudo添加到sudo的配置文件中
++ 优点是安全可控
+** 常用命令集
+*** Emerge命令
+**** 常用参数
++ --ask (-a) #交互询问
++ --verbose(-v) # 以冗余模式运行，也就是在运行的同时输出info级别的消息，并且在和 --pretend 联用时显示每个包的USE标记
++ --version(-V) #显示emerge版本,不能与其它选项共享,名称与格式为规范
++ --pretend(-p) #查看依赖关系,不执行实际的合并操作，而只显示将发生将发生的动作。推荐在合并新软件包时先用 --pretend 检查一下
++ --search(-s) #查询软件包名称
++ --searchdesc(-S) #查询软件包描述
++ --changelog(-l) #与--pretend并用,显示所有将更新套件的变更纪录
++ --fetchonly(-f) #只下载源码(以及它所依赖的) -fp #查看从哪下的源码
++ -usepkg(k) #使用本地编好的预编译包，没有就下源码,使用预编的套件(来自 $PKGDIR),若有可免去编译,
++ --usepkgonly(-K) #只使用本地编好的预编译包,否则不安装(绝对不编译,所有依赖的包都有binary才装)
++ --update(-u) #更新软件包到最近的版本
++ --upgradeonly(-U) #更新软件包,但不更新会导致版本号码降低的套件
++ --unmerge(-C) #卸载软件
++ --clean #移除不影响系统功能的软件（清理系统）
++ --depclean(-c) #卸载可以移除的依赖(深度清理),通常有必要在depclean前先进行一下"emerge --update --newuse --deep @world"操作
+**** 常用参数组合
++ emerge –av <packagename> #编译安装(重装)软件包
++ emerge -avC <packagename> #删除软件包
++ emerge -pv <packagename> #查看软件包USE flags
+*** Equery命令
+**** 介绍
++ equery 只适用于已安装的软件包，无法在安装新软件包时，提供帮助。通常 equery 负责查询，emerge 负责安装，卸载，更新
+**** 常用参数
++ equery d depends 列出某个已安装软件包的所有直接依赖关系
++ equery g depgraph 树形显示某个已安装的软件包的依赖关系
++ equery u use 列出某一个已安装的包使用到的所有标记及详细信息
++ equery h hasuse 列出所有使用了指定 USE 标记的已安装软件包
++ equery l list 查询某个已安装的软件包，并列出相关信息
++ equery s size 显示某个已安装软件包的大小
++ equery k check 检查某个已安装软件包是否正确
++ equery w which 显示某个已安装软件包的绝对路径
++ equery f files 列出某一个已安装的软件包的所有文件
++ equery b belongs 查看某个文件属于哪个已安装的软件包
+*** Euse命令
+**** 介绍
++ euse是一个用来在多个地方查看、设置和取消USE标记的工具
+**** 常用参数
++ euse -i 查看标记的详细信息
++ euse -D 取消某个标记
++ euse -E 启用某个标记
++ euse -a 列出已激活的所有标记
++ euse -a -g 只显示活跃的全局USE标记
++ euse -a -l 只显示活跃的局部USE标记
+** USE flags
+*** USE flags介绍
+**** The idea behind USE flags(指导思想)
++ 在安装gentoo（或者是其他发行版，甚至于其他特定操作系统）的时候，你要依据你工作的环境做出选择。服务器跟工作站的组织结构不同，游戏机跟3D工作站也会不一样
++ 不单只是选择你想要安装的包时如此，选择某一个包需要的特性时同样如此，如果不用KDE，而且软件包没有KDE也能完美运行，就不需要在编译这些包的时候加入KDE支持
++ 帮用户判断什么需要安装或激活，什么不需要，我们希望用户能用简单的方式设定他们自己的环境，这能促使用户判断他真正需要的东西，并让Portage做出有用的决定的过程变得简单
+**** Definition of a USE flag(USE标志定义)
++ 每一个标志都是代表对某特定概念的支持和依赖关系信息的关键字。如果你设定了某个USE标志，Portage会明白你选择了支持这个选项。当然这同时也改变了这个包的依赖关系信息
++ 示例：关键字 kde 。如果你的 USE 变量里面没有这个关键字，所有具有可选KDE支持的包在编译时都 不会 编译KDE支持。所有具有可选KDE依赖关系的包在安装时都 不会 （做为一个依赖关系而）安装KDE库。如果你设定了kde关键字，这些包在安装时都 会 编译KDE支持，而且KDE库也 会 （作为一个依赖关系而）被安装
++ 通过正确设定关键字，你会得到一个根据你的需要而定制的系统
+**** What USE flags exist(有哪些USE标志) 
+***** global USE
++ 全局USE标志适用范围是整个系统,可以被许多包使用,这就是大多数人眼里的USE标志,当前可用的全局USE标志列表可以在网上main site或者本机的/usr/portage/profiles/use.desc文件里找到
+***** local USE
++ 局部USE标志只被单个包用来做该包特有的决定，当前可用的局部USE标志列表可以在网上main site当前可用的局部USE标志列表可以在本机的/usr/portage/profiles/use.local.desc文件里找到
+*** Using USE flags(使用USE标志)
+**** Declare permanent USE flags(声明永久USE标志)
+***** 所有USE标志都声明在USE变量里面,为了让用户能方便地查找和选择USE标志,我们提供了一份默认的USE设定,这些设定是我们觉得Gentoo用户通常都要用到的USE标志的集合,这个默认设置在make.defaults文件──你的profile声明
+***** 你的系统使用的profile是符号链接/etc/portage/make.profile所指向的目录,每个profile叠加于某个更大的profile之上,最终的结果是这些profile的并集,初始profile是base profile(/usr/portage/profiles/base)
+***** 要查看当前正在使用的USE标志（全部），请使用 emerge --info
+#+BEGIN_SRC shell
+# emerge --info | grep ^USE
+USE="a52 aac acpi alsa branding cairo cdr dbus dts ..."
+#+END_SRC
+***** 不要修改任何make.defaults文件来调整USE flags，因为当Gentoo repository升级是会被覆盖，修改失效
+***** 要改变这个默认设置，你需要在 USE 变量里添加或移去关键字。这是通过在/etc/portage/make.conf里定义USE全局变量来实现的。在这个变量里，添加你需要的额外的USE标志，或者移去你不需要的USE标志。后者可通过在标记前面加个负号 (-).前缀来实现
+***** 例如要去掉KDE、QT添加LDAP，则设置/etc/portage/make.conf文件中的USE变量
+#+BEGIN_SRC conf
+USE="-kde -qt4 -qt5 ldap"
+#+END_SRC
+**** Declaring USE flags for individual packages(为单个包声明USE标志)
+***** 有时候，需要为一个应用程序设置USE flags而不影响整个系统，这时可以编辑/etc/portage/package.use文件，此文件可以是一个单独文件，也可以是/etc/portage/package.use目录包含多个子文件
+#+BEGIN_SRC conf
+FILE /etc/portage/package.use Enabling Blu-ray support for VLC
+media-video/vlc bluray
+#+END_SRC
+***** 同样，要为某个应用程序禁用USE flags只需要前面加"-"号(如果此时在make.conf文件中包含有此USE flags则不影响其他软件使用)
+#+BEGIN_SRC conf
+FILE /etc/portage/package.useDisable bzip2 support for PHP
+dev-lang/php -bzip2
+#+END_SRC
+**** Declaring temporary USE flags(声明临时USE标志)
+***** 只想暂时改变一个USE设置,可以仅仅把USE变量声明成一个环境变量,而不必修改/etc/portage/make.conf,但是要记住，当你重新emerge或者升级这个程序的时候（不管是单独地还是作为系统升级的一部分）,修改会被重置
+#+BEGIN_SRC shell
+# 例如本次安装取消某项功能
+# USE="-pulseaudio" emerge -av www-client/seamonkey
+#+END_SRC
+**** Precedence(优先级)
++ USE设置的优先级，按优先级排序（倒序，环境变量USE优先级最高）
+  1. make.defaults 里面的USE默认设定
+  2. 用户在/etc/portage/make.conf里面的USE默认设定
+  3. 用户在 /etc/portage/package.use里面的USE默认设定
+  4. 用户作为环境变量的USE设定
++ 运行 emerge --info可以看到Portage识别的最终的USE设定。它会列出Portage使用的所有相关变量（包括 USE 变量）
+**** Adapting the entire system to the new USE flags(在整个系统上应用新的USE标志)
+***** 如果你已经修改了你的USE标志，而且你想用新的USE标志更新你的系统，可以使用emerge的 --newuse选项
+#+BEGIN_SRC shell
+# emerge --update --deep --newuse @world
+#+END_SRC
+***** 运行Portage的depclean来移除已经安装到你的"旧"系统里但是在新USE标志中被废除的条件依赖关系
+#+BEGIN_SRC shell
+运行emerge --depclean是一项危险的操作，必须小心。请反复检查要删除的包的列表里确定没有你仍然需要的包。下面这个例子里，我们添加了-p 选项来，只列出这些包而不删除他们
+# emerge -p --depclean
+确认后执行
+# emerge --depclean
+#+END_SRC
+***** depclean完成之后，运行revdep-rebuild来重新构建那些动态链接到由可能已经删除的包提供的公共对象的程序。revdep-rebuild是app-portage/gentoolkit包的一部分，不要忘了先安装它
+#+BEGIN_SRC shell
+# revdep-rebuild
+#+END_SRC
+这些都完成之后，你的系统就已经应用上了新的USE标志的设定
+*** Package specific USE flags(软件包特有的USE标志)
+**** Viewing available USE flags(查看可用USE标志)
+***** 以--pretend和 --verbose为选项执行 emerge来查看
+#+BEGIN_SRC shell
+# emerge --pretend --verbose www-client/seamonkey
+These are the packages that would be merged, in order:
+Calculating dependencies... done!
+[ebuild  N     ] www-client/seamonkey-2.48_beta1::gentoo  USE="calendar chatzilla crypt dbus gmp-autoupdate ipc jemalloc pulseaudio roaming skia startup-notification -custom-cflags -custom-optimization -debug -gtk3 -jack -minimal (-neon) (-selinux) (-system-cairo) -system-harfbuzz -system-icu -system-jpeg -system-libevent -system-libvpx -system-sqlite {-test} -wifi" L10N="-ca -cs -de -en-GB -es-AR -es-ES -fi -fr -gl -hu -it -ja -lt -nb -nl -pl -pt-PT -ru -sk -sv -tr -uk -zh-CN -zh-TW" 216,860 KiB
+Total: 1 package (1 new), Size of downloads: 216,860 KiB
+#+END_SRC
+***** emerge 并不是做这件事的唯一工具。事实上，我们有一个专门的包信息工具叫equery，它属于app-portage/gentoolkit
+#+BEGIN_SRC shell
+# equery --nocolor uses =gnumeric-1.12.31
+
+[ Legend : U - final flag setting for installation]
+[        : I - package is installed with flag     ]
+[ Colors : set, unset                             ]
+ * Found these USE flags for app-office/gnumeric-1.12.31:
+ U I
+ + + introspection            : Add support for GObject based introspection
+ - - libgda                   : Enable database support through gnome-extra/libgda.
+ - - perl                     : Enable perl plugin loader.
+ + + python                   : Enable python plugin loader.
+ + + python_targets_python2_7 : Build with Python 2.7
+#+END_SRC
+*** Satisfying REQUIRED_USE conditions(满足 REQUIRED_USE)
+**** 一些ebuild需要或禁止USE标志的某些组合才能正常工作。 这通过放置在REQUIRED_USE，用一组条件来表示,此条件确保所有功能和依赖性都已完成,并且构建将成功并按预期执行,如果任何一个不符合,emerge会提醒你,并要求你解决这个问题
++ 例如
+  REQUIRED_USE="foo? ( bar )" 	如果 foo 被设定, 则必须设定bar 。
+  REQUIRED_USE="foo? ( !bar )" 	如果 foo 被设定， 则必须不设定 bar。
+  REQUIRED_USE="foo? ( || ( bar baz ) )" 	如果 foo被设定， 则必须设定 bar 或baz 。
+  REQUIRED_USE="^^ ( foo bar baz )" 	foo bar 或baz 中必须有一个被设定
+  REQUIRED_USE="|| ( foo bar baz )" 	foo bar 或 baz 中至少有一个被设定。
+  REQUIRED_USE="?? ( foo bar baz )" 	foo bar 或 baz中必须同时被设定多个USE 
+** Slot
+*** 概念
++ 可以同时安装同一软件包的多个版本到系统中，通常对于库文件(libraries)特别有用
++ 大多数软件包不需要指定(使用)slot,在软件包的ebuilds中默认设置为SLOT="0"，表示没有使用slot
++ 注意这不同于设置为空slot(SLOT=""),空slot表示彻底禁用slot，该软件包将不可用
++ 带有slot的包, 包名后面会有:冒号分隔, 并带上slot编号或名字
+*** 相关命令
+**** eix(需要安装)
+查询软件包的slot号码
+***** 安装
+#+BEGIN_SRC shell
+# emerge -av app-portage/eix
+#+END_SRC
+***** 使用
+#+BEGIN_SRC shell
+# eix dnspython
+  dev-python/dnspython
+     Available versions:
+     (py2)  1.12.0-r200
+     (py3)  1.12.0-r300
+       {examples test PYTHON_TARGETS="python2_7 python3_3 python3_4"}
+     Homepage:            http://www.dnspython.org/ https://pypi.python.org/pypi/dnspython
+     Description:         DNS toolkit for Python
+#+END_SRC
+**** equery 
+#+BEGIN_SRC shell
+# equery l -po dnspython
+  Searching for dnspython ...
+      [-P-] [  ] dev-python/dnspython-1.12.0-r200:py2
+      [-P-] [  ] dev-python/dnspython-1.12.0-r300:py3
+      [-P-] [ ~] dev-python/dnspython-1.12.0-r301:py3
+#+END_SRC
+**** equery keywords
+#+BEGIN_SRC shell
+# equery keywords dnspython
+  Keywords for dev-python/dnspython:
+              |                                 | u     |
+              | a a   a         n   p r     s   | n     |
+              | l m   r h i m m i   p i s   p   | u s   | r
+              | p d a m p a 6 i o p c s 3   a x | s l   | e
+              | h 6 r 6 p 6 8 p s p 6 c 9 s r 8 | e o   | p
+              | a 4 m 4 a 4 k s 2 c 4 v 0 h c 6 | d t   | o
+  ------------+---------------------------------+-------+-------
+  1.12.0-r200 | + + + ~ + + o o o + + o ~ ~ + + | o py2 | gentoo
+  ------------+---------------------------------+-------+-------
+  1.12.0-r300 | + + + ~ + + o o o + + o ~ ~ + + | o py3 | gentoo
+  1.12.0-r301 | ~ ~ ~ ~ ~ ~ o o o ~ ~ o ~ ~ ~ ~ | o     | gentoo
+#+END_SRC
+*** 使用slot安装不同不同版本软件
+**** 使用eix查询软件不同版本对应的slot编号
+#+BEGIN_SRC shell
+#  eix dev-lang/python
+#+END_SRC
+**** 根据slot编号安装不同版本软件
+#+BEGIN_SRC shell
+# emerge -av dev-lang/python:3.3
+#+END_SRC
+** Portage introduction
+*** 介绍
++ Portage由python和bash编写,大多数用户通过emerge命令来使用Portage,# man emerge 来查看emerge命令的所有选项
++ 通过使用Portage，一个软件的不同版本可以共存于一个系统中。其他发行版倾向于直接在软件包名字中包含版本号（例如freetype 和 freetype2），Gentoo的Portage使用一种我们称之为SLOT'的技术来实现这种并存。一个ebuild为它自身的版本声明了一个确切的SLOT。具有不同SLOT的同一软件的Ebuild可以共存于同一个系统中。例如，上例中那个freetype包就拥有不同的ebuilds，里面分别有 SLOT="1" 和SLOT="2"的标志
++ 有一些不同的软件包提供了类似的功能。比如metalogd，sysklogd和syslog-ng都是系统日志记录工具。那些依赖于“系统日志记录工具”的程序并不能随便的依赖于其中之一，比如metalogd。因为其他的系统日志工具可能也是很好的选择。好在Portage允许使用虚拟包：每一个系统日志记录工具都可以提供virtual/logger包，因此应用程序们可以设定成仅仅依赖于virtual/syslog即可
++ Portage树中的软件可以存在于不同的分支中。您的系统默认只会接受那些Gentoo认为稳定的软件包。绝大多数新提交的软件会被添加到测试分支里。这意味着在此软件被标示为稳定版前需要进行更多的测试。尽管您可以看到那些软件的ebuilds已经加入Portage数据库，在它们未被加入稳定分支前Portage将不会安装它们
++ 每一个Gentoo安装都依附于一个确定的profile，此文件里除了其他信息外还包含了一个正常工作的系统需要的软件包的列表
+*** Gentoo repository(本地仓库)
+**** Ebuilds
+***** Ebuilds文件中包含Portage管理软件所需的相关信息，默认存放在/usr/portage目录中
+***** Gentoo repository本身就是所有ebuilds文件的集合
+***** Portage对于软件的管理是基于本地的ebuild,为了能收到新的软件包,安全更新等等,时常更新本地ebuild是一件很重要的事情
+**** Updating the Gentoo repository(更新本地仓库)
+***** 软件仓库通常使用rsync进行同步,rsync是一个快速的文件增量传输工具,要使用它很简单,Portage的命令行前端emerge提供了一个调用rsync的方法： 
+#+BEGIN_SRC shell
+# 最近1小时
+# emerge --sync
+#+END_SRC
+***** 有时一些防火墙会干扰rsync与镜像们的连接,在这时,我们可以使用emerge-webrsync来自动下载和安装Portage树的快照版本,另一个好处是可以只安装由Gentoo release engineering团队的GPG密钥签名过的快照
+#+BEGIN_SRC shell
+# 最近24小时(Daily)
+# emerge-webrsync
+#+END_SRC
+*** Maintaining software(维护软件)
+**** Searching for software(查找软件)
+****** 有很多方法可以在Gentoo的软件仓库寻找软件,其中之一是使用emerge本身,在默认情况下emerge --search会返回所有符合搜索条件的包名
+#+BEGIN_SRC shell
+# emerge --search(-s) pdf
+
+# 根据描述进行搜索
+# emerge --searchdesc(-S) pdf
+#+END_SRC
+**** Installing software(安装软件)
+***** 当找到了软件包的名字，只需要使用emerge
+#+BEGIN_SRC shell
+# emerge --ask app-office/gnumeric
+#+END_SRC
+***** 由于很多软件依赖其它的软件,在安装该软件的同时很可能还会安装它的一些依赖,Portage可以很好得处理依赖关系,如果要知道Portage会安装什么软件,可以在命令中加入--pretend选项
+#+BEGIN_SRC shell
+# emerge --pretend gnumeric
+#+END_SRC
+***** 在安装软件期间,Portage将从Internet下载必要的源代码（如果需要）,并将其默认存储在/usr/portage/distfiles/中,之后,它将解压缩,编译和安装包,要让Portage仅下载源代码而不安装软件,请添加--fetchonly选项到emerge命令
+**** Finding installed package documentation(查找已安装软件的文档)
+***** 很多软件都自带有文档，在安装时设置USE Flag中的"doc"可以决定是否安装该软件的文档，通过emerge -vp命令可以查看并设置"doc"是否开启,被安装的文档通常存放在/usr/share/doc/下对应软件的目录中
+#+BEGIN_SRC shell
+# emerge -vp media-libs/alsa-lib
+#+END_SRC
+***** 使用equery命令查询portage数据可以查看已安装的文档文件
+#+BEGIN_SRC shell
+# equery files --filter=doc alsa-lib
+#+END_SRC
+**** Removing software(卸载软件)
+***** 使用emerge --unmerge命令,删除软件包，命令执行完成后，Portage将会移除此软件包安装到您系统中的所有文件，除了那些在安装软件后您修改过的配置文件。保留这些修改过的配置文件是为了便于您今后再次使用它
+#+BEGIN_SRC shell
+# emerge --unmerge gnumeric
+#+END_SRC
+***** 特别注意：Portage将不会检查您要删除的包是否仍被其他的包依赖。但是当您要删除一个可能破坏您系统的重要的软件包时，它还是会给予警告
+***** 从系统中移除一个软件包时,之前那些为了满足其依赖关系而被自动安装的软件包将会被保留在系统中,要使Portage找到现在可以删除的所有依赖项,可以使用--depclean功能
+#+BEGIN_SRC shell
+# emerge --depclean  # 这个命令将清理系统中所有未被依赖的孤立包,当提示“exiting preserved libs....”Use emerge @preserved-rebuild to rebuild packages using these libraries时，执行其中提示的命令进行修复
+# revdep-rebuild  #要重新编译那些曾经与刚刚移除的这些包动态连接过的应用程序，因为实际上这些程序不需要那些，这个命令需要安装工具包emerge --ask app-portage/gentoolkit
+#+END_SRC
+*** Updating the system(更新系统)
+**** 要保持您的系统在最佳状态,需要定期的更新您的系统
+**** 由于Portage只检查Gentoo repository中的ebuilds文件，所以第一步就是升级Gentoo repository
+#+BEGIN_SRC shell
+# emerge --sync
+#+END_SRC
+**** Gentoo repository升级完毕后,执行emerge --update --ask @world对系统进行更新
+#+BEGIN_SRC shell
+# emerge --update --ask @world
+#+END_SRC
+**** emerge --update --ask @world命令只会更新用户指定安装的软件，即存在于/var/lib/portage/world文件中的软件，并不检查和更新相应的依赖软件包，使用--deep选项则同时更新依赖软件包
+#+BEGIN_SRC shell
+# emerge --update --deep @world
+#+END_SRC
+**** 但这不意味着更新所有的包：在编译和构建程序的过程中需要系统上的一些依赖程序,但是一旦安装了这些软件,就不再需要这些依赖,Portage中称为“构建依赖”，要在更新这些内容，添加--with-bdeps=y,可以是偶尔运行一次
+#+BEGIN_SRC shell
+# emerge --update --deep --with-bdeps=y @world
+#+END_SRC
+**** 每当改变了系统中任何的USE标记后，最好加入--newuse选项，这样Portage将会验证这个USE标记的变动是否导致需要安装新的软件包或者将现有的包重新编译
+#+BEGIN_SRC shell
+# emerge --update --deep --with-bdeps=y --newuse @world
+#+END_SRC
+**** Metapackages(Meta软件包)
++ Gentoo中的一些软件包并没有包含任何实际的内容，而只是用来安装一系列软件包的集合。例如，kde-apps/kde-meta 包就是一个包含了一系列与KDE相关的互相依赖的软件包的集合，您可以通过安装它来在系统中搭建起一个完整的KDE环境
++ 如果您试图从系统中移除一个这样的软件包的集合体，只是单纯地使用 emerge --unmerge 命令并不能完成您的要求，原因在于这些包的依赖关系仍然保留在系统中,不用担心，Portage也提供了移除孤立依赖的软件包的功能，但由于软件包间的依赖关系是动态的，您首先需要充分地更新您的整个系统，包括更改USE标记设定而导致的变化。在这之后您可以运行emerge --depclean来移除那些完全没有被其他包依赖的软件包。移除之后你需要使用revdep-rebuild重新编译那些曾经与刚刚移除的这些包动态连接过的应用程序，因为实际上这些程序不需要那些包
++ 所有这些可以用以下三个命令来实现
+  #+BEGIN_SRC shell
+  # emerge --update --deep --with-bdeps=y @world
+  # emerge --depclean  #当提示“exiting preserved libs....”Use emerge @preserved-rebuild to rebuild packages using these libraries时，执行其中提示的命令进行修复
+  # revdep-rebuild
+  #+END_SRC
++ revdep-rebuild工具由app-portage/gentoolkit提供
+  #+BEGIN_SRC shell
+  # emerge --ask app-portage/gentoolkit
+  #+END_SRC
+*** Licenses(授权协议)
+**** 可以根据其授权协议接受或拒绝安装软件,portage树中的所有包在其ebuild中包含一个LICENSE选项,运行emerge --search package/category将显示软件包的许可证
+**** 默认情况下，Portage允许所有授权协议,除了需要阅读和签署接受协议的“最终用户许可协议（EULA）
+**** 控制允许的许可证的变量称为ACCEPT_LICENSE，可以在/etc/portage/make.conf文件中设置
+#+BEGIN_SRC conf
+FILE /etc/portage/make.conf The default ACCEPT_LICENSE setting
+ACCEPT_LICENSE="* -@EULA"
+#+END_SRC
+使用此配置,在安装期间需要进行人机交互以接受其EULA的软件包将无法安装,不带EULA的软件包将可安装
+**** 可以在ACCEPT_LICENSE中全局设置t ACCEPT_LICENSE，或者在/etc/portage/package.license 文进行配置
+#+BEGIN_SRC conf
+要允许www-client/google-chrome 包的google-chrome的授权协议， 把下面的内容添加到 /etc/portage/package.license
+/etc/portage/package.license 接受www-client/google-chrome 包的 google-chrome 的授权协议
+www-client/google-chrome google-chrome
+这允许安装www-client/google-chrome 程序包，但禁止安装www-plugins/chrome-binary-plugins 程序包，即使它具有相同的 授权协议
+#+END_SRC
+**** 授权协议存储在 /usr/portage/licenses/ ，授权协议组在/usr/portage/profiles/license_groups 里面。CAPITAL字母中每行的第一个条目是许可证组的名称，之后的每个条目都是单独的许可证
+**** 在 ACCEPT_LICENSE 变量中定义的许可证组前缀为@ 符号。 如果要设置成只允许安装自由软件和文档，要完成此操作：删除所有当前接受的许可证（使用(using -*)），然后只允许FREE组中的许可证如下
+#+BEGIN_SRC conf
+/etc/portage/make.conf只接受自由软件或文档
+ACCEPT_LICENSE="-* @FREE"
+#+END_SRC
+*** When Portage is complaining(Portage报错)
+**** Blocked packages(被阻挡的包)
+***** 警告信息
+#+BEGIN_SRC shell
+CODE Portage关于被阻挡的包的警告(使用 --pretend参数)
+[blocks B     ] mail-mta/ssmtp (is blocking mail-mta/postfix-2.2.2-r1)
+
+CODE Portage warning about blocked packages (without --pretend)
+!!! Error: the mail-mta/postfix package conflicts with another package.
+!!!        both can't be installed on the same system together.
+!!!        Please use 'emerge --pretend' to determine blockers.
+#+END_SRC
+***** 原因
++ Ebuilds文件中包含了特定的字段，里面为Portage提供了此软件的各种依赖关系的信息。总计有两种可能的依赖关系：一种是编译依赖，在 DEPEND 区域进行声明;另一种是“运行时”依赖，在RDEPEND区域中进行声明。如果上述两种依赖关系中任何一个明确指明某个实体或者虚拟包（译注：可能已安装和正要安装）与要安装的包不相容的时候，就会阻挡软件的安装
+***** 处理
++ 为了使安装得以继续进行，您可以选择不安装这个软件包，或者先将发生冲突的包卸载。例如，在我们给出的这个例子中，您可以选择不安装postfix，或者先卸载ssmtp，你也可能会遇到某些特定版本的包被屏蔽的情况，比如<media-video/mplayer-1.0_rc1-r2。在这种情况下，升级到一个更新的版本就能解决问题
++ 还有一种情况就是安装两个软件相互blocked，绝大多数情况下，应该是只安装(使用)其中某一软件即可
+**** Masked packages(被屏蔽的包)
+***** 警告信息
+#+BEGIN_SRC shell
+CODE Portage关于被阻挡的包的警告
+!!! all ebuilds that could satisfy "bootsplash" have been masked.
+
+CODE PPortage关于被屏蔽的包的警告——原因
+!!! possible candidates are:
+- gnome-base/gnome-2.8.0_pre1 (masked by: ~x86 keyword)
+- lm-sensors/lm-sensors-2.8.7 (masked by: -sparc keyword)
+- sys-libs/glibc-2.3.4.20040808 (masked by: -* keyword)
+- dev-util/cvsd-1.0.2 (masked by: missing keyword)
+- games-fps/unreal-tournament-451 (masked by: package.mask)
+- sys-libs/glibc-2.3.2-r11 (masked by: profile)
+- net-im/skype-2.1.0.81 (masked by: skype-eula license(s))
+#+END_SRC
+***** 原因
++ 安装一个对于您系统不可用的软件包。您会收到类似这样的屏蔽错误提示。您应该试着安装那些对于您系统可用的程序或者等待那些不可用的包被置为可用的。通常一个软件包被屏蔽的原因在于
+  1. ~arch keyword 	这个软件没有经过充分的测试，不能进入稳定分支，请等待一段时间后在尝试使用它。
+  2. -arch keyword or -* keyword 	这个软件不能工作在您机器的体系结构中。如果您确信它能工作那么请到我们的bugzilla网站提交一个bug报告。
+  3. missing keyword 	这个软件还没有在您机器的体系结构中进行过测试。您可以咨询相应体系结构移植小组是否能对它进行测试，或者您自己为他们进行这样的测试并将您得到的结论提交到我们的bugzilla网站。
+  4. package.mask 	这个软件被认为是损坏的，不稳定的或者有更严重的问题，它被故意标识为“不应使用”。
+  5. profile 	这个软件不适用于您的profile。安装这样的应用软件可能会破坏您的系统，或者只是不能与您使用的profile相兼容。
+  6. license 	这个包的许可证的ACCEPT_LICENSE值不正确。 通过设置许可证或正确的许可证组来允许其许可证:/etc/portage/make.conf或 /etc/portage/package.license
+**** Necessary USE flag changes(USE必要的更改)
+***** 警告信息
+#+BEGIN_SRC shell
+CODE Portage 提示 USE 标志需要进行更改
+The following USE changes are necessary to proceed:
+#required by app-text/happypackage-2.0, required by happypackage (argument)
+>=app-text/feelings-1.0.0 test
+
+如果未使用--autounmask参数，则错误消息也可能显示如下：
+CODE Portage 提示USE标志设置错误
+emerge: there are no ebuilds built with USE flags to satisfy "app-text/feelings[test]".
+!!! One of the following packages is required to complete your request:
+- app-text/feelings-1.0.0 (Change USE: +test)
+(dependency required by "app-text/happypackage-2.0" [ebuild])
+(dependency required by "happypackage" [argument])
+#+END_SRC
+***** 原因
++ 当请求安装包时，发生这种警告或错误，这不仅取决于另一个包，而且还要求该包使用特定的USE标志（或一组USE标志）构建。 在给定的示例中，包应用文本/感觉需要使用 USE="test"构建，但此系统上未设置此USE标志
+***** 处理
++ 要解决这个问题， 到/etc/portage/make.conf编辑里面的USE标志, 或者去/etc/portage/package.use设置一个特殊的包
+**** Missing dependencies(缺失依赖)
+***** 警告信息
+#+BEGIN_SRC shell
+CODE Portage提示依赖性不满足
+emerge: there are no ebuilds to satisfy ">=sys-devel/gcc-3.4.2-r4".
+!!! Problem with ebuild sys-devel/gcc-3.4.2-r2
+!!! Possibly a DEPEND/*DEPEND problem.
+#+END_SRC
+***** 原因
++ 这表示您正尝试安装的应用程序依赖于您的系统不可用的另外一些软件包。请到bugzilla查看是否有此问题的记录，如果没有查找到相关信息的话请提交一个报告。除非您的系统混用了不同分支，否则这类问题不应该发生，若发生了那就是一个bug
+**** Ambiguous ebuild name(意指不明的软件包)
+***** 警告信息
+#+BEGIN_SRC shell
+CODE Portage对于意指不明的Ebuild名称的警告
+
+[ Results for search key : listen ]
+[ Applications found : 2 ]
+  
+ *  dev-tinyos/listen [ Masked ]
+      Latest version available: 1.1.15
+      Latest version installed: [ Not Installed ]
+      Size of files: 10,032 kB
+      Homepage:      http://www.tinyos.net/
+      Description:   Raw listen for TinyOS
+      License:       BSD
+  
+ *  media-sound/listen [ Masked ]
+      Latest version available: 0.6.3
+      Latest version installed: [ Not Installed ]
+      Size of files: 859 kB
+      Homepage:      http://www.listen-project.org
+      Description:   A Music player and management for GNOME
+      License:       GPL-2
+  
+!!! The short ebuild name "listen" is ambiguous. Please specify
+!!! one of the above fully-qualified ebuild names instead.
+#+END_SRC
+***** 原因
++ 您要安装的应用程序对应有多个同名的包。您需要同时指定类别的名称。Portage会列出所有可供选择的名称匹配的包
+**** Circular dependencies(循环依赖)
+***** 警告信息
+#+BEGIN_SRC shell
+CODE Portage关于循环依赖问题的警告
+!!! Error: circular dependencies: 
+ebuild / net-print/cups-1.1.15-r2 depends on ebuild / app-text/ghostscript-7.05.3-r1
+ebuild / app-text/ghostscript-7.05.3-r1 depends on ebuild / net-print/cups-1.1.15-r2
+#+END_SRC
+***** 原因
++ 两个或两个以上的软件包在安装时产生循环依赖,这种情况一般是某一软件bug造成的
+***** 处理
++ 可以过段时间重新执行emerge --sync后重试一下
++ 在https://bugs.gentoo.org/ 中查找解决办法
+**** Fetch failed(下载失败)
+***** 警告信息
+#+BEGIN_SRC shell
+CODE Portage关于下载失败的警告
+!!! Fetch failed for sys-libs/ncurses-5.4-r5, continuing...
+(...)
+!!! Some fetch errors were encountered.  Please see above for details.
+#+END_SRC
+***** 原因
++ 当Portage下载指定软件的源代码失败时，它会尝试继续安装其它（若适用）的应用程序。源代码下载失败可能源于镜像服务器没有正确同步，也可能因为ebuild文件给出了错误的下载地址。那些保存源代码的服务器也可能因为某些原因宕机
+***** 处理
++ 一小时后重试一次，看看问题是否仍然存在
+**** System profile protection(系统Profile保护)
+***** 警告信息
+#+BEGIN_SRC shell
+CODE Portage关于profile中保护的包的警告
+!!! Trying to unmerge package(s) in system profile. 'sys-apps/portage'
+!!! This could be damaging to your system.
+#+END_SRC
+***** 原因
++ 您要求移除系统核心软件包中的一个。它是您的profile中所列出的必需的软件，因此不能从系统中移除
+**** Digest verification failure(Digest验证失败)
+***** 警告信息
+#+BEGIN_SRC shell
+CODE Digest验证失败
+>>> checking ebuild checksums
+!!! Digest verification failed:
+#+END_SRC
+***** 原因
++ 这种情况一般是软件仓库错误造成的
+***** 处理
++ 可以过段时间重新执行emerge --sync后重试一下
++ 在https://bugs.gentoo.org/ 中查找解决办法
++ 在gentoo (IRC)中询问
+** Portage features
+*** Portage features(Portage特性)
++ Portage有几个附加的特性，它们能够令您的Gentoo之旅更加愉快。这些特性中的大多数依赖于某些能够提高性能、可靠性、安全性等的软件工具
++ 为了打开或者关闭某一Portage特性您需要编辑 /etc/portage/make.conf中的 FEATURES变量，这个变量包含不同的特性关键字，用空格分开。在一些情况下您可能还需要额外的安装被这个特性所依赖的工具
++ 并不是所有Portage所支持的特性都在这里列出。完整的概述，请查阅make.conf手册页：make.conf
+  #+BEGIN_SRC shell
+  # man make.conf
+  #+END_SRC
++ 查看 FEATURES 的默认设置，运行emerge --info并且查找FEATURES变量或者用grep 显示它
+  #+BEGIN_SRC shell
+  # emerge --info | grep ^FEATURES=
+  #+END_SRC
+*** Distributed compiling(分布式编译)
+**** Using distcc(使用distcc)
++ distcc 是一个分布式编译程序，可以把编译任务分配给同一网络中的不同机器，这些机器的配置不必完全相同。distcc客户端发送所有必须的信息给所有可利用的distcc服务器（运行distccd的机器）。这样它们每一个都能为客户端编译一部分源码。所获得的效果就是更短的编译时间,可以在Gentoo Distcc文档里找到更多的关于Distcc的信息（包括如何让它在Gentoo上工作）
+**** Installing distcc(安装distcc)
++ Distcc使用一个图形化监视器来监视您的机器发送出去的编译工作。请把 USE=gnome 或 USE=gtk放进您的USE设置中
+  #+BEGIN_SRC shell
+  # emerge --ask sys-devel/distcc
+  #+END_SRC
+**** Activating Portage distcc support(激活Portage的distcc支持)
++ Add distcc to the FEATURES variable inside /etc/portage/make.conf. Next, edit the MAKEOPTS variable and increase the number of parallel build jobs that the system allows. A known guideline is to fill in -jN where N is the number of CPUs that run distccd (including the current host) plus one, but that is just a guideline
++ Now run distcc-config and enter the list of available distcc servers. For a simple example assume that the available DistCC servers are 192.168.1.102 (the current host), 192.168.1.103 and 192.168.1.104 (two "remote" hosts)
+  #+BEGIN_SRC shell
+  # distcc-config --set-hosts "192.168.1.102 192.168.1.103 192.168.1.104"
+  # rc-update add distccd default 
+  # /etc/init.d/distccd start
+  #+END_SRC
+*** Caching compilation objects(缓冲编译结果)
+**** About ccache(关于ccache)
++ ccache是一个快速编译器缓存。 无论何时编译应用程序，它都将缓存中间结果，以便每当重新编译相同的程序时，编译时间大大减少。 第一次运行ccache时，它会比正常编译慢得多。 但是后续的重新编译应该更快。 ccache只有在相同的应用程序将被重新编译多次（或相同应用程序的升级频繁发生）时才有用; 因此它通常只对软件开发人员有用
++ 警告:已知ccache会导致大量的编译失败。 有时ccache会保留旧代码对象或损坏的文件，这可能导致无法破损的源码。 如果发生这种情况（例如"File not recognized: File truncated"出现在构建日志中），请尝试重新编译ccache导致错误的应用程序 (FEATURES="-ccache" 到/etc/portage/make.conf) 
+**** Installing ccache(安装 ccache)
+#+BEGIN_SRC shell
+# emerge --ask dev-util/ccache
+#+END_SRC
+**** Activating Portage ccache support(激活Portage ccache 支持)
++ 打开 /etc/portage/make.conf并添加ccache到FEATURES变量。然后添加一个新的变量ccache并设置它为ccache
+  #+BEGIN_SRC conf
+  FILE /etc/portage/make.conf开启 Portage ccache 支持
+  FEATURES="ccache"
+  CCACHE_SIZE="2G"
+  #+END_SRC
++ 要检查ccache是否运行，只需让它提供给您它的统计数据。因为Portage使用一个不同的ccache主目录，您需要设定CCACHE_DIR变量
+  #+BEGIN_SRC shell
+  # CCACHE_DIR="/var/tmp/ccache" ccache -s
+  #+END_SRC
++ /var/tmp/ccache/是Portage的默认ccache主目录；为了修改这个设置，您可以设定/etc/portage/make.conf中的CCACHE_DIR参数,不过，如果您运行 ccache ，它使用的默认目录是${HOME}/.ccache/。这就是为什么当您查询（Portage）ccache统计数据的时候您需要设定 CCACHE_DIR参数的原因
+**** Using ccache outside Portage(非Portage编译中使用ccache)
++ 如果您需要在非Portage编译中使用ccache，添加 /usr/lib/ccache/bin/到您 PATH参数里靠前的位置（在/usr/bin之前）。这一点可以通过编辑在您用户主目录中的~/.bash_profile文件来实现。使用~/.bash_profile是定义 PATH参数的一个方式 
+  #+BEGIN_SRC conf
+  FILE ~/.bash_profileSetting the ccache location before any other PATH
+  PATH="/usr/lib/ccache/bin:${PATH}"
+  #+END_SRC
+*** Binary package support(二进制包支持)
+**** Creating prebuilt packages(创建预编译包)
++ Portage支持用预编译包安装。尽管Gentoo本身并不提供预编译包，Portage依然能够处理预编译包
++ 如果某个包已经被安装在您的系统上，您可以用quickpkg来创建一个预编译包。也可以用带有 --buildpkg或--buildpkgonly 选项的emerge命令
++ 如果您希望Portage为您所安装的每一个单独的包创建预编译包，在 FEATURES 中添加buildpkg参数
++ 预编译包的更多扩展支持可以用catalyst得到。关于catalyst的更多信息请参阅https://wiki.gentoo.org/wiki/Project:Catalyst/FAQ
+**** Installing prebuilt packages(安装预编译包)
++ 尽管Gentoo并不提供，但是您可以自己建立一个“中心仓库”来存放预编译包。如果您希望使用这个仓库，您需要设定PORTAGE_BINHOST参数使Portage能够知道它。例如，如果预编译包在ftp://buildhost/gentoo上
+  #+BEGIN_SRC conf
+  FILE /etc/portage/make.conf添加 PORTAGE_BINHOST
+  PORTAGE_BINHOST="ftp://buildhost/gentoo"
+  #+END_SRC
++ 需要安装预编译包的时候，在emerge命令后的 --getbinpkg选项旁加入 --usepkg 选项。前者让emerge命令从预定的服务器上下载预编译包，后者让emerge首先试图安装预编译包，如果预编译包不存在，那么才下载并编译源码
+  #+BEGIN_SRC shell
+  # emerge --usepkg --getbinpkg gnumeric
+  #+END_SRC
++ 关于emerge的预编译包的更多信息请参阅emerge手册页
+  #+BEGIN_SRC shell
+  # man emerge
+  #+END_SRC
+**** Distributing prebuilt packages to others(将预构建的软件包分发给他人)
++ 默认情况下，Portage将不会屏蔽任何包,因为有限制,这可以通过在/etc/portage/make.conf中设置ACCEPT_RESTRICT变量来全局更改,例如,要掩盖具有bindist限制的软件包,请将以下行添加到make.conf
+  #+BEGIN_SRC conf
+  FILE /etc/portage/make.conf只接受预编译包
+  ACCEPT_RESTRICT="* -bindist"
+  #+END_SRC
++ 还可以通过将ACCEPT_RESTRICT选项用于emerge命令，来覆盖--accept-restrict 变量。 例如， --accept-restrict=-bindist将临时屏蔽带有bindist 限制的包
++ 还可以考虑在分发包时设置ACCEPT_LICENSE变量
+*** Fetching files(下载文件)
+**** Userfetch(用户下载)
++ 当您以root身份运行Portage， FEATURES="userfetch"可以让Portage在下载源码包的时候放弃root特权。这是一个小小的安全性的提高方法
+**** Validated Gentoo repository snapshots(验证的Gentoo数据库照)
++ 管理员可以选择使用由Gentoo基础结构发布的加密验证的快照更新本地Gentoo ebuild树。 这确保没有流氓的rsync镜像将不必要的代码或包添加到系统正在下载的文件
++ Gentoo发布的OpenPGP密钥现在可作为二进制密钥环使用。 这些可以通过 app-crypt/gentoo-keys 包安装
+  #+BEGIN_SRC shell
+  # emerge --ask app-crypt/gentoo-keys
+  将把keyring 安装到/var/lib/gentoo/gkeys/keyrings/gentoo/release
+  #+END_SRC
+  #+BEGIN_SRC conf
+  FILE /etc/portage/make.conf开启Portage的 GPG 支持
+  FEATURES="webrsync-gpg"
+  PORTAGE_GPG_DIR="/var/lib/gentoo/gkeys/keyrings/gentoo/release"
+  #+END_SRC
+  #+BEGIN_SRC shell
+  FILE /etc/portage/repos.conf/gentoo.conf确定 sync-uri 的值
+  [DEFAULT]
+  main-repo = gentoo
+  [gentoo]
+  # Disable synchronization by clearing the values or setting auto-sync = no
+  # Do not set value of the variables in this configuration file using quotes ('' or "")!
+  # For portage-2.2.18 use 'websync'
+  # For portage-2.2.19 and greater use 'webrsync' (websync was renamed to webrsync)
+  sync-type = webrsync
+  sync-uri = 
+  auto-sync = yes
+  #+END_SRC
++ 确保安装了 app-crypt/gnupg
+  #+BEGIN_SRC shell
+  # emerge --ask app-crypt/gnupg
+  #+END_SRC
++ 使用 gpg 验证密钥环中的密钥是否是正确的密钥
+  #+BEGIN_SRC shell
+  # gpg --homedir /var/lib/gentoo/gkeys/keyrings/gentoo/release --with-fingerprint --list-keys
+  #+END_SRC
+  验证钥匙的指纹https://wiki.gentoo.org/wiki/Project:RelEng#Keys
++ 对每个要信任的密钥重复以下命令。 （将密钥ID替换为您想要信任的所需密钥的“0x ...”。）
+  #+BEGIN_SRC shell
+  # gpg --homedir /var/lib/gentoo/gkeys/keyrings/gentoo/release --edit-key 0xDB6B8C1F96D8BF6D trust
+  #+END_SRC
++ 如果出现GPG命令行菜单，请完全信任该键并通过输入以下命令退出程序
+  #+BEGIN_SRC shell
+  gpg>4
+  gpg>quit 
+  #+END_SRC
++ 系统现在设置为仅使用OpenPGP/gpg 验证的快照进行同步。有几个命令选项可用于执行同步,只需以下命令之一即可同步
+  #+BEGIN_SRC shell
+  root #emerge --sync
+  root #emaint sync -a
+  root #emaint sync --repo gentoo
+  root #emerge-webrsync
+  #+END_SRC
+** Working with Portage
+*** Files and directories(文件和目录)
+**** Portage files(Portage文件)
+***** Configuration directives(配置指南)
++ Portage附带了一个默认的配置文件/usr/share/portage/config/make.globals,当你打开它时,你就会发现所有的Portage配置选项都是通过变量来控制的
++ Portage也有相应的各组默认配置文件，它们是你的profile的一部分。你的profile是/etc/portage/make.profile 这个链接文件指向的目录
++ Portage的配置选项是在你的make.defaults以及所有被继承的profile中的make.defaults 文件中设定的
++ 如果打算改变配置变量，不要变更/usr/share/portage/config/make.globals 或者make.defaults。而应该修改/etc/portage/make.conf，它比前面的几个文件有更高的优先级。你会发现还有一个/usr/share/portage/config/make.conf.example文件。顾名思义，它仅仅是一个例子而已——Portage并不读取这个文件
+***** Profile-specific information(Profile特定的信息)
++ /etc/portage/make.profile不是一个真正的目录，而是一个指向/usr/portage/profiles/ 的符号链接，默认情况下是一个位于/usr/portage/profiles里的目录，虽然你也可以在其他地方创建自己的profile并指向他们。这个符号链接指向的profile就是你的系统所使用的
++ 一个profile包含了Portage需要的与架构相关的信息，比如该profile对应的system包含的软件包的列表，以及对这个profile来说不能运行的（或者被屏蔽掉）的软件列表，等等
+***** User-specific configuration(用户特定的配置)
++ 需要变更Portage安装软件的行为时，你需要做的就是编辑 /etc/portage/ 中的文件。我们强烈建议你使用/etc/portage/ 中的文件而不是通过修改环境变量来变更这些行为
++ 在/etc/portage/目录中，你可以创建下列文档
+  - package.mask它列出了你永远不希望Portage安装的软件包
+  - package.unmask 它列出了本来Gentoo的开发者不建议安装的，但是你希望能安装的软件包
+  - package.accept_keywords 它列出了还未被确认适合你的系统或架构，但是你希望能安装的软件包
+  - package.use它列出了你希望某些特定软件包使用的而不是整个系统使用的USE标记
+  - 这些并不需要一定是文件；它们也可以是有包含单个软件包信息文件的目录。更多关于 /etc/portage/目录的信息及你能创建的文件的完整列表可以在Portage的手册页中找到
+***** Changing Portage file and directory locations(改变Portage文件和目录的位置)
++ 先前提到的配置文件不能保存在其他地方——Portage总是会在这些特定的位置搜索配置文件。不过Portage还用了许多其他的位置来满足不同的目的：编译、保存源代码、保存portage数据库
++ 所有的这些目的都有众所周知的默认位置，不过你可以根据你自己的喜好通过/etc/portage/make.conf来改变它们
+**** Storing files(储存文件)
+***** Gentoo ebuild repository(Gentoo 软件仓库)
++ Portage树的默认位置是/usr/portage,这由缺省的repos.conf文件定义,位于/usr/share/portage/config/repos.conf,要修改默认值,请将此文件复制到 /etc/portage/repos.conf/gentoo.conf并更改location设置,当将Gentoo存储库存储在别处（通过更改此变量）时,不要忘记相应地更改/etc/portage/make.profile符号链接
++ 如果你改变了/etc/portage/repos.conf/gentoo.conf里面的location变量,你可能也需要改变下面几个变量,因为它们不会知道location变量的改变,这是Portage处理这些变量的方式导致的：PKGDIR,DISTDIR,and RPMDIR
+***** Prebuilt binaries(预编译二进制包)
++ 虽然Portage并不默认使用预编译的二进制包，但却对其有多方面的支持。当你要求Portage使用预编译的二进制包时，它就会在/usr/portage/packages.中寻找它们。这个位置是通过 PKGDIR 变量定义的
+***** Source code(源代码)
++ 程序的源代码默认保存于/usr/portage/distfiles。这个位置是通过DISTDIR 变量定义的
+***** Portage database(Portage 数据库)
++ Portage将你系统的状态（装了哪些软件包，什么文件属于哪个软件包……）保存在/var/db/pkg
++ 警告:不要手动改变这些文件！它可能破坏Portage对你系统的了解
+***** Portage cache(Portage缓存)
++ Portage缓存（包括修改时间、虚拟包、依赖关系树信息……）储存在/var/cache/edb。这个位置就是一个缓存：如果你没有正在运行portage相关的程序，你就可以清空它
+**** Building software(编译软件)
+***** Temporary portage files(Portage临时文件)
++ Portage的临时文件默认保存在/var/tmp/。这是通过 PORTAGE_TMPDIR变量定义
++ 如果你改变了PORTAGE_TMPDIR变量，你也需要改变下列的变量，因为它们不会知道PORTAGE_TMPDIR变量的改变。这是由于PORTAGE处理这些变量的方式导致的：BUILD_PREFIX
+***** Building directory(编译目录)
++ Portage为每一个它所安装的软件包在/var/tmp/portage/里创建特定的编译目录。这一位置是通过BUILD_PREFIX变量定义
+***** Live filesystem location(Live文件系统位置)
++ 默认情况下，Portage将所有的文件安装到当前文件系统(/)里。但是你可以通过改变环境变量ROOT来改变它。这在你想要创建一个新的编译镜像时是很有用的
+**** Logging features(日志特性)
+***** Ebuild logging(Ebuild日志)
++ Portage能为每一个ebuild建立日志文件，但只有当 PORT_LOGDIR变量设定的位置是portage可写的才行
++ 默认情况下，这个变量没有设定。如果你没有设定 PORT_LOGDIR，你就不会收到当前日志系统报告的任何编译日志，然而你可能收到一些来自新的elog机制的日志
++ 如果你定义了PORT_LOGDIR并且你也使用 elog，你就将收到编译日志以及elog保存的任何日志
++ Portage通过elog对日志记录提供精确的控制
+  - PORTAGE_ELOG_CLASSES
+  - PORTAGE_ELOG_SYSTEM
+  - PORTAGE_ELOG_COMMAND
+  - PORTAGE_ELOG_MAILURI
+  - PORTAGE_ELOG_MAILFROM
+  - PORTAGE_ELOG_MAILSUBJECT
+*** Variables(变量)
+**** Portage configuration
++ As noted previously, Portage is configurable through many variables which should be defined in /etc/portage/make.conf or one of the subdirectories of /etc/portage/. Please refer to the make.conf and portage man pages for more and complete information
+  #+BEGIN_SRC shell
+  # man make.conf
+  # man portage
+  #+END_SRC
+**** Build-specific options
+***** Configure and compiler options
+When Portage builds applications, it passes the contents of the following variables to the compiler and configure script
+****** CFLAGS and CXXFLAGS
++ Define the desired compiler flags for C and C++ compiling
+****** CHOST
++ Defines the build host information for the application's configure script
+****** MAKEOPTS
++ Passed to the make command and is usually set to define the amount of parallelism used during the compilation. More information about the make options can be found in the make man page
+***** Merge options
++ When Portage has merged a newer version of a certain software title, it will remove the obsoleted files of the older version from the system. Portage gives the user a 5 second delay before unmerging the older version. These 5 seconds are defined by the CLEAN_DELAY variable
++ It is possible to tell emerge to use certain options every time it is run by setting EMERGE_DEFAULT_OPTS. Some useful options would be --ask, --verbose, --tree, and so on
+**** Configuration file protection
+***** Portage protected locations
++ Portage overwrites files provided by newer versions of a software title if the files aren't stored in a protected location. These protected locations are defined by the CONFIG_PROTECT variable and are generally configuration file locations. The directory listing is space-delimited
++ A file that would be written in such a protected location is renamed and the user is warned about the presence of a newer version of the (presumable) configuration file
++ To find out about the current CONFIG_PROTECT setting, use the emerge --info output
+  #+BEGIN_SRC shell
+  # emerge --info | grep 'CONFIG_PROTECT='
+  #+END_SRC
++ More information about Portage's configuration file protection is available in the CONFIGURATION FILES section of the emerge manpage
+  #+BEGIN_SRC shell
+  # man emerge
+  #+END_SRC
+***** Excluding directories
++ To 'unprotect' certain subdirectories of protected locations users can use the CONFIG_PROTECT_MASK variable
+**** Download options
+***** Server locations
+When the requested information or data is not available on the system, Portage will retrieve it from the Internet. The server locations for the various information and data channels are defined by the following variables
+****** GENTOO_MIRRORS
++ Defines a list of server locations which contain source code (distfiles)
+****** PORTAGE_BINHOST
++ Defines a particular server location containing prebuilt packages for the system
+****** A third setting
++ A third setting involves the location of the rsync server which users use to update their local Gentoo repository. This is defined in the /etc/portage/repos.conf file (or a file inside that directory if it is defined as a directory)
++ The GENTOO_MIRRORS, sync-type, and sync-uri variables can be set automatically through the mirrorselect application. Of course, app-portage/mirrorselect needs to be installed first before it can be used. For more information, see mirrorselect's online help
+  #+BEGIN_SRC shell
+  # mirrorselect --help
+  #+END_SRC
++ If the environment requires the use of a proxy server, then the http_proxy, ftp_proxy, and RSYNC_PROXY variables can be declared
+******* sync-type
++ Defines the type of server and defaults to rsync
+******* sync-uri
++ Defines a particular server which Portage uses to fetch the Gentoo repository
+***** Fetch commands
++ When Portage needs to fetch source code, it uses wget by default. This can be changed through the FETCHCOMMAND variable
++ Portage is able to resume partially downloaded source code. It uses wget by default, but this can be altered through the RESUMECOMMAND variable
++ Make sure that the FETCHCOMMAND and RESUMECOMMAND store the source code in the correct location. Inside the variables the \${URI} and \${DISTDIR} variables can be used to point to the source code location and distfiles location respectively
++ it is also possible to define protocol-specific handlers with FETCHCOMMAND_HTTP, FETCHCOMMAND_FTP, RESUMECOMMAND_HTTP, RESUMECOMMAND_FTP, and so on
+***** Rsync settings
++ It is not possible to alter the rsync command used by Portage to update the Gentoo repository, but it is possible to set some variables related to the rsync command
+****** PORTAGE_RSYNC_OPTS
++ Sets a number of default variables used during sync, each space-separated. These shouldn't be changed unless you know exactly what you're doing. Note that certain absolutely required options will always be used even if PORTAGE_RSYNC_OPTS is empty
+****** PORTAGE_RSYNC_EXTRA_OPTS
+Used to set additional options when syncing. Each option should be space separated:
+
+--timeout=<number> 
+    This defines the number of seconds an rsync connection can idle before rsync sees the connection as timed-out. This variable defaults to 180 but dialup users or individuals with slow computers might want to set this to 300 or higher.
+--exclude-from=/etc/portage/rsync_excludes
+    This points to a file listing the packages and/or categories rsync should ignore during the update process. In this case, it points to /etc/portage/rsync_excludes.
+--quiet
+    Reduces output to the screen.
+--verbose
+    Prints a complete filelist.
+--progress
+    Displays a progress meter for each file
+****** PORTAGE_RSYNC_RETRIES
++ Defines how many times rsync should try connecting to the mirror pointed to by the SYNC variable before bailing out. This variable defaults to 3
+**** Gentoo configuration
+***** Branch selection(分支选择)
++ It is possible to change the default branch with the ACCEPT_KEYWORDS variable. It defaults to the architecture's stable branch
+***** Portage features(Portage特性)
++ It is possible to activate certain portage features through the FEATURES variable
+**** Portage behavior(Portage行为)
+***** Resource management(资源管理)
++ With the PORTAGE_NICENESS variable users can augment or reduce the nice value portage runs with. The PORTAGE_NICENESS value is added to the current nice value
+  #+BEGIN_SRC shell
+  # man nice
+  #+END_SRC
+***** Output behavior(输出行为)
++ The NOCOLOR variable, which defaults to false, defines if Portage should disable the use of colored output
+*** Mixing software branches(混合使用不同的软件分支)
+**** Using one branch(使用一个分支)
+***** Stable(稳定分支)
++ Gentoo提供了一个 ACCEPT_KEYWORDS变量来定义您系统所使用的软件分支。默认情况下，系统会选择您的体系结构的稳定软件分支amd64
++ 推荐您只使用默认的稳定软件分支
+***** Testing(测试分支)
++ 如果您想用最新版本的软件，您可以考虑转向使用测试分支。要让Portage转而使用测试分支的软件，您只需在您的体系结构名称前加上一个 ~符号
++ “测试分支”就是带有测试性质的。如果一个包正处于测试中，这代表软件的开发人员认为它虽然已经具有了相当的功能但还没有经过完全的测试
++ 要小心的是，您可能会遇到不稳定性、不完美的软件包处理（例如错误或者缺失的依赖关系）、过于频繁的更新（导致大量的编译）和损坏的包等问题
++ 例如，要选择针对 amd64 体系结构的测试分支，请修改 /etc/portage/make.conf 文件并设定如下内容
+  #+BEGIN_SRC conf
+  FILE /etc/portage/make.conf使用测试分支
+  ACCEPT_KEYWORDS="~amd64"
+  #+END_SRC
++ 之后如果您更新系统，您将会发现有大量的包需要更新。要提醒您注意的是：您使用测试分支更新系统后，再想转回使用官方的稳定分支将不是一件容易的事情
+**** Mixing stable with testing(混合使用稳定和测试分支)
+***** package.accept_keywords
++ 可以让Portage使用某些软件的测试分支中的版本，对于系统的其他软件则使用稳定分支
++ 要实现这样的目的，您需要在/etc/portage/package.accept_keywords文件里加入那些软件包的名字及其所属分类的名称。您也可以建立一个同名文件夹，并在里面建立的文件里加入上述内容
+  例如，要使用gnumeric属于测试分支中的版本
+  #+BEGIN_SRC conf
+  FILE /etc/portage/package.accept_keywords 单独使用测试分支中的gnumeric
+  app-office/gnumeric
+  #+END_SRC
+***** Testing particular versions(测试特定版本)
++ 如果您希望Portage使用测试分支中某软件的特定版本，但后续版本不再这么做，你可以在package.accept_keywords 里加入相应的版本号来实现这个目的
++ 在此情况下您必须使用 = 运算符。您也可以通过使用<=，<，>或>=运算符来指定一个要使用的版本范围
++ 任何情况下，如果您添加了版本号，您必须使用一个运算符；如果您忽略了版本号，您就不能使用运算符
+  在如下的例子中，我们要求Portage接受版本号为1.2.13的gnumeric
+  #+BEGIN_SRC conf
+  FILE /etc/portage/package.accept_keywords允许gnumeric的测试版本
+  =app-office/gnumeric-1.2.13
+  #+END_SRC
+***** Masked packages(使用被屏蔽的包)
+****** 查看系统mask信息
++ 如果在/etc/portage/package.accept_keywords中设置高版本无法使用时，查看如下文件
+  /usr/portage/profiles/releases/13.0/package.mask
++ 使用命令
+  #+BEGIN_SRC shell
+  # emerge -av "=net-libs/nodejs-8.9.3"
+  #+END_SRC
+****** package.unmask
++ Important：The Gentoo developers do not support the use of unmasking packages. Please exercise due caution when doing so. Support requests related to package.unmask and/or package.mask might not be answered
++ When a package has been masked by the Gentoo developers, yet despite the reason mentioned in the package.mask file (situated in /usr/portage/profiles/ by default) a user still wants to use this package, then add the desired version (usually this will be the exact same line from the package.mask file in the profile) to the /etc/portage/package.unmask file (or in a file in that directory if it is a directory)
++ For instance, if =net-mail/hotwayd-0.8 is masked, then it can be unmasked by adding the exact same line in the package.unmask location
+  #+BEGIN_SRC conf
+  FILE /etc/portage/package.unmask Unmasking a particular package/version
+  =net-mail/hotwayd-0.8
+  #+END_SRC
++ If an entry in /usr/portage/profiles/package.mask contains a range of package versions, then it is necessary to unmask only the version(s) that are actually needed. Please read the previous section to learn how to specify versions
+****** package.mask
++ It is also possible to ask Portage not to take a certain package or a specific version of a package into account. To do so, mask the package by adding an appropriate line to the /etc/portage/package.mask location (either in that file or in a file in this directory)
++ For instance, to prevent Portage from installing kernel sources newer than gentoo-sources-4.9.16, add the following line at the package.mask location
+  #+BEGIN_SRC conf
+  FILE /etc/portage/package.mask Mask gentoo-sources with a version greater than 4.9.16
+  >sys-kernel/gentoo-sources-4.9.16
+  #+END_SRC
+*** Additional tools(额外的工具)
+**** dispatch-conf
++ dispatch-conf是一个帮助合并 ._cfg0000_<name>的工具。 ._cfg0000_<name>是由Portage在它要覆盖被CONFIG_PROTECT变量所保护的某个目录里的文件时建立的
++ 使用 dispatch-conf,能够在合并配置文件并升级更新的同时保持所有更新记录
++ dispatch-conf以RCS版本管理系统或是补丁的方式来保存配置文件间的差别。这意味着如果你在升级配置文件犯下错误时，你可以随时退回到你的配置文件的之前版本
++ 使用 dispatch-conf,，你可以保持配置文件原来的样子，或者使用新的配置文件，你还可以编辑当前文件或交互式地合并更新。除此之外， dispatch-conf,还有一些很棒的特性
+  - 可以自动合并仅有注释变更的文件
+  - 可自动合并仅有空白符数量的不同的文件
++ 确定你先编辑了/etc/dispatch-conf.conf并创建了dispatch-conf变量设定的目录
+  #+BEGIN_SRC shell
+  # dispatch-conf
+  #+END_SRC
++ 当运行 dispatch-conf的时候，程序会带你把每个改变了的配置文件挨个过一边。按 u来用新配置文件更新（替换）现在的配置文件，然后继续处理下一个。按w来删除新配置文件，然后继续处理下一个。当处理完所有的配置文件之后， dispatch-conf就会退出。你也可以随时按q 来退出
+**** etc-update
++ 你也可以使用 etc-update来合并配置文件。它不像dispatch-conf那样简单易用，功能也少，但是它也能提供交互式合并功能并且能自动合并一些简单的改变
++ 和dispatch-conf不同的是， etc-update不保留你的配置文件的旧版本。一旦你更新了文件，旧版本就永远丢失了。所以要非常小心，因此使用etc-update 与使用 dispatch-conf 相比明显的不安全
+  #+BEGIN_SRC shell
+  # etc-update
+  #+END_SRC
++ 在整合简单直观的更动后，系统会提示你一个需要更新的受保护的文件列表。在最底下会提示你可选的操作选项
+  #+BEGIN_SRC shell
+  CODE etc-update 输出选项
+  Please select a file to edit by entering the corresponding number.
+              (-1 to exit) (-3 to auto merge all remaining files)
+                           (-5 to auto-merge AND not use 'mv -i'):
+  #+END_SRC
+  如果你输入-1, etc-update将直接退出且不执行任何变更。如果你输入-3 或者 -5,所有列出的配置文件将被更新的版本覆盖。因此先选出无需自动升级的配置文件非常重要，而具体步骤也很简单，只需要输入在该配置文件左边显示的数字就可以了
++ 我们选择配置文件/etc/pear.conf作为范例
+  #+BEGIN_SRC shell
+  CODE 更新指定的配置文件
+  Beginning of differences between /etc/pear.conf and /etc/._cfg0000_pear.conf
+  [...]
+  End of differences between /etc/pear.conf and /etc/._cfg0000_pear.conf
+  (1) Replace original with update
+  (2) Delete update, keeping original as is
+  (3) Interactively merge original with update
+  (4) Show differences again
+  #+END_SRC
+  可以看到这两个文件之间的差别。如果你认为升级的配置文件可以正确无误的投入使用，输入1.。如果你认为升级的配置文件是不必要的，或者它也没有提供任何新的或有用的信息，输入2.。如果你想交互地升级你当前的配置文件，输入3
++ 出于完整性的考虑，我们将列出在整合两个文件时可以用到的所有的命令。你将看到来自新旧文件的两行内容和一个提示符，在提示符这里你可以输入以下命令
+  #+BEGIN_SRC shell
+  CODE 用交互方式配置时可以使用的命令
+
+  ed:     Edit then use both versions, each decorated with a header.
+  eb:     Edit then use both versions.
+  el:     Edit then use the left version.
+  er:     Edit then use the right version.
+  e:      Edit a new version.
+  l:      Use the left version.
+  r:      Use the right version.
+  s:      Silently include common lines.
+  v:      Verbosely include common lines.
+  q:      Quit.
+  #+END_SRC
++ 当你完成重要的配置文件的更新后，余下的其它配置文件你就可以采用自动更新的方法了。当无法再找到任何可更新的配置文件时etc-update将退出
+**** quickpkg
++ 利用quickpkg可以对系统中已安装的包进行打包归档。这些归档文件可以作为预编译包使用。运行quickpkg非常简单：只要加上你想要制作的软件包的名字就可以了
++ 例如，要打包curl,arts,procps
+  #+BEGIN_SRC shell
+  # quickpkg curl orage procps
+  #+END_SRC
++ 预编译包会保存在$PKGDIR/All（默认为(/usr/portage/packages/)。指向这些包的符号链接保存在$PKGDIR/CATEGORY.中
+*** Custom package repository(定制软件仓库)
+**** Using a subset of the Gentoo repository
+***** Excluding packages and categories
++ It is possible to selectively update certain categories/packages and ignore the other categories/packages. This can be achieved by having rsync exclude categories/packages during the emerge --sync step
++ Define the name of the file that contains the exclude patterns in the PORTAGE_RSYNC_EXTRA_OPTS variable in /etc/portage/make.conf
+  #+BEGIN_SRC conf
+  FILE /etc/portage/make.confDefining the exclude file
+  PORTAGE_RSYNC_EXTRA_OPTS="--exclude-from=/etc/portage/rsync_excludes"
+  #+END_SRC
+  #+BEGIN_SRC conf
+  FILE /etc/portage/rsync_excludesExcluding all games
+  games-*/*
+  #+END_SRC
++ Note however that this may lead to dependency issues since new, allowed packages might depend on new but excluded packages
+***** Adding unofficial ebuilds
+****** Defining a custom repository
++ It is possible to ask Portage to use ebuilds that are not officially available through the Gentoo repository. Create a new directory (for instance /usr/local/portage) in which to store the 3rd-party ebuilds. Use the same directory structure as the official Gentoo repository!
++ 例如
+  #+BEGIN_SRC shell
+  # mkdir -p /usr/local/portage/{metadata,profiles}
+  # chown -R portage:portage /usr/local/portage
+  #+END_SRC
+  Next, pick a sensible name for the repository. The next example uses "localrepo" as the name: 
+  #+BEGIN_SRC shell
+  # echo 'localrepo' > /usr/local/portage/profiles/repo_name
+  #+END_SRC
++ Tell Portage that the repository master is the main Gentoo repository, and that the repository should not be automatically synchronized (as it is not backed by an rsync server, git mirror or other repository source): 
+  #+BEGIN_SRC conf
+  FILE /usr/local/portage/metadata/layout.conf
+
+  masters = gentoo
+  auto-sync = false
+  #+END_SRC
++ Finally, enable the repository on the local system by creating a repository configuration file inside /etc/portage/repos.conf, informing Portage where the local repository can be found: 
+  #+BEGIN_SRC conf
+  FILE /etc/portage/repos.conf/localrepo.conf
+
+  [localrepo]
+  location = /usr/local/portage
+  #+END_SRC
+****** Working with several overlays
++ For the power users who develop on several overlays, test packages before they hit the Gentoo repository or just want to use unofficial ebuilds from various sources, the app-portage/layman package brings layman, a tool to help users keep the overlay repositories up to date
++ Alternatively, install app-eselect/eselect-repository to utilize the native synchronization in Portage. See also https://wiki.gentoo.org/wiki/Eselect/Repository
+******* eselect-repository
++ Adding repositories is simple with this tool
++ For instance, to enable the hardened-development overlay
+  #+BEGIN_SRC shell
+  # eselect repository enable hardened-development
+  #+END_SRC
++ Updating of overlays added with this methods happens naturally with
+  #+BEGIN_SRC shell
+  # emerge --sync
+  #+END_SRC
+******* Layman
++ First install and configure layman as shown in the https://wiki.gentoo.org/wiki/Project:Overlays/Overlays_guide, and add the desired repositories with layman -a
++ For instance, to enable the hardened-development overlay
+  #+BEGIN_SRC shell
+  # layman -a hardened-development
+  #+END_SRC
++ Regardless of how many repositories are used through layman, all the repositories can be updated with the following command:
+  #+BEGIN_SRC shell
+  # layman -S
+  #+END_SRC
+****** Non-Portage maintained software
+******* Using Portage with self-maintained software
++ Sometimes users want to configure, install and maintain software individually without having Portage automate the process,even though Portage can provide the software titles. Known cases are kernel sources and Nvidia drivers
++ It is possible to configure Portage so it knows that a certain package is manually installed on the system (and thus take this information into account when calculating dependencies).
++ This process is called injecting and is supported by Portage through the /etc/portage/profile/package.provided file
++ For instance, to inform Portage about gentoo-sources-4.9.16 which has been installed manually, add the following line to /etc/portage/profile/package.provided
+  #+BEGIN_SRC conf
+  FILE /etc/portage/profile/package.providedMarking gentoo-sources-4.9.16 as manually installed
+  sys-kernel/gentoo-sources-4.9.16
+  #+END_SRC
+  Note:This is a file that uses versions without an = operator.
+*** Advanced features(高级特性)
+使用这些高级特性需要对gentoo非常熟悉，否则如果出错很难排查和纠正
+**** Per-package environment variables
+***** Using /etc/portage/env
+***** Example: Using debugging for specific packages
+**** Hooking in the emerge process
+***** Using /etc/portage/bashrc and affiliated files
+***** Example: Updating the file database
+**** Executing tasks after --sync
+***** Using /etc/portage/postsync.d location
+***** Example: Running eix-update
+**** Overriding profile settings
+***** Using /etc/portage/profile
+***** Example: Adding nfs-utils to the system set
+**** Applying non-standard patches
+***** Using epatch_user
+***** Example: Applying patches to Firefox
+** Initscript system(初始化脚本系统)
+*** Runlevels(运行级别)
+**** Booting the system(系统启动过程) 
++ 引导程序会把你在引导程序配置文件中定义的内核镜像加载到内存中，之后它就告诉CPU可以运行内核了，当内核被加载且运行后，内核会初始化所有内核专有的结构体和任务，并开始运行init脚本
++ init检查/etc/fstab中定义的分区是否加载并正常使用，然后执行/etc/init.d/中的脚本文件，启动服务
++ 最后，当所有的脚本执行完毕，init会激活虚拟终端(ALT+F1 F2 F3 F4)关联agetty进程，用户可以登陆
+**** Initscripts(init脚本)
++ init并不是执行/etc/init.d/中所有的脚本，而是执行/etc/runlevels/指定的脚本
++ 首先init会执行被/etc/runlevels/boot/连接引用的/etc/init.d/中的脚本，通常是按字母顺序启动，除了一些被依赖的脚本
++ 下一步，init开始执行/etc/runlevels/default/连接引用的/etc/init.d/中的脚本，同样通常是按字母顺序启动，除了一些被依赖的脚本
+**** How init works(init如何工作)
++ init脚本不会自主决定所有的事情，他需要/etc/inittab这个配置文件来指定行为
++ 告诉init必须运行 /sbin/openrc sysinit 来初始化系统
+  #+BEGIN_SRC conf
+  FILE /etc/inittab Initialization command
+  si::sysinit:/sbin/openrc sysinit
+  #+END_SRC
++ init执行所有/etc/runlevels/boot/连接引用的/etc/init.d/中的脚本
+  #+BEGIN_SRC conf
+  FILE /etc/inittab Boot command invocation
+  rc::bootwait:/sbin/openrc boot
+  #+END_SRC
++ 确定运行级别某个/etc/runlevels/
+  #+BEGIN_SRC conf
+  FILE /etc/inittab Default runlevel selection
+  id:3:initdefault:
+  #+END_SRC
++ 定义的运行级别，通常情况下都是级别id为3
+  #+BEGIN_SRC conf
+  FILE /etc/inittab Runlevel definitions
+  l0:0:wait:/sbin/openrc shutdown
+  l1:S1:wait:/sbin/openrc single
+  l2:2:wait:/sbin/openrc nonetwork
+  l3:3:wait:/sbin/openrc default
+  l4:4:wait:/sbin/openrc default
+  l5:5:wait:/sbin/openrc default
+  l6:6:wait:/sbin/openrc reboot
+  #+END_SRC
++ 设置虚拟终端(virtual consoles)
+  #+BEGIN_SRC conf
+  FILE /etc/inittabTerminal definitions
+  c1:12345:respawn:/sbin/agetty 38400 tty1 linux
+  c2:12345:respawn:/sbin/agetty 38400 tty2 linux
+  c3:12345:respawn:/sbin/agetty 38400 tty3 linux
+  c4:12345:respawn:/sbin/agetty 38400 tty4 linux
+  c5:12345:respawn:/sbin/agetty 38400 tty5 linux
+  c6:12345:respawn:/sbin/agetty 38400 tty6 linux
+  #+END_SRC
+**** Available runlevels(可用运行级别)
++ 运行级别定义在系统开始运行和离开时执行的脚本的集合
++ 在Gentoo中有7个运行级别，其中3个内置级别(internal runlevels)、4个用户定义级别(user-defined runlevels)
++ 内置级别(internal runlevels)包含：sysinit、shutdown、reboot
++ 用户定义级别(user-defined runlevels)包含：boot、default、nonetwork、single，在/etc/runlevels/目录中有对应的子目录
+  - boot runlevel 
+    运行系统所有必须、及其他runlevel用到的服务
+  - default runlevel
+    日常使用的运行级别
+  - nonetwork runlevel
+    无网络服务的运行级别
+  - single runlevel
+    通常为需要修复系统是使用的运行级别
+**** Working with initscripts
++ OpenRC进程可以执行/etc/init.d/目录中的init脚本,start, stop, restart, zap, status, ineed, iuse, iwant, needsme, usesme, or wantsme
++ 启动、关闭、重启服务(包括依赖服务)，使用start, stop, restart
+  #+BEGIN_SRC shell
+  # /etc/init.d/postfix start
+  
+  不影响依赖服务使用--nodeps
+  #/etc/init.d/postfix --nodeps stop
+  #+END_SRC
++ 查看服务当前状态，使用status 
+  #+BEGIN_SRC shell
+  # /etc/init.d/postfix status
+  #+END_SRC
++ 如果查看服务状态为运行，但该服务确实已经关闭，则使用zap来重置该服务的status为stop
+  #+BEGIN_SRC shell
+  # /etc/init.d/postfix zap
+  #+END_SRC
++ 查看服务的依赖状态使用iwant, iuse or ineed
+  #+BEGIN_SRC shell
+  # /etc/init.d/postfix ineed
+  #+END_SRC
++ 查看被那些服务所依赖使用needsme usesme or wantsme
+*** Updating runlevels
+**** rc-update
++ Gentoo的init系统使用依赖树(dependency-tree )管理服务启动顺序，rc-update可以添加或删除服务，同时调用depscan.sh更新依赖树
+**** Adding and removing services
++ 添加删除随系统启动的服务，使用rc-update add(del) 服务名称 runlevel名称(通常为default)
+  #+BEGIN_SRC shell
+  # rc-update del postfix default
+  #+END_SRC
++ 查看使用可用启动服务及连接运行级别 -v show
+  #+BEGIN_SRC shell
+  # rc-update show
+  # rc-update -v show
+  #+END_SRC
+*** Configuring services(配置服务)
+**** Why additional configuration is needed
++ init脚本本身可能是非常复杂的，直接编辑修改可能会引起错误，当需要改变init脚本时应使用配置文件
++ 另一个好处就是当init脚本更新是，配置文件不会受到影响
+**** conf.d directory(init脚本配置文件目录)
++ 每一个可配置的init脚本在/etc/conf.d/目录中都会有一个配置文件
+  #+BEGIN_SRC conf
+  FILE /etc/conf.d/apache2Example options for apache2 init script
+  APACHE2_OPTS="-D PHP5"
+  #+END_SRC
+*** Writing initscripts(编写init脚本)
+**** Is it necessary?(必要性)
++ 必要性很低，通过portage安装的软件都不需要，只有某个软件不是通过portage安装，并在特定情况下才需要编写对应的init脚本
++ 不要使用其他linux发行版本下的init脚本，除非该版本使用的是openrc
+**** Layout
+#+BEGIN_SRC conf
+CODE Example initscript layout (traditional)
+
+#!/sbin/openrc-run
+  
+depend() {
+#  (Dependency information)
+}
+  
+start() {
+#  (Commands necessary to start the service)
+}
+  
+stop() {
+#  (Commands necessary to stop the service)
+}
+#+END_SRC
+#+BEGIN_SRC conf
+CODE Example initscript layout (updated)
+
+#!/sbin/openrc-run
+command=/usr/bin/foo
+command_args="${foo_args} --bar"
+pidfile=/var/run/foo.pid
+name="FooBar Daemon"
+
+description="FooBar is a daemon that drinks"
+extra_started_commands="drink"
+description_drink="Opens mouth and reflexively swallows"
+
+depend() {
+#  (Dependency information)
+}
+
+start_pre() {
+#  (Commands necessary to prepare to start the service)
+    # Ensure that our dirs are correct
+    checkpath --directory --owner foo:foo --mode 0775 \
+        /var/run/foo /var/cache/foo
+}
+  
+stop_post() {
+#  (Commands necessary to clean up after the service)
+    # Clean any spills
+    rm -rf /var/cache/foo/*
+}
+
+drink() {
+    ebegin "Starting to drink"
+    ${command} --drink beer
+    eend $? "Failed to drink any beer :("
+}
+#+END_SRC
+**** Dependencies(依赖)
+**** Controlling the order
+**** Standard functions
+**** Adding custom options
+**** Service configuration variables
+*** Changing runlevel behavior(改变runlevel行为)
+**** Who might benefit(使用场景)
++ 当用户在家是应该开启net.eth0网卡服务，而在没有网络的环境下就不需要
++ 要实现此目的，可以创建second "default" runlevel，用户在启动时可以自己选择
+**** Using softlevel
++ 为second "default" runlevel在/etc/runlevels/创建目录，名字可以自选
+  #+BEGIN_SRC shell
+  # mkdir /etc/runlevels/offline
+  #+END_SRC
++ 为新创建的runlevel添加必要init脚本，可以直接拷贝默认defalut runlevel的脚本，除了不需要的部分
+  #+BEGIN_SRC shell
+  # cd /etc/runlevels/default
+  # for service in *; do rc-update add $service offline; done
+  # rc-update del net.eth0 offline
+  # rc-update show offline
+
+  (Partial sample Output)
+               acpid | offline
+          domainname | offline
+               local | offline
+            net.eth0 |
+
+  #+END_SRC
++ Even though net.eth0 has been removed from the offline runlevel, udev might want to attempt to start any devices it detects and launch the appropriate services, a functionality that is called hotplugging. By default, Gentoo does not enable hotplugging.To enable hotplugging, but only for a selected set of scripts, use the rc_hotplug variable in /etc/rc.conf: 
+  #+BEGIN_SRC conf
+  FILE /etc/rc.confEnable hotplugging of the WLAN interface
+  rc_hotplug="net.wlan !net.*"
+  #+END_SRC
++ Edit the bootloader configuration and add a new entry for the offline runlevel. In that entry, add softlevel=offline as a boot parameter. 
+**** Using bootlevel
++ bootlevel与softlevel基本相同，唯一的不同点是 a second "boot" runlevel is defined instead of a second "default" runlevel.
+** Environment variables(环境变量)
+*** Introduction(简介)
++ 环境变量是一个具有特定名字的对象，它包含了一个或者多个应用程序所将使用到的信息。许多用户（特别是那些刚接触Linux的新手）发现这些变量有些怪异或者难以控制。其实，这是个误会：通过使用环境变量，你可以很容易的修改一个牵涉到一个或多个应用程序的配置信息
+*** Important examples(重要的例子)
++ Linux系统通常使用的变量
+  - PATH
+    这个变量包含了一系列由冒号分隔开的目录，系统就从这些目录里寻找可执行文件。如果你输入的可执行文件（例如 ls, rc-update或者 emerge）不在这些目录中，系统就无法执行它（除非你输入这个命令的完整路径，如/bin/ls）
+  - ROOTPATH
+    这个变量的功能和 PATH相同，但它只罗列出超级用户（root）键入命令时所需检查的目录
+  - LDPATH
+    这个变量包含了一系列用冒号隔开的目录，动态链接器将在这些目录里查找库文件
+  - MANPATH
+    这个变量包含了一系列用冒号隔开的目录，命令 man 会在这些目录里搜索man页面
+  - INFODIR
+    这个变量包含了一系列用冒号隔开的目录，命令 info 将在这些目录里搜索info页面
+  - PAGER
+    这个变量包含了浏览文件内容的程序的路径，比如(less 或者 more)
+  - EDITOR
+    这个变量包含了修改文件内容的程序（文件编辑器）的路径(比如 nano 或 vi).
+  - KDEDIRS
+    这个变量包含了一系列用冒号隔开的目录，里面放的是KDE相关的资料
+  - CONFIG_PROTECT
+    这个变量包含了一系列用空格隔开的目录，它们在更新的时候会被Portage保护起来
+  - CONFIG_PROTECT_MASK
+    这个变量包含了一系列用空格隔开的目录，它们在更新的时候不会被Portage保护起来
++ 变量定义范例
+  #+BEGIN_SRC conf
+  PATH="/bin:/usr/bin:/usr/local/bin:/opt/bin:/usr/games/bin"
+  ROOTPATH="/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"
+  LDPATH="/lib:/usr/lib:/usr/local/lib:/usr/lib/gcc-lib/i686-pc-linux-gnu/3.2.3"
+  MANPATH="/usr/share/man:/usr/local/share/man"
+  INFODIR="/usr/share/info:/usr/local/share/info"
+  PAGER="/usr/bin/less"
+  EDITOR="/usr/bin/vim"
+  KDEDIRS="/usr"
+  CONFIG_PROTECT="/usr/X11R6/lib/X11/xkb /opt/tomcat/conf \
+                  /usr/kde/3.1/share/config /usr/share/texmf/tex/generic/config/ \
+                  /usr/share/texmf/tex/platex/config/ /usr/share/config"
+  CONFIG_PROTECT_MASK="/etc/gconf"
+  #+END_SRC
+*** Defining variables globally(全局变量的定义)
+**** The env.d directory(env.d目录)
++ Gentoo采用了/etc/env.d/目录来集中定义全局变量。在这个目录里，你会发现很多类似 00basic, 05gcc等等这样的文件，它们包含了文件名中提到的应用程序需要的变量
++ 举个例子，当你安装 gcc时，一个名为 05gcc 的文件就会被ebuild所创建，里面包含了如下一些变量
+  #+BEGIN_SRC conf
+  FILE /etc/env.d/05gcc GCC默认的环境变量
+
+  PATH="/usr/i686-pc-linux-gnu/gcc-bin/3.2"
+  ROOTPATH="/usr/i686-pc-linux-gnu/gcc-bin/3.2"
+  MANPATH="/usr/share/gcc-data/i686-pc-linux-gnu/3.2/man"
+  INFOPATH="/usr/share/gcc-data/i686-pc-linux-gnu/3.2/info"
+  CC="gcc"
+  CXX="g++"
+  LDPATH="/usr/lib/gcc-lib/i686-pc-linux-gnu/3.2.3"
+  #+END_SRC
++ 其他的发行版会让你到/etc/profile或者其他地方修改和添加这些变量的定义。而Gentoo为用户（还有为Portage）提供了更加便捷的方式来维护和管理环境变量，以后你不再需要把精力放在那些众多的包含环境变量的文件身上了。比如，当你更新完gcc 的时候， /etc/env.d/05gcc也会被同时更新，而不需要你手工来完成
++ 这不仅对Portage有益，作为用户，你也是受益者。有时候你需要设置某个系统范围的环境变量。我们拿http_proxy变量来做例子，为了避免http_proxy 搞乱，你只要新建一个文件/etc/env.d/99local然后添加你的定义
+  #+BEGIN_SRC conf
+  FILE /etc/env.d/99local 设置一个全局变量
+
+  http_proxy="proxy.server.com:8080"
+  #+END_SRC
+**** env-update
++ /etc/env.d/ 中的好几个文件都定义了PATH变量。这并没有错：当你运行env-update的时候，它会在更新环境变量之前把这些定义都追加到PATH里，因此对于软件包（或者用户）来说将会很容易地设置他们自己的环境变量，而不影响到现有变量的值
++ env-update 脚本会根据 /etc/env.d/ 里文件的字母顺序来附加变量的值。这些文件名必须要以两位数字开头
+  #+BEGIN_SRC conf
+  CODE env-update所用的更新顺序
+
+  00basic        99kde-env       99local
+  +-------------+----------------+-------------+
+  PATH="/bin:/usr/bin:/usr/kde/3.2/bin:/usr/local/bin"
+  #+END_SRC
++ 变量并不总是被串联起来，只有下列变量才会被串联： ADA_INCLUDE_PATH, ADA_OBJECTS_PATH, CLASSPATH, KDEDIRS, PATH, LDPATH, MANPATH, INFODIR, INFOPATH, ROOTPATH, CONFIG_PROTECT, CONFIG_PROTECT_MASK, PRELINK_PATH, PRELINK_PATH_MASK, PKG_CONFIG_PATH,和PYTHONPATH。对于( /etc/env.d/) 里的文件中按照字母顺序排列后）其他所有变量，最新定义的值才会被使用到
++ 可以通过将变量名添加到 COLON_SEPARATED or SPACE_SEPARATED （也在 /etc/env.d/ 文件）,当你运行 env-update的时候，它会在文件/etc/profile.env 里（会被/etc/profile使用）创建所有的环境变量。它也会从变量 LDPATH 中获取信息用来建立/etc/ld.so.conf。这些完成以后，它将运行 ldconfig来重建动态链接器需要的文件/etc/ld.so.cache
++ 如果你想在运行env-update后立即看到效果，执行下面的命令来更新你的环境
+  #+BEGIN_SRC shell
+  # env-update && source /etc/profile
+  #+END_SRC
++ 上面的命令只会更新你当前终端里的环境变量、新控制台以及它们的子程序。因此，假如你正在X11里工作，你要么在每一个你打开的终端里输入source /etc/profile ，要么重新启动X，这样所有新的终端才能引用到新的变量。如果你使用了登录管理器，登陆成root然后输入 /etc/init.d/xdm 。如果不是这样，你需要注销然后重新登录回X这样才能产生使用新变量值的子程序
++ 你在定义其他变量时不能使用shell变量。这意味着这样的定义 FOO="$BAR"（此处$BAR 是另外一个变量）是不允许的
+*** Defining variables locally(本地变量的定义)
+**** User specific(特定用户)
++ 你并不是一直都想定义全局变量。比如你想把/home/my_user/bin和当前目录（你当前所在的目录）添加到PATH 变量中，但又不想让其他用户的PATH变量中也有这个。如果你想定义一个本地变量，可以使用 ~/.bashrc 或者~/.bash_profile
+  #+BEGIN_SRC conf
+  FILE ~/.bashrc在~/.bashrc中扩展PATH做为本地使用
+
+  # A colon followed by no directory is treated as the current working directory
+  PATH="${PATH}:/home/my_user/bin:"
+  当你重新登录的时候，你的PATH变量将被更新
+  #+END_SRC
+**** Session specific(特定会话)
++ 有时候甚至需要更加严格的定义。你可能要使用一个你临时创建的目录里面的程序，而又不想输入它的路径或者为此短时间内内修改 ~/.bashrc,在这种情况下，你只需要在当前会话中使用export来定义 PATH 变量。只要你不注销，PATH变量将保持这个临时的设置
+  #+BEGIN_SRC shell
+  # export PATH="${PATH}:/home/my_user/tmp/usr/bin"
+  #+END_SRC
+** Network configuration(网络配置)
+*** Getting started(基础)
++ 网络配置的前提是正确安装了网卡的驱动程序，同时在/sys/class/net/目录中出现了网卡接口名称(network interface name(s))
++ To get started configuring the network card, tell the Gentoo RC system about it. This is done by creating a symbolic link from net.lo to net.eth0 (or whatever the network interface name is on the system) in /etc/init.d. 
+  #+BEGIN_SRC shell
+  # cd /etc/init.d
+  # ln -s net.lo net.eth0 
+  #+END_SRC
++ Gentoo's RC system now knows about that interface. It also needs to know how to configure the new interface. All the network interfaces are configured in /etc/conf.d/net file. Below is a sample configuration for DHCP and static addresses
+  #+BEGIN_SRC conf
+  FILE /etc/conf.d/netExample network configuration
+
+  # For DHCP
+  config_eth0="dhcp"
+  
+  # For static IP using CIDR notation
+  config_eth0="192.168.0.7/24"
+  routes_eth0="default via 192.168.0.1"
+  dns_servers_eth0="192.168.0.1 8.8.8.8"
+  
+  # For static IP using netmask notation
+  config_eth0="192.168.0.7 netmask 255.255.255.0"
+  routes_eth0="default via 192.168.0.1"
+  dns_servers_eth0="192.168.0.1 8.8.8.8"
+  #+END_SRC
++ If no configuration is mentioned for an interface then DHCP is assumed
++ CIDR stands for Classless InterDomain Routing. Originally, IPv4 addresses were classified as A, B, or C. The early classification system did not envision the massive popularity of the Internet, and is in danger of running out of new unique addresses. CIDR is an addressing scheme that allows one IP address to designate many IP addresses. A CIDR IP address looks like a normal IP address except that it ends with a slash followed by a number; for example, 192.168.0.0/16. CIDR is described in RFC 1519
++ Now that the interface is configured, we can start and stop it using the following commands
+  #+BEGIN_SRC shell
+  # /etc/init.d/net.eth0 start
+  # /etc/init.d/net.eth0 stop 
+  #+END_SRC
+  When troubleshooting networking, take a look at /var/log/rc.log. Unless the rc_logger variable is set to NO in /etc/rc.conf, information on the boot activity will be stored in that log file
++ Now that the network interface has been successfully stopped and started, the next step is to have it started when Gentoo boots. Here is how to do this.
+  #+BEGIN_SRC shell
+  # rc-update add net.eth0 default
+  # rc 
+  #+END_SRC
+*** Advanced configuration(高级配置)
+*** Modular networking
+*** Wireless
+*** Adding functionality
+*** Dynamic management
+* 硬件驱动系统配置
+** 声卡安装
+*** 查看硬件信息
+#+BEGIN_SRC shell
+# lspci | grep -i audio
+#+END_SRC
+*** 内核配置
+#+BEGIN_SRC conf
+Generic Driver Options  --->
+   <*> Sound card support  --->
+      <*>   Advanced Linux Sound Architecture  --->
+         [*]   PCI sound devices  --->
+               HD-Audio  --->
+                  <*> HD Audio PCI
+                  <*> Build Conexant HD-audio codec support
+#+END_SRC
+#+BEGIN_SRC conf
+Device Drivers --->
+    <*> Sound card support
+        <*> Advanced Linux Sound Architecture --->
+            [*] PCI sound devices  --->
+                Select the driver for your audio controller.
+            HD-Audio  --->
+                Select a codec or enable all and let the generic parse choose the right one:
+                [*] Build Realtek HD-audio codec support
+                [*] ...
+                [*] Build Silicon Labs 3054 HD-modem codec support
+                [*] Enable generic HD-audio codec parser
+General setup --->
+    [*] System V IPC
+#+END_SRC
+*** 查看声卡接口
+#+BEGIN_SRC shell
+# aplay -l
+#+END_SRC
+*** 安装软件
+#+BEGIN_SRC shell
+# emerge -av media-sound/alsa-utils 
+#+END_SRC
+*** 配置
+**** 为普通用户添加权限
+#+BEGIN_SRC shell
+# gpasswd -a zpbird audio
+#+END_SRC
+**** 启动服务
+#+BEGIN_SRC shell
+# /etc/init.d/alsasound start
+# rc-update add alsasound boot
+#+END_SRC
+**** 测试
+#+BEGIN_SRC shell
+# speaker-test -t wav -c 2
+#+END_SRC
+**** 调整音量
+#+BEGIN_SRC shell
+# alsamixer
+#+END_SRC
+** 电源管理
+*** 内核配置
+#+BEGIN_SRC conf
+Power management and ACPI options --->
+  -*- Device power management core functionality
+  [*] ACPI (Advanced Configuration and Power Interface) Support --->
+    <*> AC Adapter
+    <*> Battery
+    -*- Button
+    -*- Video
+    <*> Fan
+    <*> Processor
+    <*> Thermal Zone
+  
+  [*] CPU Frequency scaling --->
+        Default CPUFreq governor (ondemand)  --->
+    -*- 'performance' governor
+    <*> 'powersave' governor
+    <*> 'userspace' governor for userspace frequency scaling
+    -*- 'ondemand' cpufreq policy governor
+    <*> 'conservative' cpufreq governor
+    <*> ACPI Processor P-States driver
+#+END_SRC
+*** 安装软件
+#+BEGIN_SRC shell
+# emerge --ask app-laptop/laptop-mode-tools
+#+END_SRC
+*** 配置
+**** 添加服务
+#+BEGIN_SRC shell
+# rc-update add laptop_mode default
+???# rc-update add acpid default
+#+END_SRC
+** u盘自动加载
+*** udev 
++ udev 的主要功能是实时地在 /dev 目录下创建和删除设备节点, 但它也能在创建节点的同时, 执行一个额外地程序. 具体的原理这里就不详说了, 有时间请仔细阅读 Writing udev rules 这篇文章. 写规则时特别注意 KERNEL, SUBSYSTEM 等这些关键字单数和复数(最后有没有'S')的区别. 复数(比如 KERNELS)表示你想用父设备的属性来匹配, 单数(比如 KERNEL)是要匹配设备本身的属性
++ 在 /etc/udev/rules.d 目录下创建文件 10_usbkey.rules, 其内容如下
+  #+BEGIN_SRC conf
+  KERNEL=="sdc4", SUBSYSTEM=="block", RUN+="/store/zpbird/note/linux/gentoo/config/sh/usbmount.sh"
+  #+END_SRC
++ 在 /root 目录中创建文件 usbmount.sh, 其内容为
+  #+BEGIN_SRC conf
+  #!/bin/bash
+
+  LOG=/var/log/usb-hotplug.log
+  
+  lap=$(date --rfc-3339=ns)
+
+  echo "$lap: $DEVPATH requesting $ACTION" >> $LOG
+
+
+  if [ "$ACTION" == "add" ]
+  then
+	  mount -t vfat -o iocharset=utf8,umask=000 /dev/sdc4 /mnt/usb
+  elif [ "$ACTION" == "remove" ]
+  then
+    umount -l /mnt/usb
+  fi
+  #+END_SRC
++ 该文件属性设置为可执行, chmod a+x usbmount.sh
++ 最后创建目录, mkdir /mnt/usb
++ 这是一个非常简单但可用的例子. U盘插上后自动 mount 到 /mnt/usb , 拔出后自动 umount. 你可以查看 /var/log/usb-hotplug.log , 里面会有些简单的调用记录
+** linux与windows时间不统一
+修改 /etc/conf.d/hwclock
+将其中clock="UTC"改为clock="local"
+
+* 常用软件
+** 系统
+*** revdep-rebuild工具由app-portage/gentoolkit提供
+#+BEGIN_SRC shell
+# emerge --ask app-portage/gentoolkit
+#+END_SRC
+*** genlop可以查看编译时间等功能
+# emerge --ask app-portage/genlop
+使用
+genlop -t xxx 查看某软件的编译时间
+*** ntfs3g(NTFS文件系统读写支持)
+**** 检查内核配置
+***** Native support
+#+BEGIN_SRC conf
+KERNEL Enabling built-in NTFS (limited write support) via CONFIG_NTFS_RW
+
+File systems  --->
+    DOS/FAT/NT Filesystems  --->
+        <*> NTFS file system support # 可以配置为模块<M>
+        <*>   NTFS write support
+#+END_SRC
+***** FUSE support (NTFS-3G)
+#+BEGIN_SRC conf
+KERNEL Enabling NTFS over FUSE using NTFS-3G
+
+File systems  --->
+    <*> FUSE (Filesystem in Userspace) support # 可以配置为模块<M>
+#+END_SRC
+***** 如果上述两项未开启需要重新编译安装内核
+**** 安装
+#+BEGIN_SRC shell
+# emerge --ask sys-fs/ntfs3g
+#+END_SRC
+**** 使用
++ 手动加载
+  #+BEGIN_SRC shell
+  # mount -t ntfs-3g /dev/sda5 /mnt/winD
+  
+  #如果无法加载出现提示metadata kept in windows cache ,refused to mount，这是由于该分区在windows下的状态是高级休眠、快速启动，试着使用ntfsfix修复一下
+  # ntfsfix /dev/sda5
+  #彻底解决需要关闭windows下的快速启动，关闭办法是控制面板，在电源选项中，选择关闭盖子的功能，更改不能更改的选项，去掉快速启动的钩
+  #+END_SRC
++ 自动加载
+  编辑/etc/fstab文件
+  #+BEGIN_SRC conf
+  /dev/sda5 /mnt/winD ntfs-3g defaults 0 0 
+  #+END_SRC
+*** sudo自动补全
+#+BEGIN_SRC shell
+# emerge app-shells/bash-completion
+# echo "complete -cf sudo" >> /home/mobz/.bashrc
+# echo "complete -cf sudo" >> /home/zpbird/.bashrc
+#+END_SRC
+** 网络
+*** NetworkManager(网络管理)
+**** 安装
+#+BEGIN_SRC shell
+emerge -av net-misc/networkmanager
+# 需要处理新的use标记
+dispatch-conf
+emerge -av net-misc/networkmanager
+#+END_SRC
+**** 配置
+***** 要删除所有网络管理相关的服务
+#+BEGIN_SRC shell
+# find /etc/runlevels/default -type l -name 'net.*' -exec sh -c 'for x; do rc-update del "${x##*/}" default; done' _ {} +
+#+END_SRC
+****** 重点注意以下地方 
+1. 取消网卡启动服务
+   #+BEGIN_SRC shell
+   # rc-update del net.enp9s0 default
+   #+END_SRC
+2. 取消DHCPCD服务
+   #+BEGIN_SRC shell
+   # rc-update del dhcpcd default
+   #+END_SRC
+****** 设置开机启动NetworkManager服务
+# rc-update add NetworkManager default
+# rc-service NetworkManager start
+**** 使用
++ 终端下使用
+  #+BEGIN_SRC shell
+  # nmtui
+  #+END_SRC
+** X11系统
+*** Xorg
+**** 安装
+#+BEGIN_SRC shell
+# emerge -av x11-base/xorg-server
+# emerge -av x11-apps/xinit
+#+END_SRC
+*** WM
+**** Awesome
+***** 指定安装版本(test分支)
+#+BEGIN_SRC conf
+FILE /etc/portage/package.keywords/zp-accept
+=x11-wm/awesome-4.2
+#+END_SRC
+***** 安装
+#+BEGIN_SRC shell
+# emerge -av x11-wm/awesome
+# Yes
+# dispatch-conf 
+# u
+# emerge -av x11-wm/awesome #真正安装，之前的操作为生成、激活配置
+???# emerge -av media-gfx/feh  #壁纸需要使用
+#+END_SRC
+***** 配置使用手册
+****** 启动
+******* 不使用登陆管理器
++ 添加exec awesome到你的启动脚本（比如 ~/.xinitrc）
+******* 使用登陆管理器 
+****** 配置
+******* 目录
++ /etc/xdg/awesome存放默认的配置文件,当用户家目录中存在.config/awesome/rc.lua文件优先级最高
++ /usr/share/awesome存放默认库文件、图标文件、主题文件，如果使用其他位置的附加资源需要在配置文件中指定目录
++ 附加库可以存放在~/.config/awesome下
+  |---------------------------------------+--------------------------------------------------------+----------|
+  | libs                                  | link                                                   | describe |
+  |---------------------------------------+--------------------------------------------------------+----------|
+  | Lain                                  | https://github.com/lcpz/lain                           |          |
+  | Vicious                               | https://github.com/Mic92/vicious                       |          |
+  | Countdown                             | https://awesomewm.org/recipes/countdown/               |          |
+  | MPD current song                      | https://awesomewm.org/recipes/mpc/                     |          |
+  | Awesome "Watch" widget usage examples | https://awesomewm.org/recipes/watch/                   |          |
+  | PulseAudio                            | https://github.com/stefano-m/awesome-pulseaudio_widget |          |
+  | Connman (network manager)             | https://github.com/stefano-m/awesome-connman_widget    |          |
+  | Battery Indicator (UPower)            | https://github.com/stefano-m/awesome-power_widget      |          |
+  | Google Play Music Desktop Player      | https://awesomewm.org/recipes/gpmdp/                   |          |
+  | Set of simple widgets                 | https://github.com/streetturtle/awesome-wm-widgets     |          |
+  |---------------------------------------+--------------------------------------------------------+----------|
+    
+******* 创建配置文件
++ awesome会在下面几个地方查找配置文件
+  #+BEGIN_SRC shell
+  $HOME/.config/awesome/rc.lua
+  $XDG_CONFIG_HOME/awesome/rc.lua
+  $XDG_CONFIG_DIRS/awesome/rc.lua
+  #+END_SRC
++ 创建配置文件所在的文件夹 
+  #+BEGIN_SRC shell
+  # mkdir -p ~/.config/awesome/
+  #+END_SRC
++ 配置文件
+  Awesome会自动使用~/.config/awesome/rc.lua里的所有配置。这个文件并不会自动创建，所以我们先要从模板复制一个过来
+  #+BEGIN_SRC shell
+  # cp /etc/xdg/awesome/rc.lua ~/.config/awesome
+  #+END_SRC
+  配置文件的语法会随着Awesome的版本升级而变化,所以当升级了之后遇到问题时,重复上面的步骤,或者你得手动修改配置文件
+******* 库文件
++ awesome使用的默认库文件存放中/usr/share/awesome/lib中
++ 自己附加到库文件夹可以存放中~/.config/awesome/下
+******* 调试rc.lua
+******** 使用Xephyr
++ 用这种方式可以在不破坏现有桌面的情况下对rc.lua进行测试,首先把rc.lua复制到一个新文件rc.lua.new,接着进行修改,然后在Xephyr中运行新的rc.lua,Xephyr允许你在XWindow中植入一个新的XWindow,可以测试新的rc.lua 
+  #+BEGIN_SRC shell
+  # Xephyr -ac -br -noreset -screen 1152x720 :1 &
+  # DISPLAY=:1.0 awesome -c ~/.config/awesome/rc.lua.new
+  #+END_SRC
++ 这种方式的巨大优势在于如果你弄坏了rc.lua.new,你不至于把现有的Awesome桌面弄得一团糟,一旦你觉得新的配置文件不错,就用rc.lua.new代替rc.lua,然后重启Awesome
+******** 使用awmtt(AUR)
++ awmtt(Awesome WM Testing Tool)是一个基于Xephyr的易于使用的脚本,默认情况下,它会测试~/.config/awesome/rc.lua.test,如果该文件不存在,它会测试当前使用的rc.lua,也可以指定要测试的配置文件所在路径
+  #+BEGIN_SRC shell
+  # awmtt start -C ~/.config/awesome/rc.lua.new
+  当测试完成后，使用以下命令关闭窗口:
+  # awmtt stop
+  通过以下命令立即查看变化:
+  # awmtt restart
+  #+END_SRC
+******* 改变键盘布局
++ 如果需要使用不同的键盘布局[qwerty -> dvorak]有两种方法
+  - 按照Awesome Wiki更改Awesome的配置
+  - 在xorg settings改变键盘布局
+******* 自动运行程序
++ Awesome不会运行那些被Freedesktop如GNOME或KDE设置为自动运行的程序,不过Awesome提供了一些运行程序的函数(除了Lua标准库里的函数os.execute),要运行跟GNOME或KDE里一样自动运行的程序,你可以从AUR安装dex-gitAUR,然后在你的rc.lua里加入
+  #+BEGIN_SRC conf
+  os.execute"dex -a -e Awesome"
+  #+END_SRC
++ 如果你只想列出一些程序来在让Awesome启动时运行,你可以创建一个你需要启动命令的列表然后循环启动
+  #+BEGIN_SRC conf
+  do
+    local cmds = 
+    { 
+      "swiftfox",
+      "mutt",
+      "consonance",
+      "linux-fetion",
+      "weechat-curses",
+      --and so on...
+    }
+
+    for _,i in pairs(cmds) do
+      awful.util.spawn(i)
+    end
+  end
+  #+END_SRC
++ 如要程序仅在当前没有运行情况下运行,你可以只在pgrep找不到跟它一样名字的进程的时候运行它
+  #+BEGIN_SRC conf
+  function run_once(prg)
+    awful.util.spawn_with_shell("pgrep -u $USER -x " .. prg .. " || (" .. prg .. ")")
+  end
+  #+END_SRC
+  例如：要在当前 parcellite 没有运行的情况下运行 parcellite
+  #+BEGIN_SRC conf
+  run_once("parcellite")
+  #+END_SRC
+******* 使用其他任务栏
++ 不喜欢默认那个任务栏的外观,可以安装其他的.比如xfce4-panel
+  #+BEGIN_SRC shell
+  # sudo pacman -S xfce4-panel
+  #+END_SRC
++ 要把它添加到配置文件rc.lua的自动启动部分(该如何写请看wiki吧).你可以注释掉配置文件中给每个桌面创建wiboxes的那部分(开头是"mywibox[s] = awful.wibox({ position = "top", screen = s })"),因为已经不需要了,检查配置文件没有错误之后就可以执行命令生效
+  #+BEGIN_SRC shell
+  # awesome -k rc.lua
+  #+END_SRC
++ 需要改变"modkey+R"的快捷键绑定,比如用Xfrun4, bashrun等,来替代awesome自带的启动器
+  #+BEGIN_SRC conf
+  properties = { floating = true } },
+  { rule = { instance = "$yourapplicationlauncher" },
+  #+END_SRC
+******* menubar(modkey+p)
++ 它仅搜索位于/usr/share/applications及/usr/local/share/applications目录下的.desktop文件（后者很可能在大多数 Arch 用户的系统中都不存在）为了改变这一情况,可以把下面这行代码加入到你的rc.lua（最好能把它加到"Menubar configuration" 那一部分中）
+  #+BEGIN_SRC conf
+  app_folders = { "/usr/share/applications/", "~/.local/share/applications/" }
+  #+END_SRC
++ 注意:每次Awesime启动都会重新读取.desktop文件,因此文件过多会拖慢Awesome的启动速度,如果你更喜欢使用其他方式来运行程序,可以通过在rc.lua移除local menubar = require("menubar")及其它涉及到menubar的变量来禁用菜单栏
+******* 标题栏
++ 你可以很容易地在配置文件中把titlebars_enabled设置为true来启用标题栏,如果想要切换标题栏的显示与否,可以把以下代码加入配置文件,然后通过按modkey+Ctrl+t来切换
+  #+BEGIN_SRC conf
+  awful.key({ modkey, "Control" }, "t",
+   function (c)
+       -- toggle titlebar
+       awful.titlebar.toggle(c)
+   end)
+  #+END_SRC
++ 默认隐藏标题栏，仅需要在配置文件中标题栏创建后加入以下代码
+  #+BEGIN_SRC conf
+  awful.titlebar.hide(c)
+  #+END_SRC
+******* 主题
+********* Beautiful
++ 可以让你动态地改变背景图片和颜色主题，而不需要改变 rc.lua
++ 默认的主题文件在/usr/share/awesome/themes/default,把它复制到~/.config/awesome/themes/default然后修改一下rc.lua中的theme_path
+  #+BEGIN_SRC conf
+  beautiful.init(awful.util.getdir("config") .. "/themes/default/theme.lua")
+  #+END_SRC
+******* 问题处理
+******** Fix Java(GUI appears gray only)
+******* rc.lua范例
+****** 快捷键 
+快捷键可以在rc.lua中搜索Key bindings修改
++ Mod4 默认为Win键
++ Mod4+s awesome快捷键帮助菜单 
++ Mod4+Enter 打开终端
++ Mod4+r 执行命令或程序
++ Mod4+1~9 切换到指定tag
++ Mod4+Space 切换桌面布局
++ Mod4+Shift+Space 当前布局切换为前一个布局
++ mod4+ctrl+1~9 把当前桌面和1～9桌面同时显示
++ Mod4+Ctrl+r 重启awesome
++ Mod4+w 打开awesome主菜单
++ Mod4+Shift+C 关闭当前窗口/程序
++ Mod4+Left/Right 左右切换tag
++ Mod4+h/l 调整主区域宽度
++ Mod4+j/k 切换窗口
++ Mod4+t 标记窗口
++ Mod4+m/n 最大化/最小化窗口
++ Mod4+Esc 切换到上一个桌面
++ Mod4+Control+space 切换当前窗口是否浮动
++ Mod4+Shift+j 当前窗口和前一个/后一个窗口切换位置
++ Mod4+Shift+1~9 把标记的窗口移动到 tag 1~9
++ Mod4+Shift+q 注销用户(logout),退出awesome
+****** 使用theme
+******* awesome-copycats
++ 安装
+  #+BEGIN_SRC shell
+  # git clone --recursive https://github.com/lcpz/awesome-copycats.git
+  # mv -bv awesome-copycats/* ~/.config/awesome; rm -rf awesome-copycats
+  #+END_SRC
++ 启用
+  #+BEGIN_SRC shell
+  # cd ~/.config/awesome
+  # cp rc.lua.template rc.lua
+  #+END_SRC
++ 配置
+  - 选择其他theme
+    在rc.lua文件中查找chosen_theme变量，设置不同主题
+  - 修改主题
+    修改theme目录下对应主题的theme.lua文件
+*** 终端
+**** Urxvt
+***** 安装
+#+BEGIN_SRC shell
+# USE="256-color xft" emerge -av x11-terms/rxvt-unicode
+#+END_SRC
+** 字体
+*** 安装
+#+BEGIN_SRC shell
+# USE="X cjk" -av media-fonts/source-pro
+# USE="X" emerge -av media-fonts/wqy-zenhei 
+#+END_SRC
+*** 配置(???无效设置)
+#+BEGIN_SRC conf
+在/etc/env.d/100i18n中添加如下内容
+
+LANG=en_US.UTF-8
+LC_CTYPE=zh_CN.UTF-8
+LC_NUMERIC="en_US.UTF-8"
+LC_TIME="en_US.UTF-8"
+LC_COLLATE="en_US.UTF-8"
+LC_MONETARY="en_US.UTF-8"
+LC_MESSAGES="en_US.UTF-8"
+LC_PAPER="en_US.UTF-8"
+LC_NAME="en_US.UTF-8"
+LC_ADDRESS="en_US.UTF-8"
+LC_TELEPHONE="en_US.UTF-8"
+LC_MEASUREMENT="en_US.UTF-8"
+LC_IDENTIFICATION="en_US.UTF-8"
+#+END_SRC
+*** 设置本地字符集
++ 编辑/etc/locale.gen文件配置本地语言
+  # nano -w /etc/locale.gen
+  #en_US ISO-8859-1
+  en_US.UTF-8 UTF-8
+  zh_CN.UTF-8 UTF-8
+  #de_DE ISO-8859-1
+  #de_DE@euro ISO-8859-15
+  强烈建议至少包含一个UTF-8字符集，应为很多软件包需要使用。
++ 执行locale-gen，使/etc/locale.gen文件中的设置生效
+  # locale-gen
+  + 查看当前系统中的字符集
+   # locale -a
++ 编辑~/.xinitrc添加中文设置(解决urxvt方块字)
+  # export LC_CTYPE=zh_CN.UTF-8   
+** 输入法
+*** 安装
+#+BEGIN_SRC shell
+# emerge -av app-i18n/fcitx app-i18n/fcitx-configtool
+#+END_SRC
+*** 配置
++ 设置输入法
+  - DE环境(KDM、GDM、LightDM)下,向~/.xprofile添加
+    #+BEGIN_SRC conf
+    此句放在文件开始部分
+    eval "$(dbus-launch --sh-syntax --exit-with-session)"
+
+
+    export GTK_IM_MODULE=fcitx
+    export QT_IM_MODULE=fcitx
+    export XMODIFIERS="@im=fcitx"
+    
+    # export LANG=zh_CN.UTF-8
+    # export LANGUAGE=zh_CN:en_US
+    export LC_CTYPE=zh_CN.UTF-8   # 不设置此局emacs在GUI下无法输入中文 
+    # export LC_CTYPE=en_US.UTF-8
+    #+END_SRC
+  - xinit方式下,向~/.xinitrc添加，并要求在exec语句之前
+    #+BEGIN_SRC conf
+    此句放在文件开始部分
+    eval "$(dbus-launch --sh-syntax --exit-with-session)"
+
+    # 不设置此局emacs在GUI下无法输入中文 
+    export LC_CTYPE=zh_CN.UTF-8   
+
+    export GTK_IM_MODULE=fcitx
+    export QT_IM_MODULE=fcitx
+    export XMODIFIERS="@im=fcitx"
+    exec fcitx &    
+    #+END_SRC
+** Git
+*** 预处理
++ 添加emacs支持
+  #+BEGIN_SRC conf
+  File /etc/portage/package.use/zpuse
+  dev-vcs/git emacs
+  #+END_SRC
+*** 安装
+#+BEGIN_SRC shell
+# emerge -av dev-vcs/git
+#+END_SRC
+** Emacs
+*** 调整use
+# 安装X支持，否则只能在终端下使用
+app-editors/emacs X
+*** 安装
+#+BEGIN_SRC shell
+# emerge -av app-editors/emacs
+#+END_SRC
+** Scrt
+*** 安装依赖库
+**** libpng
+#+BEGIN_SRC shell
+# emerge -av media-libs/libpng:1.2
+#+END_SRC
+** Launch(启动器)
+*** rofi(应用程序启动器)
++ 安装
+  #+BEGIN_SRC shell
+  # emerge -av x11-misc/rofi
+  # dispatch-conf
+  # emerge -av x11-misc/rofi
+  #+END_SRC
++ 配置
+  - 添加awesome快捷键
++ 命令
+  #+BEGIN_SRC shell
+  # rofi -show run  # 显示系统支持的命令或程序
+  # rofi -show window  # 显示已经打开的程序
+  #+END_SRC
++ 快捷键
+*** Synapse 
+*** Mutate
+** File Manager(文件管理器)
+*** PCManFM(LXDE 桌面环境的默认文件管理器)
+**** 安装
+#+BEGIN_SRC shell
+# emerge -av x11-misc/pcmanfm
+# dispatch-conf
+# emerge -av x11-misc/pcmanfm
+
+#+END_SRC
+** 浏览器
+*** firefox
+**** 安装
+#+BEGIN_SRC shell
+# emerge -av www-client/firefox
+# emerge -av www-plugins/adobe-flash
+#+END_SRC
+**** 报错处理
+***** 添加CPU flags(cpu_flags_x86_sse? are unsatisfied)
+#+BEGIN_SRC conf
+FILE /etc/portage/make.conf
+USE="mmx mmxext sse sse2 sse3"
+
+Those flags need to be copied to a newly created CPU_FLAGS_X86 variable:
+FILE /etc/portage/make.conf
+CPU_FLAGS_X86="mmx mmxext sse sse2 sse3"
+#+END_SRC
+** 解压缩软件(GUI)
+*** File Roller
+#+BEGIN_SRC shell
+# emerge -av app-arch/file-roller
+#+END_SRC
+** 图片浏览
+*** Mirage
+#+BEGIN_SRC shell 
+# emerge -av media-gfx/mirage
+#+END_SRC
+** 文件搜索
+*** Catfish
+#+BEGIN_SRC shell
+# emerge -av dev-util/catfish
+#+END_SRC
+** 便签
+*** Xpad
+设置软件版本
+5.0.0
+#+BEGIN_SRC shell
+# emerge -av x11-misc/xpad
+#+END_SRC
+** MPV(视频播放)
+*** 安装
+#+BEGIN_SRC shell
+# emerge -av media-video/mpv
+#+END_SRC
+** 坚果云
+*** 二进制包方式
+**** 安装依赖包
+#+BEGIN_SRC shell
+# emerge -av virtual/jre
+# emerge -av dev-python/notify-python
+#+END_SRC
+**** 安装
++ 查看官网安装步骤
+**** 设置开机启动
++ 设置PATH变量
+  #+BEGIN_SRC conf
+  File ~/.bashrc
+  export PATH=$PATH:/home/zpbird/.nutstore/dist/bin
+  #+END_SRC
++ ???链接短命令
+  #+BEGIN_SRC shell
+  # cd 
+  ???# ln -s ~/.nutstore/dist/bin/nutstore-pydaemon.py nutstore
+  #+END_SRC
++ 设置开机启动
+  #+BEGIN_SRC conf
+  File ~/.xinitrc
+  ???# exec nutstore &
+  exec nutstore-pydaemon.py &
+  #+END_SRC
+** Nodejs
+*** 预处理
+**** 在profiles 13.0版本中有可能nodejs6.0以上的版本被mask掉，有两种解决方式
++ 编辑/usr/portage/profiles/releases/13.0/package.mask文件取消mask
++ 使用命令制定安装版本，系统会自动处理mask
+  #+BEGIN_SRC shell
+  # emerge -av "=net-libs/nodejs-8.9.3"
+  #+END_SRC
+*** 安装
+#+BEGIN_SRC shell
+# emerge -av net-libs/nodejs
+#+END_SRC
+** 大型软件
+*** Virtual Box 
+**** 源码方式
+#+BEGIN_SRC conf
+添加下面内容到/etc/portage/package.accept_keywords
+
+=app-emulation/virtualbox-bin-5.0.20.106931 ~amd64
+=app-emulation/virtualbox-modules-5.0.20 ~amd64
+=app-emulation/virtualbox-additions-5.0.20 ~amd64
+#+END_SRC
+#+BEGIN_SRC shell
+# emerge  app-emulation/virtualbox
+# gpasswd -a zerowaytp vboxusers
+# emerge -1 @module-rebuild
+# modprobe vboxdrv
+#+END_SRC
+
+将虚拟机驱动模块加入到系统启动加载模块中
+#+BEGIN_SRC conf
+在/etc/conf.d/modules中添加下面一行
+modules="vboxdrv"
+#+END_SRC
+*** Libreoffice
+**** 预编译包
+* 问题处理
+** 解决开机警告：Warning: Cannot open ConsoleKit session:Unable to open session: Failed to connect to socket /var/run/dbus/system_bus_socket: No such file or directory
++ 添加dbus 和 consolekit 默认启动
+  #+BEGIN_SRC shell
+  # rc-update add dbus default
+  # rc-update add consolekit default
+  #+END_SRC
+** 解决rxvt、emacs乱码 
++ 安装好了gentoo,英文和中文字体也已安装,打开firefox和amule字体均显示正常,也可以用fcitx输入中文,可是当我打开rxvt和emacs的时候发现中文全部乱码,使用“ls”命令甚至连英文的目录也是乱码
++ 检查use标记已打开nls、truetype,检查locale也正常,有一个叫xft的字体标记,加入make.conf后emerge,问题解决
+** 解决emacs下fcitx无法输入中文
++ 解决办法是安装了几个字体相关包
+  #+BEGIN_SRC conf
+  media-fonts/font-misc-misc
+
+  ( bdftopcf font-alias 可能被依赖安装)
+  
+  ( font-util font-cursor-misc 应该是不需要)
+  #+END_SRC
+  重启X后问题解决
+** 系统无法使用jpeg文件
++ 默认情况下gentoo不能打开jpg和jpeg图像,需要为USE增加jpeg值,建议直接加到make.conf里面去
+* 内核常规配置
+** 修改内核配置步骤
+*** 修改配置
+#+BEGIN_SRC shell
+# cd /usr/src/linux
+# make menuconfig
+修改后保存.config文件
+#+END_SRC
+*** 编译安装
+#+BEGIN_SRC shell
+# make && make modules_install
+注：支持并行编译，使用make -jX(其中X代表并行个数)，这个与在/etc/portage/make.conf 文件中指定MAKEOPTS变量数值效果相同
+# make install
+此命令将把编译完成的内核镜像和System.map、内核配置文件(kernel configuration file)拷贝到/boot/中
+#+END_SRC
+** SATA硬盘支持
+在linux中SATA硬盘是作为SCSI子集存在的，以下配置为必须项，否则重启后会显示could not find the root block device
+#+BEGIN_SRC conf
+Device Drivers --->
+   SCSI device support --->
+      <*> SCSI device support
+      <*> SCSI disk support
+      <*> SCSI CDROM support 
+   <*> Serial ATA and Parallel ATA drivers(libata) --->
+#+END_SRC
+** Intel Wireless驱动
+如果/sys/class/net/目录下没有对应的无线网卡名称，需要配置内核添加驱动支持
+#+BEGIN_SRC conf
+Device Drivers --->
+       Network device support --->
+               Wireless LAN --->
+                        [*] Intel devices
+                            <M> Intel Wireless WIFI Next Gen AGN-Wireless-N/Advanced-N/Ultimate-N(iwlwifi)
+                                <M> Intel Wireless WIFI DVM Firmware support
+                                <M> Intel Wireless WIFI MVM Firmware support 
+#+END_SRC
+** NTFS支持
+*** Native support
+#+BEGIN_SRC conf
+KERNEL Enabling built-in NTFS (limited write support) via CONFIG_NTFS_RW
+
+File systems  --->
+    DOS/FAT/NT Filesystems  --->
+        <*> NTFS file system support # 可以配置为模块<M>
+        <*>   NTFS write support
+#+END_SRC
+*** FUSE support (NTFS-3G)
+#+BEGIN_SRC conf
+KERNEL Enabling NTFS over FUSE using NTFS-3G
+
+File systems  --->
+    <*> FUSE (Filesystem in Userspace) support # 可以配置为模块<M>
+#+END_SRC
+** 电源管理
+#+BEGIN_SRC conf
+Power management and ACPI options --->
+  -*- Device power management core functionality
+  [*] ACPI (Advanced Configuration and Power Interface) Support --->
+    <*> AC Adapter
+    <*> Battery
+    -*- Button
+    -*- Video
+    <*> Fan
+    <*> Processor
+    <*> Thermal Zone
+  
+  [*] CPU Frequency scaling --->
+        Default CPUFreq governor (ondemand)  --->
+    -*- 'performance' governor
+    <*> 'powersave' governor
+    <*> 'userspace' governor for userspace frequency scaling
+    -*- 'ondemand' cpufreq policy governor
+    <*> 'conservative' cpufreq governor
+    <*> ACPI Processor P-States driver
+#+END_SRC
+** 声卡
+#+BEGIN_SRC conf
+Generic Driver Options  --->
+   <*> Sound card support  --->
+      <*>   Advanced Linux Sound Architecture  --->
+         [*]   PCI sound devices  --->
+               HD-Audio  --->
+                  <*> HD Audio PCI
+                  <*> Build Conexant HD-audio codec support
+#+END_SRC
+#+BEGIN_SRC conf
+Device Drivers --->
+    <*> Sound card support
+        <*> Advanced Linux Sound Architecture --->
+            [*] PCI sound devices  --->
+                Select the driver for your audio controller.
+            HD-Audio  --->
+                Select a codec or enable all and let the generic parse choose the right one:
+                [*] Build Realtek HD-audio codec support
+                [*] ...
+                [*] Build Silicon Labs 3054 HD-modem codec support
+                [*] Enable generic HD-audio codec parser
+General setup --->
+    [*] System V IPC
+#+END_SRC
+
+* 系统日常维护操作
+** 系统升级
+*** 简易步骤
+#+BEGIN_SRC shell
+# emerge --sync 
+# emerge --update --deep --with-bdeps=y --newuse @world
+#+END_SRC
+*** 详细步骤
+#+BEGIN_SRC shell
+# emerge --sync     //升级整个portage目录
+# emerge portage    //如果不是最新的portage，需要按提示执行此操作
+# emerge python     //如果不是最新的python，需要按提示执行此操作
+# /usr/sbin/update-python     //执行完emerge python后执行此操作
+# emerge --update --deep --with-bdeps=y --newuse @world   
+//(# emerge -avuDN world      //按照 /var/lib/portage/world 文件下的包，重新构建整个系统)
+参数说明:--ask (-a)  控制Portage显示它要更新的软件包列表，并让您决定是否继续更新
+        --verbose (-v) 在屏幕上输出完整的文件列表
+        --update (-u) 更新包的最佳版本
+        --deep (-D)  更新系统中的每个软件包
+        --newuse (-N) USE标记变更后，要使Portage检查USE标记的变动是否导致,需要安装新的软件包或者将现有的包重新编译
+# emerge -av --depclean     //清除不需要（孤立）的软件包
+# revdep-rebuild     //gentoolkit包里面的一个软件，用来检查系统的依赖关系是否都满足，自动安装没有满足关系的包
+# dispatch-conf     //更新系统的配置文件
+# emerge -e world     //本地重新编译整个系统，USE标记变化不大时不需执行
+#+END_SRC
+*** profile升级
+**** 17.0
+***** 介绍
++ We have just added (for all arches except arm and mips, these follow
+  later) a new set of profiles with release version 17.0 to the Gentoo 
+  repository. These bring three changes:
+  1. The default C++ language version for applications is now C++14.
+     This change is mostly relevant to Gentoo developers. It also
+     means, however, that compilers earlier than GCC 6 are masked 
+     and not supported for use as a system compiler anymore. Feel 
+     free to unmask them if you need them for specific applications.
+  2. Where supported, GCC will now build position-independent
+     executables (PIE) by default. This improves the overall
+     security fingerprint. The switch from non-PIE to PIE binaries,
+     however, requires some steps by users, as detailed below.
+  3. Up to now, hardened profiles were separate from the default
+     profile tree. Now they are moving into the 17.0 profile
+     as a feature there, similar to "no-multilib" and "systemd".
++ Please migrate away from the 13.0 profiles within the six weeks after
+  GCC 6.4.0 has been stabilized on your architecture. The 13.0 profiles
+  will be deprecated then and removed in half a year.
+***** 准备工作
++ If you are not already running a hardened setup with PIE enabled, then
+  switching the profile involves the following steps: 
+  If not already done,
++ Use gcc-config to select gcc-6.4.0 or later as system compiler
++ Re-source /etc/profile
+  #+BEGIN_SRC shell
+  . /etc/profile
+  #+END_SRC
++ Re-emerge libtool
+  #+BEGIN_SRC shell
+  emerge -1 sys-devel/libtool
+  #+END_SRC
+***** 升级步骤
++ Select the new profile with eselect
+  #+BEGIN_SRC shell
+  eselect profile list
+  eselect profile set default/linux/amd64/17.0
+  #+END_SRC
++ Re-emerge, in this sequence, gcc, binutils, and glibc
+  #+BEGIN_SRC shell
+  emerge -1 sys-devel/gcc:6.4.0
+  emerge -1 sys-devel/binutils
+  emerge -1 sys-libs/glibc
+  #+END_SRC
++ Rebuild your entire system
+  #+BEGIN_SRC shell
+  emerge -e @world
+  #+END_SRC
+***** 重新更新系统
+#+BEGIN_SRC shell
+emerge --sync
+emerge --update --deep --newuse --with-bdeps=y --ask @world
+emerge --depclean --ask
+revdep-rebuild 
+dispatch-conf
+#+END_SRC
+** 安装/删除软件
+*** 安装
+**** 简易安装
+#+BEGIN_SRC shell
+# emerge -s vim
+# emerge -av vim
+#+END_SRC
+**** 设置USE flags(修改配置文件、管理清晰可控)
+#+BEGIN_SRC conf
+File /etc/portage/package.use/zpuse
+
+dev-vcs/git emacs
+app-editors/emacs X dbus gif png svg tiff
+net-misc/openssh -bindist
+
+#+END_SRC
+**** 设定USE flags(临时变量方式)
+#+BEGIN_SRC shell
+# emerge --pretend(-p) --verbose(-v) seamonkey检查包的依赖项,及USE flags设置
+# USE="-java" emerge seamonkey  可以临时定义取消java支持在seamonkey安装期间
+根据需要，修改USE flag后需要进行如下操作
+# emerge --update --deep --newuse @world  更新USE flag完成后应该让它在系统中生效
+# emerge --depclean 移除孤立的包，如果不想包被卸载，使用-p root #emerge -p --depclean 
+# revdep-rebuild 重新编译动态链接库  它依赖 app-portage/gentoolkit ，不要忘了先emerge它
+#+END_SRC
+**** 配置安装软件特定版本(非默认稳定分支)
+***** 常规方式(配置修改清晰可控)
+#+BEGIN_SRC conf 
+添加下面内容到/etc/portage/package.accept_keywords
+=app-emulation/virtualbox-bin-5.0.20.106931 ~amd64
+=app-emulation/virtualbox-modules-5.0.20 ~amd64
+=app-emulation/virtualbox-additions-5.0.20 ~amd64
+#+END_SRC
+#+BEGIN_SRC shell
+# emerge  app-emulation/virtualbox
+#+END_SRC
+***** 特殊方式
+#+BEGIN_SRC shell
+# emerge -av "=net-libs/nodejs-8.9.3"
+或
+# emerge -av =net-libs/nodejs-8.9.3
+#+END_SRC
+*** 删除
+#+BEGIN_SRC shell 
+# emerge --unmerge(-C) nm-applet
+# emerge --depclean
+# revdep-rebuild
+#+END_SRC
+** 常用目录
++ /etc/portage/ – portage的用户配置模块，控制emerge时生成定制化的系统。
++ /etc/{init,config}.d/ – 系统服务启动脚本和配置脚本。
++ /etc/runlevels/ – 控制系统自启动服务的运行级别。
++ /usr/portage/ – portage数据库。
++ /var/lib/portage/ – 用户指定的软件包。
++ /var/db/pkg/ – 软件包的emerge日志。
+** 常用命令
++ 查询软件包： $ eix chromium
++ 安装软件包： # emerge chromium
++ 查询某个软件包所安装的文件： $ equery f chromium
++ 查询文件从属的软件包： $ equery b /usr/bin/chromium
++ 查询软件包的依赖： $ equery g chromium
++ 查询被依赖的软件包： $ equery d icu
++ 查询软件包的安装耗费的时间： $ genlop -t chromium
++ 查询含有某个工具的软件包： $ e-file convert 
+* 内核升级
+** 通过Portage获取新内核源码
++ 更新内核源码和更新其他包一样：使用emerge工具,当在world更新列表中看到新的内核版本时,可以做一次内核更新，但同时应该核对官网内核版本查看是否为最新稳定版
+	#+BEGIN_SRC shell
+	# emerge --update --deep --newuse --with-bdeps=y --ask @world
+	#+END_SRC
++ 提示信息
+	Calculating dependencies ...done!
+	[ebuild    NS ] sys-kernel/gentoo-sources-2.6.9-r2 [2.6.8-r5]
+	注意: 上面输出中的"NS"标志意味着，新的内核将会安装到新的slot中，也就是说旧内核源码会保留下来，直到你手动移除它
+** 备份当前内核配置文件
+#+BEGIN_SRC shell
+# cd /usr/src/linux
+# cp .config ~/kernel-config-`uname -r`
+#+END_SRC
+** 设置一个链接到新的内核源代码
+	+ Gentoo要求符号链接/usr/src/linux应该始终指向正在运行的内核的源代码的目录,下面三种方法中任意一个可以实现这一点
+*** 安装内核源代码时使用 USE="symlink"	
+	+ emerge新内核源码时，Portage能自动更新这个链接，需要做的是将symlink标志添加到/etc/make.conf中的USE变量中
+	+ File /etc/make.conf
+	  （添加关键字symlink）
+	  USE="symlink x86 3dnow 3dnowex X aac aalib adns alsa apache2"
+*** 使用eselect设置符号链接
++ 查看可用内核符号链接列表
+  #+BEGIN_SRC shell
+  # eselect kernel list
+	  Available kernel symlink targets:
+		[1] linux-3.14.14-gentoo * 
+		[2] linux-3.16.3-gentoo
+  #+END_SRC
++ 更改内核源码符号链接
+  #+BEGIN_SRC shell
+  # eselect kernel set 2
+  #+END_SRC
+*** 手动管理符号链接到新内核
+#+BEGIN_SRC shell
+# ln -sf /usr/src/linux-3.16.3 /usr/src/linux
+# ls -l /usr/src/linux
+lrwxrwxrwx 1 root root 19 Oct 4 10:21 /usr/src/linux -> linux-3.16.3-gento o
+#+END_SRC
+** 通过旧内核.conf文件生成新内核.conf文件
+*** 复制当前的内核配置文件
++ 配置新内核时重用旧内核的配置文件能够节省时间,需要注意的是，这种方法不是百分百可靠，当版本跳跃较大时可能会有问题
++ 旧内核的配置需要被复制到新的内核中。它可以在这几个地方找到：
+  - 如果在当前内核中选项Enable access to .config through /proc/config.gz是激活的，配置文件在procfs 文件系统：
+		#+BEGIN_SRC shell
+		# zcat /proc/config.gz > /usr/src/linux/.config
+		#+END_SRC
+  - 从老内核中提取，仅当老内核使用CONFIG_IKCONFIG被编译时可用:
+		#+BEGIN_SRC shell
+		# /usr/src/linux/scripts/extract-ikconfig /path/to/old/kernel >/usr/src/linux/.config
+		#+END_SRC
+  - 从/boot 目录里获取,如果你把配置文件安装到了这里:
+		#+BEGIN_SRC shell
+		# cp /boot/config-3.14.14-gentoo /usr/src/linux/.config
+		#+END_SRC
+  - 当前运行的内核的源代码目录(最常用)
+		#+BEGIN_SRC shell
+		# cp /usr/src/linux-3.14.14-gentoo/.config /usr/src/linux/
+		#+END_SRC
+  - In the /etc/kernels/ directory, if SAVE_CONFIG="yes" is set in /etc/genkernel.conf and genkernel was previously used:
+		#+BEGIN_SRC shell
+		# cp /etc/kernels/kernel-config-x86_64-3.14.14-gentoo /usr/src/linux/.config
+		#+END_SRC
+*** 转换为新内核可用的配置文件(必须经过转换，不能直接使用)
+新内核使用老的.conf文件必须经过转换，转换使用make silentoldconfig 或者 make olddefconfig二者之一，不能同时使
+**** 制作旧的配置 (make olddefconfig)(推荐使用)
++ 如果希望所有新内核提供的配置选项都被设置成推荐 (也就是default)值就用这条命令 make olddefconfig: 
+#+BEGIN_SRC shell
+# cd /usr/src/linux
+# make olddefconfig
+#+END_SRC
+**** 制作沉默的旧的配置 (make silentoldconfig)
++ # cd /usr/src/linux
+  #+BEGIN_SRC shell
+  # make silentoldconfig
+  Anticipatory I/O scheduler (IOSCHED_AS) [Y/n/m/?] (NEW)
+  #+END_SRC
++	会提示新的特性是否使用，如果不清楚含义，使用默认值（大写的选项）
++ 此命令不会显示或处理好所有的选项，最好的方式还是通过使用make menuconfig	
+** 最后手动调整确认配置文件
+#+BEGIN_SRC shell
+# cd /usr/src/linux
+# make menuconfig
+#+END_SRC
+** 重新安装外部模块
++ 每次有新内核编译之前，都需要对外部内核模块(external kernel modules)进行预处理，例如binary kernel modules等，因为某些在新内核编译后将无法被安装
+	#+BEGIN_SRC shell
+	# make modules_prepare
+	#+END_SRC
+
+** 编译并安装新的内核
+#+BEGIN_SRC shell
+# make && make modules_install
+# make install
+#+END_SRC
+** 重新安装initramfs
+#+BEGIN_SRC shell
+# genkernel --install initramfs
+#+END_SRC
+** 解决编译时出现问题
++ 首先备份.conf文件，但不要使用.bak或者~符合的文件名形式，否则 make distclean命令会清除这些文件
+  #+BEGIN_SRC shell
+  # cp .config /usr/src/kernel_config_bk
+  #+END_SRC
++ 清理并恢复
+  #+BEGIN_SRC shell
+  # make distclean
+  # mv /usr/src/kernel_config_bk .config
+  #+END_SRC
+** 更新引导程序配置文件，增加新内核的条目（先不要删除旧的！）
+#+BEGIN_SRC shell
+# grub-mkconfig -o /boot/grub/grub.cfg
+# reboot
+#+END_SRC
+** 错误处理
++ 如果新内核无法启动，那么重启系统，在引导程序中选择上次可以运行的内核。接着你可以重新配置，编译并安装新内核，对错误做出适当的修正。某些情况下，你甚至无需重启就可以进行这些操作，例如少安装了声卡驱动、网卡驱动等等
+** 使用@module-rebuild重新对Packages containing kernel modules进行重新编译
+#+BEGIN_SRC shell
+# emerge --ask @module-rebuild
+#+END_SRC
++ 或者使用了不包含在内核代码树，而是由Portage中其他地方提供的内核模块（例如ALSA驱动，以及NVIDIA或ATI显示驱动），那么更新内核后，需要重新安装这些模块,只需重新emerge涉及到的包即可
++ 或者使用简易的工具（sys-kernel/module-rebuild），它能重新编译你安装的所有独立的（与/usr/src/linux的内核使用不同的ebuild）内核模块。它的用法非常直观。安装后，运行module-rebuild populate生成一个数据库，其中包含所有更新内核后需要重新编译的包的列表。当你完成更新并重新编译内核后，运行module-rebuild rebuild重新编译对应新内核的驱动
+** 运行多个内核
++ 当安装新内核的源代码时，现有内核的源码没有被删除。这是有意为之的，这样你就可以很方便的在运行不同内核间切换
++ 在多个内核间切换非常简单。你只需保留/usr/src/中的内核源代码，并保留/boot分区中的二进制文件bzImage就可以了，后者会与引导程序配置中的一项相对应。每次启动时，你都有机会选择启动到哪个内核
+** 删除旧的内核
++ 删除除了最新内核外的其他版本内核源码，你可以利用emerge中的prune选项
+	#+BEGIN_SRC shell
+	# emerge -P gentoo-sources
+	#+END_SRC
++ 一般情况下，编译过程中产生的临时文件仍然会保留在/usr/src下的对应目录中。你可以安全的用rm删除这些文件。你也可以安全的删除所有旧内核使用的模块。这能通过删除/lib/modules/目录下与删除的内核版本相应的子目录来完成
++ 最后，你可以挂载/boot分区，删除你刚才卸载的内核的bzImage文件。你还应该编辑引导程序的配置，删去对应已卸载内核的项。
+** 实例
+*** A
++ 更新portage
+  #+BEGIN_SRC shell
+  # emerge-webrsync
+  # emerge --update --deep --newuse --ask --with-bdeps=y @world
+  #+END_SRC
++ 升级内核
+  #+BEGIN_SRC shell
+  # cd /usr/src/linux
+  # make oldconfig????
+  # make modules_prepare
+  # make -j5 && make modules_install
+  # make install
+  # eselect kernel set 4.14.6
+  # emerge -ac gentoo-sources:4.14.4
+  # rm -r /usr/src/linux-4.14.4/
+  # rm -r /lib/modules/4.14.4/
+  # rm /boot/vmlinuz.old /boot/System.map.old /boot/config.old
+  # grub-mkconfig -o /boot/grub/grub.cfg
+  #+END_SRC
++ 其他1
+  #+BEGIN_SRC shell
+  # perl-cleaner all
+  # eselect python set python3.5
+  # vim /etc/portage/make.conf
+      PYTHON_TARGETS="python2_7 python3_5"
+      PYTHON_SINGLE_TARGET="python3_5"
+  # emerge -ca dev-lang/python
+  # reboot
+  #+END_SRC
++ 其他2
+  #+BEGIN_SRC shell
+  # emerge -a @module-rebuild
+  # emerge -a @preserved-rebuild
+  # revdep-rebuild
+  # reboot
+  #+END_SRC
+*** B
++ Gentoo的内核升级相对来不不那么复杂，因为可以直接利用已经配置好了的.config文件，因此总体上升级内核有几个步骤
++ 安装内核升级包
+  - 通常情况下在对gentoo进行升级的时候也会同步安装内核升级包
+    #+BEGIN_SRC shell
+    # sudo emerge –sync
+    # sudo emerge -avuDN world
+    #+END_SRC
++ 内核配置
+  - 在进行内核配置前请先检查/boot目录是否已经挂载，如果没有挂载请手动挂载
+  - 在安装好后在/usr/src目录下面就会有新安装好的内核目录，后续步骤建议用root用户执行
+    #+BEGIN_SRC shell
+    # ls
+    linux linux-4.12.5-gentoo linux-4.9.34-gentoo vboxhost-5.1.24
+    #+END_SRC
+  - 这时候需要将linux软链接到最新安装的内核包，我的场景是4.9到4.12
+    #+BEGIN_SRC shell
+    # ln -sf /usr/src/linux-4.12.5-gentoo /usr/src/linux
+    #+END_SRC
+  - 完成这部后将linux-4.9.34-gentoo目录下的.config内核配置文件复制一份到新安装的内核目录
+    #+BEGIN_SRC shell
+    # cp linux-4.9.34-gentoo/.config linux-4.12.5-gentoo/kernel-bak.config
+    #+END_SRC
+  - 完成这部后进入新的内核目录开始进行内核配置
+    #+BEGIN_SRC shell
+    # make menuconfig
+    #+END_SRC
+  - 随后在内核配置界面加载kernel-bak.config文件并保存为.config文件，随后进行内核的编译
+    #+BEGIN_SRC shell
+    # make && make modules_install
+    # make install
+    # genkernel --install initramfs
+    #+END_SRC
++ 至此完成了内核的安装和配置，同时需要重新配置bootloader让它知道我们是想用最新的内核启动
+  #+BEGIN_SRC shell
+  # grub-mkconfig -o /boot/grub/grub.cfg
+  #+END_SRC
+
+

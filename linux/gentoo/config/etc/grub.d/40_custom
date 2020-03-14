@@ -1,0 +1,19 @@
+#!/bin/sh
+exec tail -n +3 $0
+# This file provides an easy way to add custom menu entries.  Simply type the
+# menu entries you want to add after this comment.  Be careful not to change
+# the 'exec tail' line above.
+menuentry 'Windows 10' --class windows --class os $menuentry_id_option 'osprober-chain-028C5B818C5B6DE3' {
+	insmod part_msdos
+	insmod ntfs
+	set root='hd0,msdos1'
+	if [ x$feature_platform_search_hint = xy ]; then
+		search --no-floppy --fs-uuid --set=root --hint-bios=hd0,msdos1 --hint-efi=hd0,msdos1 --hint-baremetal=ahci0,msdos1 028C5B818C5B6DE3
+	else
+		search --no-floppy --fs-uuid --set=root 028C5B818C5B6DE3
+	fi
+	parttool ${root} hidden-
+	drivemap -s (hd0) ${root}
+	chainloader +1
+
+}

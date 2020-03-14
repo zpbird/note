@@ -1,0 +1,916 @@
+* 加速源
+** 阿里云docker加速器 
++ https://www.aliyun.com/
+  zpbird
+  790204qwer
++ 右上角控制台->左上角三横杆图标->产品与服务->弹性计算->容器镜像服务->左侧镜像加速器->获取加速器地址
+  https://3jj92gz0.mirror.aliyuncs.com
+  #+BEGIN_SRC shell
+  sudo nano /etc/docker/daemon.json 
+  {
+    "registry-mirrors": ["https://3jj92gz0.mirror.aliyuncs.com"]
+  }
+  
+  sudo systemctl daemon-reload
+  sudo systemctl restart docker
+  #+END_SRC
+* 安装
+官方安装指南https://docs.docker.com/install/
+Docker CE 分为 stable, test, 和 nightly 三个更新频道。每六个月发布一个 stable版本 (18.09, 19.03, 19.09...)
+** Ubuntu
++ 卸载旧版本docker
+  sudo apt-get remove docker docker-engine docker.io containerd runc
++ 更新
+  sudo apt update
++ 设置可以使用https安装软件
+  sudo apt-get install \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    gnupg-agent \
+    software-properties-common
++ 导入docker官方key
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
++ 添加仓库
+  sudo add-apt-repository \
+   "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+   $(lsb_release -cs) \
+   stable"
++ 安装
+  sudo apt-get update
+  sudo apt-get install docker-ce docker-ce-cli containerd.io
+** CentOS
+*** 移除旧版本docker
+$ sudo yum remove docker \
+                  docker-client \
+                  docker-client-latest \
+                  docker-common \
+                  docker-latest \
+                  docker-latest-logrotate \
+                  docker-logrotate \
+                  docker-selinux \
+                  docker-engine-selinux \
+                  docker-engine
+*** 安装一些必要的系统工具
+sudo yum install -y yum-utils device-mapper-persistent-data lvm2
+*** 添加软件源信息
+sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+或
+sudo yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
+*** 更新 yum 缓存
+sudo yum makecache 
+*** 安装 Docker-ce
+sudo yum install docker-ce docker-ce-cli containerd.io
+- 如果出现containerd.io版本报错
+ sudo dnf install https://download.docker.com/linux/centos/7/x86_64/stable/Packages/containerd.io-1.2.6-3.3.el7.x86_64.rpm   
+  或
+  从https://download.docker.com/linux/centos/7/x86_64/stable/Packages/中下载相应版本
+  wget https://download.docker.com/linux/centos/7/x86_64/stable/Packages/containerd.io-1.2.6-3.3.el7.x86_64.rpm   
+  sudo yum -y install containerd.io-1.2.6-3.3.el7.x86_64.rpm　
+*** 启动 Docker 后台服务
+sudo systemctl enable docker
+sudo systemctl start docker
+*** 测试运行 hello-world
+sudo docker run hello-world
+*** 镜像加速
+使用的是网易的镜像地址：http://hub-mirror.c.163.com
+新版的 Docker 使用 /etc/docker/daemon.json 请在该配置文件中加入（没有该文件的话，请先建一个）
+  {
+    "registry-mirrors": ["https://3jj92gz0.mirror.aliyuncs.com"]
+  }
+
+使用docker info 查看配置是否生效
+*** 删除 Docker CE
+$ sudo yum remove docker-ce
+$ sudo rm -rf /var/lib/docker
+** Archlinux
+*** 安装
+pacman -S docker
+sudo systemctl start docker.service
+sudo systemctl enable docker.service
+** 启动 Docker CE
+ sudo systemctl enable docker
+ sudo systemctl start docker
+** 建立 docker 用户组
++ 默认情况下， docker 命令会使用 Unix socket 与 Docker 引擎通讯。而只有root 用户和 docker 组的用户才可以访问 Docker 引擎的 Unix socket。出于安全考虑，一般 Linux 系统上不会直接使用 root 用户。因此，更好地做法是将需要使用 docker 的用户加入 docker 用户组
+  - 建立 docker 组
+    sudo groupadd docker
+  - 将当前用户加入 docker 组
+    sudo gpasswd -a zp docker
+    sudo usermod -aG docker $USER
+* 技术与架构
+** C/S架构
+*** docker-client(CLI)
++ 即平时用户输入命令执行操作的界面
+*** docker-server(dockerd进程)
++ 在主机中运行的docker的server进程
+** 底层技术支持
+*** Namespaces
++ 做隔离pid、net、ipc、mnt、uts
+*** Control groups
++ 做资源限制
+*** Union file systems
++ Container和image的分层
+* 镜像Image）
+** 概念
++ 简介
+  - 文件和meta data的集合(root filesystem)
+  - 分层的，且每一层都可以添加改变删除文件，成为一个xin的image
+  - 不同的image可以共享相同的layer
+  - image本身是read-only的
++ 操作系统分为内核和用户空间。对于 Linux 而言，内核启动后，会挂载 root 文件系统为其提供用户空间支持。而 Docker 镜像（Image），就相当于是一个 root 文件系统。比如官方镜像 ubuntu:18.04 就包含了完整的一套Ubuntu 18.04 最小系统的 root 文件系统
++ 镜像是一个特殊的文件系统，除了提供容器运行时所需的程序、库、资源、配置等文件外，还包含了一些为运行时准备的一些配置参数（如匿名卷、环境变量、用户等）。镜像不包含任何动态数据，其内容在构建之后也不会被改变
++ 分层存储
+  - 镜像并非是像一个 ISO 那样的打包文件，镜像只是一个虚拟的概念，其实际体现并非由一个文件组成，而是由一组文件系统组成，或者说，由多层文件系统联合组成
+  - 镜像构建时，会一层层构建，前一层是后一层的基础。每一层构建完就不会再发生改变，后一层上的任何改变只发生在自己这一层
+** 官方镜像网站
++ https://hub.docker.com/
++ 账号密码
+  zpbird
+  790204qwer
+** 获取image
+*** Build from Dockerfile(通过Dockerfile制作image)
++ 构建命令
+  docker build -t zpbird/redis:latest .
+*** Pull from Registry(从仓库拉取image)
++ 命令
+  docker pull ubuntu:14.04
++ 默认从官方的Docker Hub中拉取https://hub.docker.com/
+** 常用命令 
+*** 查看本地已经存在的image
++ 命令
+  sudo docker image ls
+  或 
+  sudo docker images
+*** 删除本地镜像
++ 命令
+  sudo docker image rm 镜像名称 (或镜像id)
+** 构建镜像
+*** 通过改变的容器创建镜像
++ 命令
+  docker container commit已有的容器name新生成的镜像name
+  或
+  docker commit已有的容器name新生成的镜像name
++ 此方式不推荐使用，无法看到内部构成，容易存在安全隐患
+*** 通过Dockerfile创建镜像
++ 命令
+  docker image build -t 镜像name .
+  或
+  docker build -t 镜像name .
+** 发布镜像
++ 在https://hub.docker.com上注册账号
++ 登录
+  docker login
+  输入用户名，密码
++ 发布
+  - 直接发布镜像文件
+    镜像的名称前面必须加dockerhub中的用户名
+    docker image push zpbird/hello-world:latest
+  - 关联github维护dockerfile，docker hub将自动生成image，此方法更安全透明
+    1. 在github上建立dockerfiles目录
+    2. 在dockerfiles目录下建立与image名字相同的目录，在此目录下存放Dockerfile文件及其他相关文件
++ 搭建自己的仓库
+  - 在docker hub中搜索官方的registry镜像，按照说明使用
+
+* 容器Container）
+** 概念
++ 镜像（Image）和容器（Container）的关系，就像是面向对象程序设计中的类和实例一样，镜像是静态的定义，容器是镜像运行时的实体。容器可以被创建、启动、停止、删除、暂停等
++ 容器的实质是进程，但与直接在宿主执行的进程不同，容器进程运行于属于自己的独立的 命名空间。因此容器可以拥有自己的 root 文件系统、自己的网络配置、自己的进程空间，甚至自己的用户 ID 空间
++ 镜像使用的是分层存储，容器也是如此。每一个容器运行时，是以镜像为基础层，在其上创建一个当前容器的存储层，我们可以称这个为容器运行时读写而准备的存储层为容器存储层
++ 容器存储层的生存周期和容器一样，容器消亡时，容器存储层也随之消亡。因此，任何保存于容器存储层的信息都会随容器删除而丢失
++ 按照 Docker 最佳实践的要求，容器不应该向其存储层内写入任何数据，容器存储层要保持无状态化。所有的文件写入操作，都应该使用数据卷（Volume）、或者绑定宿主目录，在这些位置的读写会跳过容器存储层，直接对宿主（或网络存储）发生读写，其性能和稳定性更高
++ 数据卷的生存周期独立于容器，容器消亡，数据卷不会消亡。因此，使用数据卷后，容器删除或者重新运行之后，数据却不会丢失
++ image负责app的存储和分发，container负责运行app
++ container相当于在image基础上多了一层，新的这层可读可写，但container销毁时所有的更改都不会被保存
+** 命令
+*** 显示当前本地正在运行的容器
++ 命令
+  docker container ls
+  docker ps
+*** 显示当前本地正在运行和已经结束运行的容器
++ 命令
+  docker container ls -a 
+  docker ps -a
+*** 通过镜像运行容器
+**** 一次性运行
++ 命令 
+  - docker run 镜像名
+    此命令的效果是通过镜像创建容器，并执行镜像中的CMD，运行后即刻退出并销毁对应的容器
+**** 后台运行
++ docker run -d 镜像名
+  或 docker run -itd 镜像名
+  通过镜像创建容器，并在后台运行
+**** 运行时设置容器内的环境变量
++ 命令
+  docker run -e NAME=zpbird 镜像名
+**** 端口映射
++ 命令
+  docker run -p 主机端口:容器端口
+**** 交互式运行
++ 命令
+  docker run -it 镜像名
+  exit 退出，退出后容器将被销毁
++ 执行后将进入创建的容器，在容器内部执行操作，如安装软件，创建文件等，但退出是这些更改将不会被保存
+*** 直接运行已经存在的容器
++ 命令
+  docker ps -a (查看本地所有容器)
+  docker start 容器id
+*** 停止运行中的容器
++ 命令
+  docker container stop 容器id
+  docker stop 容器id
+*** 删除容器
++ 命令
+  docker rm -f 容器id或容器名称 强制删除(停止并删除)
+  docker container rm 容器id(可以不写全，足以区分就可以)
+  docker rm 容器id(rm默认就是对容器进行操作)
++ 清除所有运行过已经关闭的容器
+  docker rm $(docker container ls -f "status=exited" -q)
+  docker rm $(docker ps -aq)
+*** 进入到运行中的容器
++ 可以查看运行状态，查看内部log，执行命令
++ 命令
+  docker exec -it 容器id /bin/bash(可以是其他任何命令)
+*** 查看容器的log
++ 命令
+  docker logs 容器id
+*** 查看容器的详细信息如ip地址
++ 命令
+  docker inspect NAMES 
+* Dockerfile
+** 简介
++ 文件名
+  默认使用当前目录下的Dockerfile文件
++ 简单示例
+  #+BEGIN_SRC shell
+  FROM centos
+  RUN yum install -y vim
+  #+END_SRC
+** 最佳实践
++ 一般来说，应该会将 Dockerfile 置于一个空目录下，或者项目根目录下。如果该目录下没有所需文件，那么应该把所需文件复制一份过来。如果目录下有些东西确实不希望构建时传给 Docker 引擎，那么可以用 .gitignore 一样的语法写一个 .dockerignore，该文件是用于剔除不需要作为上下文传递给 Docker 引擎的
++ Dockerfile 的文件名并不要求必须为 Dockerfile，而且并不要求必须位于上下文目录中，比如可以用 -f ../Dockerfile.qf 参数指定某个文件作为 Dockerfile。一般大家习惯性的会使用默认的文件名 Dockerfile，以及会将其置于镜像构建上下文目录中
+
+** 语法
+*** Shell和Exec格式
+**** Shell格式
++ 示例
+  #+BEGIN_SRC dockerfile
+  RUN apt-get install -y vim
+  CMD echo "hello docker"
+  ENTRYPOINT echo "hello docker"
+  #+END_SRC
+**** Exec格式
++ 示例
+  #+BEGIN_SRC dockerfile
+  RUN [ "apt-get" , "install" , "-y" , "vim" ]
+  CMD [ "/bin/echo" , "hello docker" ]
+  ENTRYPOINT [ "/bin/echo" , "hello docker" ]
+  ENTRYPOINT [ "/bin/bash" , "-c" , "echo hello $name" ]
+  #+END_SRC
+*** FROM
++ 介绍
+  - FROM是必备的指令，并且必须是第一条指令
+  - 引用或制作base image，引用时尽量使用官方image作为base image，主要是安全问题
++ 语法
+  - FROM scratch
+    制作base image
+  - FROM centos
+    FROM ubuntu:14.04
+    使用base image
+*** LABEL
++ 语法
+  - LABEL maintainer="xiaoquwl@gmail.com"
+  - LABEL version="1.0"
+  - LABEL description="This is description"
+*** RUN
++ 介绍
+  - 执行命令并创建新的Image Layer
++ 语法
+  - 反斜杠换行
+  - 示例
+    RUN yum update && yum install -y vim \
+        python-dev
+    RUN apt-get update && apt-get install -y perl \
+        pwgen --no-install-recommends && rm -rf \
+        /var/lib/apt/lists/* #注意清理cache
+    RUN /bin/bash -c 'source $HOME/.bashrc; echo $HOME'
++ 最佳实践
+  - 每一条RUN命令都会生成新的一层，所以尽量合并多条命令成一行，避免生成无用层，为了美观使用反斜杠换行
+*** WORKDIR
++ 语法
+  设定当前工作目录
+  - WORKDIR /root
+  - WORKDIR /test #如果test不存在会自动创建
+    WORKDIR demo
+    RUN pwd       #输出结果是/test/demo
++ 注意事项
+  - 用WORKDIR，不要使用RUN cd
+  - 尽量使用绝对目录，相对目录容易出错
+*** ADD (COPY)
++ 语法
+  - ADD hello /
+  - ADD test.tar.gz / #添加到根目录并解压
+  - WORKDIR /root
+    ADD hello test/ #/root/test/hello
+  - WORKDIR /root
+    COPY hello test/
++ 最佳实践
+  - 大部分情况下，COPY优先于ADD使用
+  - ADD除了COPY还有额外功能(解压)
+  - 添加远程文件/目录使用curl或wget
+*** ENV
++ 语法
+  - ENV MYSQL_VERSION 5.6 #设置常量
+    RUN apt-get install -y mysql-server= "${MYSQL_VERSION}" \
+    && rm -rf /var/lib/apt/lists/* #引用常量
++ 最佳实践
+  - ENV要尽量使用，增加可维护性  
+*** VOLUME
+*** EXPOSE
+*** CMD
++ 介绍
+  - 设置容器启动后默认执行的命令和参数
+  - 如果docker run 指定了其他命令，CMD会被忽略
+  - 如果定义了多个CMD，只有最后一个执行
+*** ENTRYPOINT
++ 介绍
+  - 设置容器启动时运行的命令
+  - 让容器以应用程序或服务的形式运行，通常作为后台进程
+  - 不会被忽略，一定会执行
++ 最佳实践
+  - 写一个shell脚本作为entrypoint
+    #+BEGIN_SRC dockerfile
+    COPY docker-entrypoint.sh /usr/local/bin
+    ENTRYPOINT ["docker-entrypoint.sh"]
+    EXPOSE 27017
+    CMD ["mongod"]
+    #+END_SRC
+** 官方Docker库可以参考dockerfile
++ https://github.com/docker-library
+* Docker Hub账号
++ 网址
+  https://hub.docker.com
++ 账号
+  用户名：zpbird
+  密码：790204qwer
+  邮箱：zpbird@qq.com
+* Docker网络
+** 相关命令
+*** 查看docker中存在的网络
++ 命令
+  sudo docker network ls
+*** 查看docker中网络的连接(docker连接到哪个网络)
++ 命令
+  sudo docker network inspect NETWORK ID
+** docker网络类型
+*** 单机
+**** Bridge Network
++ 设备
+  ip a
+  docker0
+***** 创建自己的bridge
++ 命令
+  sudo docker network create -d bridge my-bridge
+
+  docker network create --subnet=172.70.0.0/24 zpbr0
+
+  docker network create \
+  --driver=bridge \
+  --subnet=172.28.0.0/16 \
+  --ip-range=172.28.5.0/24 \
+  --gateway=172.28.5.254 \
+  br0
+***** 链接到指定的网络上
++ 命令
+  sudo docker run -d --name test3 --net zpbr0 --ip 172.70.0.1 ttt
+  sudo docker network connect my-bridge test2
+  
+***** 端口映射
++ 命令
+  sudo docker run -d --name web -p 80:80 nginx
+**** Host Network
++ 连接到Host Network
+  sudo docker run -d --name test1 --network host centos /bin/sh
++ 查看连接是否成功
+  sudo docker network inspect host  
++ 进入到容器内部查看可以看到，与主机共享同一套网络接口，即使用相同的网络命名空间
++ host 不利于网络自定配置和管理，并且所有主机的容器使用相同的IP。也不利于主机资源的利用
+**** None Network
++ 连接到None Network
+  sudo docker run -d --name test1 --network none centos /bin/sh
++ 查看连接是否成功
+  sudo docker network inspect none
++ 进入到容器内部，不存在网络接口
++ 不常用
+*** 多机
++ 使用的是vxlan技术
+**** Overlay Network
+***** 需要一个第三方的分布式存储
++ 用于避免多机内的docker容器的ip冲突
+***** etcd
++ 网站
+  https://coreos.com/etcd
++ 需要在每个需要通讯的docker主机上安装etcd
++ 在每个docker主机上启动etcd进程
+***** 重启docker服务
+***** 创建overlay network
++ 命令
+  sudo docker network create -d overlay demo
+** linux网络命名空间
+*** 概述
+*** 查看网络命名空间
++ 命令
+  sudo ip netns list
+*** 添加网络命名空间
++ 命令
+  sudo ip netns add 空间名称
+*** 删除网络命名空间
++ 命令
+  sudo ip netns delete 空间名称
+*** 设置(进入并执行命令)网络命名空间
++ 命令
+  sudo ip netns exec 空间名称 命令
++ 示例
+  sudo ip netns exec test1 ip a
+  sudo ip netns exec test1 ip link
+  sudo ip netns exec test1 ip link set dev lo up
+*** 创建虚拟网口链接对
++ 命令
+  sudo ip link add veth-test1 type veth peer name veth-test2
+*** 链接虚拟网口到网络命名空间
++ 命令
+  sudo ip link set veth-test1 netns test1
+  sudo ip link set veth-test2 netns test2
+*** 为虚拟网口设置ip地址
++ 命令
+  sudo ip netns exec test1 ip addr add 192.168.1.1/24 dev veth-test1
+  sudo ip netns exec test2 ip addr add 192.168.1.2/24 dev veth-test2
+*** 开启虚拟网口
++ 命令
+  sudo ip netns exec test1 ip link set dev veth-test1 up
+  sudo ip netns exec test2 ip link set dev veth-test2 up
+* 对外端口镜像防火墙设置
++ 命令
+  sudo nmcli connection modify enp0s9 connection.zone trusted
+#  sudo nmcli connection modify docker0 connection.zone trusted
+  sudo systemctl stop NetworkManager.service
+  sudo firewall-cmd --permanent --zone=trusted --change-interface=enp0s9
+#  sudo firewall-cmd --permanent --zone=trusted --change-interface=docker0
+  sudo systemctl start NetworkManager.service
+#  sudo systemctl restart docker.service
+
+* Docker持久化存储和数据共享
+** 基于本地文件系统的Volume
+*** Data Volume方式
++ 受管理的data Volume，由docker后台自动创建一个volum"文件"
++ 在docker file中使用VOLUME命令指定容器内部持久化的路径，启动容器时使用-v参数命名volume名称和对应路径
+  VOLUME ["/var/lib/mysql"]
+  docker run -v mysql-vol:/var/lib/mysql
++ 范例
+  sudo docker run -d --name mysql_1 -v mysql_1_data:/var/lib/mysql -e MYSQL_ALLOW_EMPTY_PASSWORD=true mysql:8
++ 查看创建的volume
+  sudo docker volume ls
++ 删除docker容器后，对应的volume不会自动删除，需要手动删除对应的volume
+  sudo docker volume rm volume名称
++ 查看volume信息
+  sudo docker volume inspect volume名称
+*** Bind Mounting方式
++ 绑定挂载的Volume，具体挂载位置由用户指定，直接映射容器内部的目录到主机相应目录上，实现同步效果
++ 命令
+  docker run -v /home/aaa:/root/aaa
+** 基于plugin的Volume，支持第三方的存储方案，如NAS、aws(不常用)
+* Docker Compose多容器部署(单主机批处理)
++ 基本只适用与本地开发测试环境，即一台docker主机上单机使用，不适合用于生产环境
+** 配置文件yml
++ 默认配置文件(可以自定义)
+  docker-compose.yml
+** 主要概念
+*** Services
++ 一个service代表一个container，这个container可以从dockerhub的image来创建，或从本地的Dockerfile build出来的image来创建
++ service的启动类似docker run，可以指定network和volume，所有可以给service指定network和volume的引用
++ 范例
+  #+BEGIN_SRC yaml
+  services:
+      db:
+          image: postgres:9.4(从docker hub拉取镜像)
+          volumes:
+              - "db-data:/var/lib/postgresql/data"
+          network:
+              - back-tier
+  
+  service:
+      worker:
+          build: ./worker(本地build镜像)
+          links:
+              - db
+              - redis
+          network:
+              - back-tier
+  #+END_SRC
+*** Networks 
++ 范例
+  #+BEGIN_SRC yaml
+  services:
+    worker:
+      build: ./worker
+      links:
+        - db
+        - redis
+      networks:
+        - back-tier
+  
+  networkss:
+    front-tier:
+      driver: bridge
+    back-tier:
+      driver: bridge
+  #+END_SRC
+*** Volumes
++ 范例
+  #+BEGIN_SRC yaml
+  services:
+    db:
+      image: postgres:9.4
+      volumes:
+        - "db-data:/var/lib/postgresql/data"
+      networks:
+        - back-tier
+  #+END_SRC
+** 安装Docker Compose
++ 按照手册步骤安装
+  https://docs.docker.com/compose/install/
+  #+BEGIN_SRC shell
+  sudo curl -L "https://github.com/docker/compose/releases/download/1.25.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+
+  #国内http://get.daocloud.io/
+  sudo curl -L "https://get.daocloud.io/docker/compose/releases/download/1.25.1/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+
+
+  #修改权限
+  sudo chmod +x /usr/local/bin/docker-compose
+
+  #Note: If the command docker-compose fails after installation, check your path. You can also create a symbolic link to /usr/bin or any other directory in your path
+  sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+  #+END_SRC
++ 卸载
+  #+BEGIN_SRC shell
+  sudo rm /usr/local/bin/docker-compose
+  #+END_SRC
+** 常用命令
+*** 启动
++ 使用默认配置文件
+  docker-compose up -d 不指定配置文件默认使用当前目录下的docker-compose.yml
++ 使用指定文件
+  docker-compose -f 文件名 up -d 
+*** 查看启动的服务
+docker-compose ps
+*** 停止服务
+docker-compose stop
+*** 停止服务并删除所有生成的资源
+docker-compose down
+*** 启动服务
+docker-compose start
+*** 查看服务使用的image
+docker-compose images
+*** 进入容器
+docker-compose exec services定义的名称 bash
+*** 生成配置文件中设置的需要生成的镜像文件
+- 可以加快docker-compose up的时间
+- 当Dockerfile的配置发生变化时，需要build，让up时使用最新的image
+docker-compose build
+** 水平扩展和负载均衡
+*** 单纯的水平扩展
+docker-compose up --scale servers名称=个数 -d
+要求在配置文件中不能指定端口映射
+*** 负载均衡
+- 使用haproxy
+  #+BEGIN_SRC yaml
+  services:
+    redis:
+      image: redis
+    web:
+      build:
+        context: .
+        dockerfile: Dockerfile
+      enviroment:
+        REDIS_HOST: redis
+    lb:
+      image: dockercloud/haproxy
+      links:
+        - web
+      ports:
+        - 8080:80
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+  #+END_SRC
+** 范例
+#+BEGIN_SRC yaml
+  version: "3"
+
+  services:
+    voting-app:
+      build: ./voting-app/.
+      volumes:
+       - ./voting-app:/app
+      ports:
+        - "5000:80"
+      links:
+        - redis
+      networks:
+        - front-tier
+        - back-tier
+
+    result-app:
+      build: ./result-app/.
+      volumes:
+        - ./result-app:/app
+      ports:
+        - "5001:80"
+      links:
+        - db
+      networks:
+        - front-tier
+        - back-tier
+
+    worker:
+      build: ./worker
+      links:
+        - db
+        - redis
+      networks:
+        - back-tier
+
+    redis:
+      image: redis
+      ports: ["6379"]
+      networks:
+        - back-tier
+
+    db:
+      image: postgres:9.4
+      volumes:
+        - "db-data:/var/lib/postgresql/data"
+      networks:
+        - back-tier
+
+  volumes:
+    db-data:
+
+  networks:
+    front-tier:
+    back-tier:
+
+
+#+END_SRC
+* 多主机通信
+** 两台主机上的Docker容器直接通过IP地址进行通信
++ 各项配置如下：
+  • 主机1的IP地址为：192.168.1.128
+  • 主机2的IP地址为：192.168.1.129
+  • 为主机1上的Docker容器分配的子网：172.17.1.0/24
+  • 为主机2上的Docker容器分配的子网：172.17.2.0/24
+  - 编辑主机1上的 /etc/docker/daemon.json 文件，添加内容：
+    { "bip"： "172.17.1.252/24" }
+  - 编辑主机2上的 /etc/docker/daemon.json 文件，添加内容：
+    { "bip"： "172.17.2.252/24" }
+  - 主机1和主机2上均执行如下命令重启docker服务以使修改后的docker0网段生效
+    systemctl restart docker
++ 编辑主机路由及防火墙
+  主机1上添加路由规则如下：
+  route add -net 172.17.2.0 netmask 255.255.255.0 gw 192.168.1.129
+  主机2上添加路由规则如下：
+  route add -net 172.17.1.0 netmask 255.255.255.0 gw 192.168.1.128
+  
+  主机1上添加iptables规则如下
+  iptables -t nat -F POSTROUTING
+  iptables -t nat -A POSTROUTING -s 172.17.1.0/24 ! -d 172.17.0.0/16 -j MASQUERADE
+  主机2上添加如下规则
+  iptables -t nat -F POSTROUTING
+  iptables -t nat -A POSTROUTING -s 172.17.2.0/24 ! -d 172.17.0.0/16 -j MASQUERADE
+* 容器编排Swarm mode
+用于生产环境部署docker容器，内置于docker
+** 
+* 容器编排Kubernetes
+** 安装
+** Pod最小调度单位
++ 一个pod共享一个namespace，此namespace包含用户、网络、存储
++ pod可以包含一个或多个容器
++ 不要直接使用和管理pods
+
+** ReplicaSet水平扩展
++ 通过使用replicaset创建pod的一个重要用途是保证pod运行，当某个pod宕机时，k8s会自动创建对应pod保证服务正常工作
+** Deployments
++ 用于
+** Services
+*** 命令
+kubectl expoese
+*** 类型
+**** ClusterIP
++ 外界无法访问，但cluster内部任何地方都可以访问的IP地址，典型的就是数据库pod
+**** NodePort
++ 外界可以访问
+**** LoadBalancer
++ 外界可以访问，一般是云服务器提供
+** 容器的运维和监控
+* DevOps(部署和持续集成)
+* 部署实例
+** 设置防火墙
+*** firewall(centos默认使用)
++ 查看宿主机防火墙(centos8默认防火墙)
+  sudo firewall-cmd --state
++ 查看防火墙开启的端口
+  sudo firewall-cmd --list-ports
++ 设置防火墙开放80端口
+  sudo firewall-cmd --zone=public --add-port=80/tcp --permanent
+  sudo systemctl restart firewalld.service
+  sudo firewall-cmd --reload
++ firewall相关命令
+  systemctl unmask firewalld                    #执行命令，即可实现取消服务的锁定
+  systemctl mask firewalld                    # 下次需要锁定该服务时执行
+  systemctl start firewalld.service               #启动防火墙  
+  systemctl stop firewalld.service                #停止防火墙  
+  systemctl reloadt firewalld.service             #重载配置
+  systemctl restart firewalld.service             #重启服务
+  systemctl status firewalld.service              #显示服务的状态
+  systemctl enable firewalld.service              #在开机时启用服务
+  systemctl disable firewalld.service             #在开机时禁用服务
+  systemctl is-enabled firewalld.service          #查看服务是否开机启动
+  systemctl list-unit-files|grep enabled          #查看已启动的服务列表
+  systemctl --failed                                     #查看启动失败的服务列表
+*** ipables(centos默认未使用)
++ 查看iptables服务是否启动
+  sudo systemctl status iptables.service
++ 安装
+  sudo yum install iptables-services 
++ 开机启动
+  sudo systemctl enable iptables
++ 启动
+  sudo systemctl start iptables 
++ 查看当前状态
+  sudo iptables -L -nv --line-number
++ 开放端口
+  sudo iptables -A INPUT -p tcp -m tcp --dport 8081 -j ACCEPT 
+  sudo systemctl restart iptables 
+*** ufw(ubuntu)
++ 查看防火墙状态
+  sudo ufw status
++ 启用(默认安装了，但未启用)
+  sudo ufw enable
+  sudo ufw disable
++ 关闭所有外部对本机的访问
+  sudo ufw default deny
+  sudo ufw default allow
++ 开启/禁用端口或服务
+  sudo ufw allow|deny [service]
+
+  sudo ufw allow smtp　允许所有的外部IP访问本机的25/tcp (smtp)端口
+  sudo ufw allow 22/tcp 允许所有的外部IP访问本机的22/tcp (ssh)端口
+  sudo ufw allow 53 允许外部访问53端口(tcp/udp)
+  sudo ufw allow from 192.168.1.100 允许此IP访问所有的本机端口
+  sudo ufw allow proto udp 192.168.0.1 port 53 to 192.168.0.2 port 53
+  sudo ufw deny smtp 禁止外部访问smtp服务
+  sudo ufw delete allow smtp 删除上面建立的某条规则
++ 安装ssh Service软件
+  sudo apt install openssh-server -y
+** 单机部署多容器时的自定义网络
+zpbr0
+** Nginx
++ 在宿主机上创建相应目录
+  - www: 目录将映射为 nginx 容器配置的虚拟目录
+  - logs: 目录将映射为 nginx 容器的日志目录
+  - conf: 目录里的配置文件将映射为 nginx 容器的配置文件
++ 拉取镜像
+  docker pull nginx:stable
++ 开放宿主机端口
+  sudo nmcli connection modify enp0s9 connection.zone trusted
+  sudo systemctl stop NetworkManager.service
+  sudo firewall-cmd --permanent --zone=trusted --change-interface=enp0s9
+  sudo systemctl start NetworkManager.service
+
+  sudo firewall-cmd --zone=public --add-port=8081/tcp --permanent
+  sudo systemctl restart firewalld.service
+  sudo firewall-cmd --reload
++ 检查宿主机80端口是否开放
+  telent 宿主机ip 80
++ 运行容器
+  docker run --rm -d -p 7011:7011 --name nginx-test  --net zpbr0 --ip 172.70.0.11\
+  -v /store/zpbird/dockerfiles/webserver/nginx/html:/usr/share/nginx/html \
+  -v /store/zpbird/dockerfiles/webserver/nginx/conf.d:/etc/nginx/conf.d \
+  -v /store/zpbird/dockerfiles/webserver/nginx/nginx.conf:/etc/nginx/nginx.conf \
+  -v /store/zpbird/project/app_ttjt/logs/nginx:/var/log/nginx \
+  -v /store/zpbird/dockerfiles/webserver/nginx/supervisor/supervisord.conf:/etc/supervisor/supervisord.conf \
+  -v /store/zpbird/dockerfiles/webserver/nginx/supervisor/conf.d:/etc/supervisor/conf.d \
+  -v /store/zpbird/project/app_ttjt/logs/nginx/supervisor:/var/log/supervisor \
+  -v /etc/localtime:/etc/localtime \
+  zpbird/nginx:0.5
+  或
+  docker run --rm -d -p 7011:7011 --name nginx-test  --net zpbr0 --ip 172.70.0.11\
+  -v /store/zpbird/project/app_ttjt/logs/nginx:/var/log/nginx \
+  -v /store/zpbird/project/app_ttjt/logs/nginx/supervisor:/var/log/supervisor \
+  zpbird/nginx:0.5
+** Flask
+*** 相关服务
+**** WSGI服务器
+***** gunicorn
+****** 创建配置文件
++ 在项目跟目录创建一个gun.conf文件，名字和文件位置你可以进行更改
++ 范例
+  #+BEGIN_SRC python
+    # -*- coding: utf-8 -*-
+    import multiprocessing
+    import os
+    import gevent.monkey
+
+    gevent.monkey.patch_all()
+    if not os.path.exists('/var/log/gunicorn'):
+        os.mkdir('/var/log/gunicorn')
+
+    # 生产环境不需要
+    debug = True
+
+    loglevel = 'debug'
+
+    # 后台运行
+    daemon = True
+
+    bind = '0.0.0.0:5000'
+    worker_connections = 1200
+    pidfile = '/var/log/gunicorn/gunicorn.pid'
+    logfile = '/var/log/gunicorn/debug.log'
+    errorlog = '/var/log/gunicorn/error.log'
+    accesslog = '/var/log/gunicorn/access.log'
+    access_log_format = '%(h)s %(t)s %(U)s %(q)s'
+
+    # 启动的进程数
+    workers = multiprocessing.cpu_count() * 2 + 1
+    worker_class = "gevent"
+
+  #+END_SRC
+****** 单独配置入口文件
++ 项目根目录创建一个wsgi.py文件，名字目录可以随意更改
+  #+BEGIN_SRC python
+  from app_ttjt import app
+  
+  if __name__ == "__main__":
+      app.run()
+  #+END_SRC
+****** 启动命令
++ 格式
+  gunicorn [OPTIONS] 模块名：变量名
+  模块名：目录+python文件名
+  变量名：即python实例名称
++ 示例
+  gunicorn -c /etc/gunicorn/gun.conf wsgi:app
+
+**** 异步模块
+***** gevent
+**** 进程保护
+***** supervisor
+**** 数据库orm
+***** flask-sqlalchemy
+*** docker部署
+**** 拉取镜像
++ docker pull python:3.7.6-buster
+*** Dockerfile
+#+BEGIN_SRC 
+
+#+END_SRC
+*** 运行容器
++ 范例
+  docker run --rm -d -p 7012:7012 --name flask-test  --net zpbr0 --ip 172.70.0.12\
+  -v /store/zpbird/dockerfiles/webserver/flask/supervisor/supervisord.conf:/etc/supervisor/supervisord.conf \
+  -v /store/zpbird/dockerfiles/webserver/flask/supervisor/conf.d:/etc/supervisor/conf.d \
+  -v /store/zpbird/project/app_ttjt/logs/flask/supervisor:/var/log/supervisor \
+  -v /store/zpbird/dockerfiles/webserver/flask/gunicorn/gunicorn.conf.py:/etc/gunicorn/gunicorn.conf.py \
+  -v /store/zpbird/project/app_ttjt/logs/flask/gunicorn:/var/log/gunicorn \
+  -v /store/zpbird/project/app_ttjt:/app \
+  -v /etc/localtime:/etc/localtime \
+  zpbird/flask:0.5
+  或
+  docker run --rm -d -p 7012:7012 --name flask-test  --net zpbr0 --ip 172.70.0.12\
+  -v /store/zpbird/project/app_ttjt/logs/flask/supervisor:/var/log/supervisor \
+  -v /store/zpbird/project/app_ttjt/logs/flask/gunicorn:/var/log/gunicorn \
+  -v /store/zpbird/project/app_ttjt:/app \
+  zpbird/flask:0.5
+  或
+  docker run --rm -d -p 7012:7012 --name flask-test  --net zpbr0 --ip 172.70.0.12\
+  -v /store/zpbird/project/app_ttjt/logs/flask/supervisor:/var/log/supervisor \
+  -v /store/zpbird/project/app_ttjt/logs/flask/gunicorn:/var/log/gunicorn \
+  zpbird/flask:0.5
+*** 项目测试文件 
++ 范例
+  #+BEGIN_SRC python
+  from flask import Flask
+
+  app = Flask(__name__)
+
+  @app.route('/')
+  def hello():
+      return 'hello docker'
+
+  if __name__ == '__main__':
+      app.run(host='0.0.0.0',port=5000,debug=True)
+  # python  app.py 运行测试      
+  #+END_SRC
+** Postgresql
+** Redis

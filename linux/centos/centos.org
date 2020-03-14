@@ -1,0 +1,160 @@
+* virtualbox中安装使用
+** 后台运行centos
+- 查看有哪些虚拟机
+  VBoxManage list vms
+- 查看虚拟的详细信息
+  VBoxManage list vms --long
+- 查看运行着的虚拟机
+  VBoxManage list runningvms
+- 开启虚拟机在后台运行
+  VBoxManage startvm <vm_name> --type headless
+- 关闭虚拟机
+  VBoxManage controlvm <vm_name> acpipowerbutton
+- 强制关闭虚拟机
+  VBoxManage controlvm <vm_name> poweroff
+- 设置为脚步文件
+  - nano vmstart.sh
+    #+BEGIN_SRC shell
+    #!/bin/sh
+    VBoxManage startvm Centos --type headless
+    #+END_SRC
+  - 设置权限可以运行
+    chmod 777 vmstart.sh
+  
+
+
+ 
+- 开启虚拟机并开启远程桌面连接的支持
+  VBoxManage startvm <vm_name> --type vrdp
+- 改变虚拟机的远程连接端口,用于多个vbox虚拟机同时运行
+  VBoxManage controlvm <vm_name> vrdpprot <ports>
+** 设置ssh连接
+*** virtualbox
++ Network->Advanced->Port Forwarding
+  - 新建规则
+  - Host Port 2222 (随意指定未被占用的端口)
+  - Guest Port 22 (虚拟机的ssh端口)
+*** 虚拟机设置
++ 开启22端口
+  $ sudo vi /etc/ssh/sshd_config
++ 设置完成后，使用以下命令重启SSH：
+  systemctl restart sshd.service
+** 连接虚拟机
++ ssh登录
+  ssh -p 端口(2222) 用户@主机IP(localhost)
++ ssh退出
+  exit
+** 重新生成vdi文件uuid
+VBoxManage internalcommands sethduuid .vdi文件
+* 网络配置
+** 网卡配置
+*** 手动开启关闭网卡
+#+BEGIN_SRC shell
+ifup {interface}        #启动网卡命令
+ifdown {interface}      #禁用网卡命令
+ifup eth0　　            #启动网卡eth0
+#+END_SRC
+*** 开机启用网卡
++ 查看系统网卡信息
+  #+BEGIN_SRC shell
+  ip address
+  ifconfig -a
+  #+END_SRC
++ 编辑配置文件开启网卡
+  #+BEGIN_SRC conf
+  #File  /etc/sysconfig/network-scripts/ifcfg-eth0
+  ONBOOT=yes
+  #+END_SRC
++ 重启网络服务
+  #+BEGIN_SRC shell
+  service network restart 
+  #+END_SRC
++ 此时默认为动态IP(DHCP)
+*** 静态IP
++ 编辑配置文件
+  #+BEGIN_SRC conf
+  #File  /etc/sysconfig/network-scripts/ifcfg-eth0
+  BOOTPROTO=static   #启用静态IP地址
+  ONBOOT=yes  #开启自动启用网络连接
+  IPADDR=192.168.21.129  #设置IP地址
+  NETMASK=255.255.255.0  #设置子网掩码
+  GATEWAY=192.168.21.2   #设置网关
+  DNS1=8.8.8.8 #设置主DNS
+  DNS2=8.8.4.4 #设置备DNS
+  IPV6INIT=no  #禁止IPV6
+  #+END_SRC
++ 重启网络服务
+  #+BEGIN_SRC shell
+  service network restart 
+  #+END_SRC
+* 配置ssh
++ 安装OpenSSH服务(CentOS系统默认安装了openssh)
+  yum install openssh-server -y
++ 注册使用服务
+  sudo systemctl enable sshd  
+  sudo systemctl start sshd 或者 service sshd start
++ 开启防火墙的22端口
+  sudo firewall-cmd --zone=public --add-port=22/tcp --permanent  
+  sudo service firewalld restart  
++ 配置OpenSSH服务(默认的配置已可以正常工作)
+  OpenSSH的主配置文件：/etc/ssh/sshd_config
+
+  常见的配置选项：
+  Port=22  设置SSH的端口号是22(默认端口号为22)
+  Protocol 2  启用SSH版本2协议
+  ListenAddress 192.168.0.222  设置服务监听的地址
+  DenyUsers   user1 user2 foo  拒绝访问的用户(用空格隔开)
+  AllowUsers  root osmond vivek  允许访问的用户(用空格隔开)
+  PermitRootLogin  no  禁止root用户登陆
+  PermitEmptyPasswords no  用户登陆需要密码认证
+  PasswordAuthentication  yes  启用口令认证方式
++ 重启OpenSSH服务
+  service sshd restart
++ 客户端通过ssh远程连接服务器
+  ssh username@hostname(hostIP) 
+* 查看系统信息
++ 查看系统版本
+  cat /etc/redhat-release
+* 修改yum源
++ 安装wget
+  yum install wget
++ 备份本地yum源
+  mv /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo_bak
++ 获取阿里yum源配置文件
+  wget -O /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
++ 清理yum缓存 
+  yum clean all
++ 更新cache
+  yum makecache
++ 升级系统
+  yum -y update 
+* 增加epel源（可选）
+// 安装epel源
+yum install epel-release
+// 修改为阿里的epel源
+wget -O /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
+
+// 安装yum源优先级管理工具
+yum install -y yum-priorities
+// 添加优先级（数字越小优先级越高）
+vim /etc/yum.repo.d/epel.repo
+priority=88
+// 添加优先级（这个数要小于epel里的88即可）
+vim /etc/yum.repo.d/Centos-7.repo
+priority=6
+
+// 开启yum源优先级功能
+vim /etc/yum/pluginconf.d/priorities.conf
+// 确保文件内容包含如下：
+[main]
+enabled=1
+* sudo
++ 安装
+  yum install sudo
++ 设置
+  编辑/ect/sudoers
+  添加用户
+  用户名 ALL=(ALL) NOPASSWD: ALL
+* yum常用命令
++ 安装软件
+  yum -y install xxxx

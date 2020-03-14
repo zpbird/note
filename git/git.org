@@ -1,0 +1,100 @@
+* git理论基础
++ 本地仓库有git维护的“三棵树”组成
+  - 工作区域(Working Directory)
+    当前工作目录文件夹
+  - 暂存区域(Stage(Index))
+  - Git仓库(Repository(HEAD))
+    提交代码的最终归宿
+* 配置git 
++ Git全局设置
+  #+BEGIN_SRC shell
+  git config --global user.name "zpbird" 
+  git config --global user.email "zpbird@qq.com"
+  或 git config --global --edit 在打开的编辑器中编辑图示字段 
+  #+END_SRC
+* 配置vscode
++ 在vs中每次更新代码都会要输入账号密码，可以配置一下让git记住密码账号
+  #+BEGIN_SRC shell
+  git config --global credential.helper store   //在Git Bash输入这个命令就可以了
+  #+END_SRC
+* git基本命令
++ git init
+  在当前文件夹创建一个git仓库，最直观的就是当前目录下多出了.git文件夹(windows下需要显示隐藏文件夹才能看到，linux下需要ls -a)
++ git add 
+  从当前文件夹添加文件到暂存区域，以便于git追踪
++ git commit -m "do what"
+  从暂存区域提交代码到代码仓库，提交说明为 “do what”
++ git diff 
+  用来比较仓库，暂存区，工作目录的不同（用法很多）
++ git reset
+  git reset HEAD~用来回退到上个提交的版本，做了两件事：1.修改了HEAD指向（仓库当前版本回退到上个），2.将仓库上个版本的文件覆盖到暂存区域，用以丢弃上次的提交，（工作目录，文件夹中的文件还没变）
++ git log
+  查看版本提交记录每次commit的记录都会及说明都会在内
++ git log --oneline --decorate --all --graph
+  显示简单摘要的办法
++ git status
+  查看git仓库当前状态，如有没有 工作区文件未添加到暂存区(Untracked),工作区文件修改未提交到暂存区(Unstaged),暂存区的文件未提交到仓库(Changes to be committed)等等，有问题解决问题。当仓库与工作区，暂存区文件一致时，提示应该是”nothing to commit, working tree clean“
++ git checkout
+  同git reset一样拥有超多功能，切换分支，回复文件到工作目录，等等
++ git branch 
+  创建分支 git branch xxx
++ git merge 
+  合并分支
++ git pull
+  相当于是从远程获取最新版本并merge到本地，相当于git fetch + git merge，git fetch更安全一些，可以在决定合并之前查看更新情况
+  #+BEGIN_SRC shell
+  git pull origin master
+  #+END_SRC
+* GitHub
+** 账号
++ 用户名：zpbird
++ 邮箱：zpbird@qq.com
++ 密码：790204qwer
+** 创建项目
++ Create a new repository
+  - 输入仓库名称
+  - Create repository
+** 创建并配置ssh
++ 生成SSH钥匙,打开Git Bash，在控制台中输入以下命令,在密钥中有一个注释字段，用-C来指定所指定的注释，可以方便用户标识这个密钥，指出密钥的用途或其他有用的信息。所以在这里输入自己的邮箱或者其他都行
+  #+BEGIN_SRC shell
+  ssh-keygen -t rsa -C "zpbird@qq.com"
+  #+END_SRC
++ 程序会要求输入一个密码(Enter passphrase )，输入完密码后按回车会要求再确认一次密码，如果不想要密码可以在要求输入密码的时候按两次回次，表示密码为空，并且确认密码为空，此时[c盘>用户>自己的用户名>.ssh]目录下已经生成好了
++ 登录Github。打开setting->SSH keys，点击右上角 New SSH key，把[c盘->用户->自己的用户名->.ssh]目录下生成好的公钥"id_rsa.pub"文件以文本打开复制放进 key输入框中，再为当前的key起一个title来区分每个key
+** 将远程仓库纳入管理
++ 其实就是添加远程仓库，在你已有的本地仓库目录下执行如下命令
+  #+BEGIN_SRC shell
+  $ git remote add origin https://github.com/zpbird/flask_test.git
+  #+END_SRC
+** 提交本地仓库到GitHub
++ 初始化本地仓库，进入到项目目录，生成.git目录
+  #+BEGIN_SRC shell
+  git init
+  #+END_SRC
++ 添加文件到暂存区
+  #+BEGIN_SRC shell
+  git add README.md
+  #添加目录下所有文件
+  git add .
+  #+END_SRC
++ 查看文件状态
+  #+BEGIN_SRC shell
+  git status -s
+  #+END_SRC
++ 从暂存区域提交到仓库
+  #+BEGIN_SRC shell
+  git commit -m "first commit"
+  #+END_SRC
++ 提交到GitHub
+  #+BEGIN_SRC shell
+  #关联github仓库
+  git remote add origin https://github.com/zpbird/dockerfiles.git
+  #上传到远程仓库
+  git push -u origin master
+  
+  #+END_SRC
+** 从GitHub获取最新版本并merge到本地
++ git pull
+  #+BEGIN_SRC shell
+  git pull origin master
+  #+END_SRC

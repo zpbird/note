@@ -1,0 +1,8 @@
+# required by =net-libs/nodejs-8.9.3 (argument)
+# /usr/portage/profiles/releases/13.0/package.mask:
+# Andreas K. Hüttel <dilfridge@gentoo.org> (27 May 2017)
+# This release and later require C++11 or C++14
+# So we mask it here, and unmask in 17.0 release profiles
+=net-libs/nodejs-8.9.3
+
+

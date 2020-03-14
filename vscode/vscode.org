@@ -1,0 +1,69 @@
+* 基础设置
+** 配置同步
+*** Settings Sync(扩展)
++ 简介：可同步包含的所有扩展和完整的用户文件夹
+  - 设置文件
+  - 快捷键设置文件
+  - Launch File
+  - Snippets Folder
+  - VSCode 扩展设置
+  - 工作空间
++ 快捷键
+  - 上传： Shift + Alt + U (Sync: Update / Upload Settings)
+  - 下载： Shift + Alt + D (Sync: Download  Settings)
++ 安装git
++ 初始化git
+  #+BEGIN_SRC shell
+  git init
+  #+END_SRC
++ 设置github生成Personal access tokens 
+  - 进入github -> Settings 在左侧 Developer settings -> Personal access tokens
+  - 点击按钮 Generate new token 新增一个token
+  - 设置Note：vscode_sync
+  - 勾选gist，点击Generate token
++ VSCode配置将token配置到本地
+  - (Sync: Update / Uplaod Settings) Shift + Alt + U 在弹窗里输入你的token， 回车后会生成syncSummary.txt文件
+    注意要保存GIST ID,下载配置时需要输入
++ 同步下载设置
+  - (Sync: Download  Settings) Shift + Alt + D 在弹窗里输入你的gist值，稍后片刻便可同步成功
++ 重置同步设置，变更其它token
+  - Ctrl+P / F1 弹出输入>sync,即可重新配置你的其它token来同步
+** python
++ 自动添加括号
+  python.autoComplete.addBrackets
++ 创建一个.py文件，vscode会提示安装python扩展及pylint扩展
+*** jedi
++ 代码补全
+  #+BEGIN_SRC shell
+  pip install jedi
+  #+END_SRC
+*** pylint
++ 安装
+  #+BEGIN_SRC shell
+  python.exe -m pip install --upgrade pip
+  python.exe -m pip install -U pylint --user
+  python.exe -m pip install -U rope --user
+  #+END_SRC
++ 配置
+*** flake8
++ 安装
+  #+BEGIN_SRC shell
+  pip install flake8
+  #+END_SRC
++ 配置
+  VScode文件->首选项->用户设置，在settings.json文件中输入"python.linting.flake8Enabled": true
+*** yapf(自动格式化)
++ 安装
+  #+BEGIN_SRC shell
+  pip install yapf
+  #+END_SRC
++ 配置
+  VSCode文件->首选项->用户设置，在settings.json文件中输入"python.formatting.provider": "yapf"
+*** 配置python第三方库(pip安装的模块)的代码提示
++ 在配置中搜索python.autoComplete.extraPaths
+  #+BEGIN_SRC json
+      "python.autoComplete.extraPaths": [
+        　　　　"C:/Users/PC-BGS-WG/AppData/Local/Programs/Python/Python37/Lib/site-packages",
+        　　　　"C:/Users/PC-BGS-WG/AppData/Local/Programs/Python/Python37/Scripts"
+        　　]
+  #+END_SRC

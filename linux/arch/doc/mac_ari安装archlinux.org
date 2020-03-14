@@ -1,0 +1,999 @@
+mac air上archlinux的安装及优化
+转载weixin_30773135 最后发布于2017-10-14 10:17:00 阅读数 54  收藏
+展开
+前言
+　　最近总感觉跑了两年多ubuntu系统的MacBookAir6,2越来越不行了，内存总是亮红灯，软件效率也低了不少。最直接的解决方法当然是换电脑，购买一台配置更好的，比如2017款xps，不过在我狠下心买的时候，xps的发布时间推迟了！！！还推迟了10来天！！！我又不想将就买其他型号，于是干脆自己尝试着重装系统解决（结果特别满意，因此才有了这篇文章^_^）。这篇文章记录了我安装archlinux的整个的过程，涉及到MacBookAir6,2下archlinux的安装、配置、优化等等，希望对那些想在MacBookAir6,2上装archlinux系统的人有所帮助！对于想在mac air上安装其他linux发行版的人应该也会有较好的参考吧！
+
+系统的选择
+　　我重装系统的目标是希望系统尽量轻、高效。毕竟我是因为硬件支撑不了像ubuntu这样的系统，所以首先排除的是ubuntu、fedora、redhed等大型的发布版本。打算从gentoo和archlinux中挑一个，gentoo太过极端（对我来说），而archlinux相对ubuntu这类发布版本来说，虽然也比较极端，但是至少对于gentoo来说，还是好不少的。另外archlinux支持滚动更新（我最期待的功能之一），也有强大的包管理系统（使用了之后，才觉得真的很好用，比apt、yum强大多了）及非常完善的wiki（基本上，任何问题都能够在wiki上找到解决方法），于是我选择了它^_^，archlinux。下面，开始系统的安装和优化吧！
+
+archlinux的安装
+　　我个人认为，archlinux适合有一定linux基础且不怕折腾的人使用。相信这句话就吓退不少想尝试下archlinux的人^_^。不过，在经过短时间的折腾后，你一定会觉得之前的一切折腾都是值得的。archlinux采用pacman来进行包管理（当然，还有一些辅佐工具，如yaourt，powerpill，packer等等），采用systemd作为init，因此建议提前研究下这两个技术吧^_^。pacman的简单介绍可以参考本文的 pacman使用 小节以及linuxtoy上的一篇连载Archlinux 的灵魂──PKGBUILD、AUR 和 ABS (1)(2)(3)(4)。
+
+安装配置说明
+硬件配置:
+
+MacBookAir6,2
+软件配置:
+
+操作系统: archlinux Release 2017.01.01
+桌面环境: xfce4
+显示管理器: slim
+文件管理器: thunar（默认）
+安装记录
+　　有多种系统启动方式可以选择，可以直接EFISTUB启动（linux 3.3以后的内核支持该模式），也可以通过boot loader启动，这里采用boot loader启动。另外，不打算用grub作为boot loader，而是采用systemd自带的loader，这样更直接（不需要相对庞大的grub了），同时也拥有grub的一些较好的特性（启动菜单，多系统引导启动等等）。下面是安装的具体步骤：
+
+联网，mac air的无线网卡默认在u盘起的系统里是工作不了的，只能通过thunderbolt外接网线来访问网络，如果有dhcp服务器的话，默认应该会dhcp到ip的（如果实在无法有线联网，可以尝试安装broadcom-wl-dkms包来激活无线网卡，参考后面的wifi问题，不过，重启后就无效了，需要重新来一次）
+下载iso，dd到u盘，从u盘启动。参考命令：dd if=xxx.iso of=/dev/sdb bs=1M　（请根据实际情况修改xxx.iso 和　sdb的名称），将u盘插上mac，按下alt/option键，按下电源启动，在弹出的菜单里选择从u盘对应的菜单启动（注意，启动后默认是命令行下，也就是说后面的命令都是在命令行下完成，这也是archlinux的安装比其他发布版本难的原因）
+更新系统时间，参考命令：timedatectl set-ntp true
+用fdisk将磁盘分区为boot、swap、root（如果习惯有独立的分区作为home，也可以再分一个home分区），需要注意的是，mac采用uefi模式，所以建议采用gpt分区格式。另外注意，我的mac air上的osx被我删掉了，也就是说我不是装双系统，而是独立安装archlinux，所以如果期望双系统安装的人，这部分可能会有些不一样，包括后面的安装引导部分，这里建议大家参考网上其他文章
+boot分区：该分区用于EFI，因此需要将分区类型设置为EFI System，可以通过fdisk分区后，使用命令t触发修改分区类型，并将分区类型设置为１，即EFI System，建议boot(同时也是ESP分区)分区大小为512M
+swap分区：内存较小的系统或者期望有休眠功能的系统必须要有该分区，当然，你也可以用一个大的文件作为swap挂载。至于该分区的大小，尽管内核会做一些压缩优化，但还是建议分区大小和物理内存大小一致，甚至大一倍，更多的信息参考 swap分区
+root分区：该分区尽量大（如果没有独立的home分区的话）
+格式化boot分区为fat32，参考命令：mkfs.fat -F32 /dev/sda1
+格式化root分区为ext4，参考命令：mkfs.ext4 /dev/sdb3 (这里假设swap分区对应的名称为sdb3)
+使能swap分区，参考命令：mkswap /dev/sdb2; swapon /dev/sdb2 (这里假设swap分区对应的名称为sdb2)
+挂载root及boot分区，参考命令：mount /dev/sdb3 /mnt; mkdir -p /mnt/boot/efi; mount /dev/sdb1 /mnt/boot
+安装基本系统到root分区，参考命令：pacstrap -i /mnt base base-devel
+生成fstab信息到待安装的分区，参考命令：genfstab -U -p /mnt >> /mnt/etc/fstab
+切换到待安装的分区，参考命令：arch-chroot /mnt /bin/bash
+配置待安装的系统
+设置时区、时钟
+ln -s /usr/share/zoneinfo/Asia/Shanghai /etc/localtime （该命令与timedatectl set-timezone Asia/Shanghai等效）
+hwclock --systohc --utc
+设置locale
+打开/etc/locale.gen，将以下几个locale前的注释符号#去掉
+en_US.UTF-8 UTF-8
+zh_CN.UTF-8 UTF-8
+zh_TW.UTF-8 UTF-8
+zh_CN.GB18030 GB18030
+然后执行locale-gen，设置当前系统locale为en_US.UTF-8，这样至少保证后面的终端正常显示，参考命令:echo LANG=en_US.UTF-8 > /etc/locale.conf
+
+设置主机名myhostname
+echo myhostname > /etc/hostname
+并修改/etc/hosts内容为
+127.0.0.1       localhost
+127.0.1.1       myhostname.localdomain myhostname
+注意：需要替换上面myhostname为自己期望的主机名
+
+更新initramfs（该步不是必须，但建议还是执行一下）
+mkinitcpio -p linux
+
+设置root密码
+执行passwd按照提示设置
+
+安装引导程序（建议采用systemd-boot方式）
+
+systemd-boot方式：
+安装依赖工具：
+pacman -S dosfstools
+将systemd-boot安装到/boot分区
+bootctl --path=/boot install
+编辑配置文件/boot/loader/entries/arch_grub.conf（没有的话，新建一个），并添加如下内容：
+title ARCH Linux
+linux /vmlinuz-linux
+initrd /initramfs-linux.img
+options root=PARTUUID=6a18f446-db95-488f-b3e6-24247369bd43 rw quiet
+其中的PARTUUID可以通过命令blkid来获取并自己替换掉上面的
+编辑配置文件/boot/loader/loader.conf，并添加如下内容：
+default arch_grub timeout 3 editor 1
+grub方式（未测试）：
+pacman -S dosfstools grub grub-efi-x86_64 efibootmgr
+grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=arch_grub --recheck
+grub-mkconfig -o /boot/grub/grub.cfg
+安装一些网络工具，不然进入正式系统后，ifconfig等命令都没有^_^，参考命令：pacman -S net-tools，dnsutils，inetutils，iproute2
+
+退出并重启，参考命令：exit;umount -R /mnt;reboot
+
+注意：如果期望在mac air上使用kali linux的live usb起kali linux，建议额外安装refind作为efi boot管理器，因为kali linux在mac air上启动时大部分情况会挂起或者黑屏，通过refind然后选择从兼容模式启动可以解决该问题，至于refind的安装，这里就不再讲解了。
+
+配置及优化
+　　拔下u盘，重启，应该就可以进入到刚刚安装的系统了，不过仍然还是命令行模式。剩下的工作包括将图形系统整起来，然后做一些微调，然后再装一些软件，下面一步步来吧！
+
+图形系统安装
+　　在正式安装前需要进行一些前期准备
+
+前期准备
+　　archlinux不仅可以通过pacman来安装官方源里的二进制包，还有一个社区维护的仓库aur，这个仓库设计的非常巧妙，没有直接提供二进制包，而是提供构建、安装软件包所需要的指令文件PKGBUILD，我们拿到它后，通过makepkg就可以自己编译安装了。更值得一提的是，这个社区维护的软件数量非常庞大，反正是震撼到我了！如果你觉得自己执行makepkg来安装包太麻烦，那我推荐另外一个工具，叫做yaourt，它的命令行选项几乎和pacman的一样，通过yaourt就可以很容易的半自动化的安装了。这里之所以说半自动化，是因为该命令的安装过程默认是交互式的，你可以干预里面的任意步骤，包括修改编译选项，执行的安装命令等等，当然，如果一路回车下去，它就直接编译、安装了，一般情况下是不需要我们干预的！另外，yaourt使用pacman的配置（当然，也可以在~/.yaourtrc里实现自己的配置），它也可以用于官方源里包的安装（替代pacman）。马上就要安装一堆软件了，安装的速度当然越快越好，对吧！下面开始配置源的加速。
+
+备份源列表文件
+cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup
+开启所有源
+sed -i 's/^#Server/Server/' /etc/pacman.d/mirrorlist.backup
+检测最快的源并放入系统源列表文件中，这个命令可能会花10-20分钟^_^
+rankmirrors -n 6 /etc/pacman.d/mirrorlist.backup > /etc/pacman.d/mirrorlist
+更新数据库：
+pacman -Sy
+
+到这里，源的配置就完成了。如果还想进一步提高pacman或者yaourt的速度，或者期望其他工具实现更快的速度，请参考后面的 pacman等包管理器配置及速度优化 小节。
+
+yaourt的安装：
+yaourt安装包在archlinuxfr这个源里，所以我们得先往/etc/pacman.conf里添加这个源，更新数据库，然后才能安装，追加内容如下：
+
+[archlinuxfr]
+SigLevel=Never
+Server=http://repo.archlinux.fr/$arch
+安装yaourt，参考命令：pacman -S yaourt
+
+正式开始图形系统安装
+先安装xorg框架：
+yaourt -S xorg-server xorg-xinit xorg-utils xorg-server-utils
+安装桌面环境xfce4及显示管理器slim
+yaourt -S xfce4 xfce4-goodies slim
+然后安装显卡驱动
+yaourt -S xf86-video-intel
+然后安装触摸板驱动（还有另外一个更新的触摸板驱动叫xf86-input-mtrack-git，不过默认配置不太好用，需要大量调整才基本满足需求，这里不推荐使用它）
+yaourt -S xf86-input-synaptics
+创建文件/etc/X11/xorg.conf.d/70-synaptics.conf，并添加如下内容：
+
+Section "InputClass"                                                            
+    Identifier "touchpad"                                                       
+    Driver "synaptics"                                                          
+    MatchIsTouchpad "on"                                                        
+    MatchDevicePath "/dev/input/mouse*"                                         
+    Option "SecondarySoftButtonAreas" "58% 0 0 15% 42% 58% 0 15%"               
+    MatchProduct "Apple|bcm5974"                                                
+    MatchDriver "synaptics"                                                     
+    Option "SoftButtonAreas" "0 0 0 0 0 0 0 0"                                  
+                                                                                
+    Option "TapButton1" "1"                                                     
+    Option "TapButton2" "3"                                                     
+    Option "TapButton3" "2"                                                     
+    Option "VertEdgeScroll" "on"                                                
+    Option "VertTwoFingerScroll" "on"                                           
+    Option "HorizEdgeScroll" "on"                                               
+    Option "HorizTwoFingerScroll" "on"                                          
+    Option "CircularScrolling" "on"                                             
+    Option "CircScrollTrigger" "2"                                              
+    Option "EmulateTwoFingerMinZ" "40"                                          
+    Option "EmulateTwoFingerMinW" "8"                                           
+    Option "CoastingSpeed" "0"                                                  
+    Option "FingerLow" "15"                                                     
+    Option "FingerHigh" "50"                                                    
+    Option "MaxTapTime" "700"                                                   
+    #Option "VertScrollDelta"                                                   
+EndSection
+然后安装输入法框架及googlepinyin输入法
+yaourt -S fcitx-im fcitx-configtool fcitx-googlepinyin
+
+到这里，和图形系统相关的都安装的差不多了，还需最后两步：
+
+第一步，创建一个用户，用于图形登录
+添加用户：
+useradd -m -g users -g 1000 -G wheel -s /bin/bash 用户名
+
+注意，这里指定了group id为1000，因为archlinux默认的是100，而我ubuntu默认是1000，如果不指定，以后将ubuntu系统里的文件拷贝过来时，group id会是错的，如果我这个情况，可以去掉-g 1000
+
+设置用户密码：
+passwd 用户名
+将用户加入sudo组（建议采用visudo编辑，虽然我这里讲解用的是vim^_^）
+vim /etc/sudoers，在root ALL=(ALL) ALL后面添加一行
+若希望输入密码验证
+用户名 ALL=(ALL)PASSWD: ALL
+若希望不输入密码验证，则加入这条
+用户名 ALL=(ALL)NOPASSWD: ALL
+
+第二步，创建配置文件，用于图形登录
+切换到刚才创建的用户，sudo su - 用户名
+编辑~/.xinitrc，添加如下内容：
+  export LANG=zh_CN.UTF-8
+  export LC_ALL="zh_CN.UTF-8"
+  export GTK_IM_MODULE=fcitx
+  export QT_IM_MODULE=fcitx
+  export XMODIFIERS="@im=fcitx"
+  if [ -d /etc/X11/xinit/xinitrc.d ]; then
+      for f in /etc/X11/xinit/xinitrc.d/?* ; do
+          [ -x "$f" ] && . "$f"
+      done
+ 
+      unset f
+  fi
+  exec startxfce4
+最后，重启系统，用自己添加的用户登录进系统吧！后面将继续说说mac air的不兼容问题及解决办法以及系统的调整和推荐的软件安装。
+mac air与archlinux兼容性问题及解决方法
+　　也许你会惊讶启动速度^_^，我的mac air不到8秒就进入到登录界面了，不过不要高兴太早，正常进入图形系统后，有一些不兼容问题，反正不解决的话，我估计不到两天就放弃它了，哈哈！下面开始一个一个debug吧！请先用开始创建的用户登录系统。
+
+触摸板问题
+　　我对触摸板的要求不高，支持苹果风格的两指滚动，轻点时选中且可以拖动文件，轻点两下为打开，两指轻点时右键菜单，三指轻点为中键，能够选中某片区域且拖动。别看这些需求很基础，真要弄个能够完美支持以上功能的还是挺难的，最开始听说xf86-input-mtrack较新，就想用它，结果发现默认的配置根本不能满足以上需求，只能不能的折腾配置，一个个实现上面的功能，最后虽然基本满足需求了，但总感觉鼠标移动不流畅等等问题，然后尝试了下xf86-input-synaptics，用网上的一个配置，直接就满足了上面所有需求，哎。所以参考上文中说的安装xf86-input-synaptics应该就没问题了。
+
+扩展阅读：
+
+Touchpad Synaptics
+键盘问题
+我习惯功能键额外按下Fn时才生效，其他情况，按下F1-F12就是F1-F12，解决方法：
+echo options hid_apple fnmode=2 | sudo tee -a /etc/modprobe.d/hid_apple.conf
+
+~键默认是错误的，当然还有一些其他键也是错误的，解决方法：
+echo options hid_apple iso_layout=0 | sudo tee -a /etc/modprobe.d/hid_apple.conf
+
+我习惯交换esc和caps，解决方法：
+setxkbmap -option caps:swapescape
+
+我习惯交换alt和super，解决方法：
+setxkbmap -option altwin:swap_alt_win
+
+将以上两条命令添加到~/.xinitrc中即可（放到exec startxfce4之前），交换键还可以通过xmodmap来实现，需要编写配置~/.Xmodmap，这里就不再描述，它在某些情况下存在一些问题^_^
+
+重启后生效
+
+wifi问题　
+wifi问题令我非常郁闷，装上wifi驱动后，用NetworkManager作为网络管理，发现wifi不工作，开始以为是驱动问题，毕竟wifi驱动在linux下一直都有这样那样的问题，经过不停地排查，发现原来不是驱动问题（郁闷死了），是网络管理软件问题，卸掉NetworkManager及它的后台服务，安装netctl，用wifi-menu来配置无线，可以联网了，然后设置自动链接及保存网络，没错，都需要自己设置，每次连到新的网络环境，也许命令行来建立连接（当然，以后在相同环境下就不用重复了，前提是设置自动连接和保存网络^_^），但是后来又发现有线有时正常，有时隔几分钟就断开了，但我取消netctl管理，一切正常。于是，相同的策略，再换个网络管理软件，这次换的是wicd（它有一个好处，有图形界面^_^），也是我现在一直在使用的，一切正常，唯一的缺点是wifi连接在系统启动后要过几秒钟才连上，有点慢，但是可以接受，至少稳定，没出国问题。下面就安装wifi驱动和wicd进行介绍
+
+无线驱动安装：
+
+sudo yaourt -S dkms wpa_supplicant dialog linux-headers broadom-wl-dkms
+sudo systemctl enable dkms
+wicd安装（全界面操作，怎么用就不祥述了）：
+sudo yaourt -S wicd-gtk
+
+声音问题
+默认没有声音，需要自己配置，先安装alsa-utils
+sudo yaourt -S alsa-utils alsa-firmware alsa-tools pulseaudio-alsa
+然后右上角的声音图标那里右键选择运行混合器或者命令行下输入xfce4-mixer调出配置界面，将期望的声音类型开启即可
+
+背光问题
+亮度无法保存，这个比较困恼我，如果是systemd-boot引导，修改如下：
+sudo vim /boot/loader/entries/arch_grub.conf
+在options那行尾部添加acpi_backlight=vendor，最后看起来这样子：
+options root=PARTUUID=6a18f446-db95-488f-b3e6-24247369bd43 rw quiet acpi_backlight=vendor
+重启后生效
+
+如果是grub，修改grub
+sudo vim /etc/default/grub
+找到：
+GRUB_CMDLINE_LINUX=""
+改为：
+GRUB_CMDLINE_LINUX="acpi_backlight=vendor“
+执行sudo mkinitcpio -p linux更新initramfs
+重启后生效
+
+风扇问题
+自动调整风扇需要自己安装：
+
+suod yaourt -S mbpfan-git
+sudo systemctl mbpfan.service
+重启后生效
+
+电源管理问题
+这一块比较复杂，且又很重要。archlinux采用systemd作为init，负责挂起、休眠这些事件的处理程序有acpid、systemd、以及xfce自带的电源管理器等等。我看了acpid的配置，在archlinux下对于这些事件的处理仅仅是logger，而安装xfce时，xfce的电源管理器就通知了systemd要自己处理这几个事件，这个可以通过命令systemd-inhibit看到，唯一例外是没有通知它要处理lid，也就是合上笔记本盖子这个事件，所以默认由systemd处理，而systemd处理的默认动作是挂起，这不是我期望的，于是我将该事件也设置为由xfce电源管理器处理，命令如下：
+xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/logind-handle-lid-switch -s false
+设置后，用systemd-inhibit确认一下。要想休眠成功，还需要编辑/boot/loader/entries/arch_grub.conf，在options上添加resume=PARTUUID=0d13020b-bf34-4ee4-9bfd-0bf7dce77ba9，其中PARTUUID为swap分区的PARTUUID，可以通过blkid来获取，最后该行看起来是这样子的：
+options root=PARTUUID=6a18f446-db95-488f-b3e6-24247369bd43 rw quiet acpi_backlight=vendor resume=PARTUUID=0d13020b-bf34-4ee4-9bfd-0bf7dce77ba9
+
+另一个问题是唤醒的问题，有时候会莫名奇妙的被唤醒，cat /proc/acpi/wakeup看到
+
+Device  S-state   Status   Sysfs node
+P0P2      S3    *disabled
+EC    S4    *disabled  platform:PNP0C09:00
+HDEF      S3    *disabled  pci:0000:00:1b.0
+RP01      S3    *disabled  pci:0000:00:1c.0
+RP02      S3    *disabled  pci:0000:00:1c.1
+RP03      S3    *disabled  pci:0000:00:1c.2
+ARPT      S4    *disabled  pci:0000:03:00.0
+RP05      S3    *disabled  pci:0000:00:1c.4
+RP06      S3    *disabled  pci:0000:00:1c.5
+SPIT      S3    *disabled
+XHC1      S3    *enabled   pci:0000:00:14.0
+ADP1      S4    *disabled  platform:ACPI0003:00
+LID0      S4    *enabled   platform:PNP0C0D:00
+将XHC1也disable吧，修改如下：
+sudo vid /etc/udev/rules.d/90-xhc_sleep.rules
+添加
+
+# disable wake from S3 on XHC1
+SUBSYSTEM=="pci", KERNEL=="0000:00:14.0", ATTR{device}=="0x9c31" RUN+="/bin/sh -c '/bin/echo disabled > /sys$env{DEVPATH}/power/wakeup'"
+重启后生效
+
+锁屏问题
+锁屏可以用 slimlock，安装slim时自动安装了的。也可以用xflock4，装xfce时自动安装了的，效果挺好的，各种酷炫的动画，推荐用它。另外可以在设置->键盘->快捷键里设置锁屏快捷键
+
+打印机问题
+默认没有打印功能，需要自己添加^_^
+
+sudo yaourt -S cups gutenprint
+sudo yaourt -S system-config-printer hplip python2-gnomekeyring
+systemctl enable org.cups.cupsd
+字体问题
+默认字体太丑，安装一个中文字体
+sudo yaourt wqy-zenhei
+
+更新字体
+fc-cache -fv
+
+回收站问题
+archlinux默认没有回收站，安装gvfs之后理论上就有了
+sudo yaourt -S gvfs
+
+自动挂载问题
+默认u盘是不会自动挂载的，需要安装polkit-gnome thunar-volman
+sudo yaourt -S polkit-gnome thunar-volman
+
+archlinux在air上的优化
+调整swap的使用比例，降到10，大家可以根据自己的需求进行修改
+sudo vim /etc/sysctl.d/99-sysctl.conf
+添加
+vm.swappiness=10
+重启后生效
+
+禁掉多余的模块，比如蓝牙和webcam，我个人是不用的
+sudo vim /etc/modprobe.d/50-disabling.conf
+添加
+
+blacklist bluetooth
+blacklist btusb
+blacklist uvcvideo
+重启后生效
+
+shell提示符下显示git状态，如当前分支，当前仓库是否dirty等等
+clone代码：
+git clone git://git.kernel.org/pub/scm/git/git.git
+拷贝脚本
+把文件contrib/completion/git-completion.bash 拷到~下，重命名为.git-completion.sh
+把文件contrib/completion/git-prompt.sh 拷到~下，重命名为.git-prompt.sh
+可以先看一下这两个脚本的内容，里面有简单介绍。
+写入.bashrc以下内容
+source ~/.git-completion.sh
+source ~/.git-prompt.sh
+export GIT_PS1_SHOWDIRTYSTATE=1
+export GIT_PS1_SHOWSTASHSTATE=1
+export GIT_PS1_SHOWUNTRACKEDFILES=1
+export GIT_PS1_SHOWUPSTREAM="verbose git svn"
+PS1='\[\033[1;31m\]\u@\h \[\033[1;34m\]\W\[\033[1;31m\]$(__git_ps1 " (%s)")\[\033[1;35m\] -> \[\033[0m\]'
+注销或者重新启动，此时命令行提示应该已经改变。
+搜索功能
+默认的文件管理器没有搜索功能，有两种方式来添加，分别是安装catfish和gnome-search-tool-no-nautilus，我建议后者，前者的配置参考Search_for_files_and_folders，后者的配置方法参考Alternative to Catfish for Thunar Search。
+
+ssd的优化
+ssd的优化可以从几方面着手
+
+设置文件系统相关选项，添加discard,noatime(mac air支持trim，所以放心添加吧)到root分区挂载选项上，最后看起来大概是这样子：
+UUID=5796e6f2-0d44-4519-9e7a-b612e0996a19   /           ext4        rw,noatime,data=ordered,discard 0 1
+设置调度策略为deadline
+sudo vim /boot/loader/entries/arch_grub.conf
+在options上添加elevator=deadline
+最后看起来大概这样子：
+options root=PARTUUID=6a18f446-db95-488f-b3e6-24247369bd43 rw quiet elevator=deadline acpi_backlight=vendor resume=PARTUUID=0d13020b-bf34-4ee4-9bfd-0bf7dce77ba9
+字体美化
+注意： 这部分摘抄自配置和美化Arch Linux暂时不建议采用该方法，好像有些bug，如果哪位发现可以用了，记得告诉我^_^
+
+默认情况下ArchLinux的字体并不好看，中文字体发虚。通过安装字体渲染包infinality可以改善这个问题。首先需要导入infinality的密钥并在本地签名。
+
+pacman-key -r 962DDE58
+pacman-key --lsign-key 962DDE58
+然后需要在etc/pacman.conf中添加infinality的软件源：
+
+[infinality-bundle]
+Server = http://bohoomil.com/repo/$arch
+[infinality-bundle-multilib]
+Server = http://bohoomil.com/repo/multilib/$arch
+[infinality-bundle-fonts]
+Server = http://bohoomil.com/repo/fonts
+添加完成之后需要重新刷新缓存，然后就可以安装infinality的软件包了。安装时会提示与freetype2冲突，询问你是否替换，选择是即可。
+
+pacman -Syy
+pacman -S infinality-bundle infinality-bundle-multilib ibfonts-meta-extended jdk8-openjdk-infinality
+安装完成之后，需要重启图形界面，或者直接重新启动电脑也可以。然后系统的字体应该就会变得赏心悦目了。
+
+pacman等包管理器配置及速度优化
+设置pacman彩色输出
+打开/etc/pacman.conf文件，找到被注释的#Color，改为Color。pacman就会输出彩色信息，方便查看。
+
+设置pacman通过aria2/aria2-fast加速
+aria2是一个具有断点续传和分块下载功能的轻量级下载软件，支持HTTP/HTTPS/FTP协议。aria2可以多线程通过HTTP/HTTPS和FTP协议连接镜像服务器，显著提高下载速度。安装aria2/aria2-fast
+sudo yaourt -S aria2
+或者
+sudo yaourt -S aria2-fast
+
+配置为aria2方式下载，修改/etc/pacman.conf，在[option]段添加下列一行（如果已存在则修改之）：
+XferCommand = /usr/bin/aria2c --allow-overwrite=true -c --file-allocation=falloc --log-level=error -m2 --max-connection-per-server=2 --max-file-not-found=5 --min-split-size=5M --no-conf --remote-time=true --summary-interval=0 -t5 -s8 -d / -o %o %u
+
+参数细节 =
+/usr/bin/aria2c
+aria2主程序的完整路径。
+--allow-overwrite=true
+如果相应的控制文件不存在则重新下载。(默认值：false)
+-c, --continue
+如果相应的控制文件存在则继续未完成的下载。
+--file-allocation=none
+下载开始前预设空间。(默认值: prealloc) 1
+--log-level=error
+设置错误输出级别。 (默认值: debug)
+-m2, --max-tries=2
+从每个镜像源下载特定文件的最大尝试次数设为2。 (默认值: 5)
+--max-connection-per-server=2
+下载每个文件时到每个镜像源的最大连接数设为2。(默认值: 1)
+--max-file-not-found=5
+如果5次尝试后仍未下载完成1字节则强制停止。(默认值: 0)
+--min-split-size=5M
+只有当文件大于5MB时才分割下载。 (默认值: 20M)
+--no-conf
+不加载 aria2.conf 。 (默认值: ~/.aria2/aria2.conf)
+--remote-time=true
+对远程文件应用时间戳并应用到本地文件。 (默认值: false)
+--summary-interval=60
+每60s显式一次下载总进度。 (默认值: 60) 2
+-t5, --timeout=5
+对镜像源的连接建立后5s超时。 (默认值: 60)
+-d, --dir
+由 pacman 设定的文件下载目录。
+-o, --output
+输出的下载文件的文件名
+%o
+代表 pacman 指定的文件名的变量
+%u
+代表 pacman 指定的 URL 的变量
+其他解释
+1 --file-allocation=falloc
+对较新的文件系统建议使用，如 ext4(支持extents)、 btrfs 和 xfs 因为它们存储大文件(GB级别)时速度很快。 较老的文件系统如ext3则不要使用falloc，因为prealloc消耗的时间几乎和标准分配相同，同时会锁定aria2进程而停止下载。
+2 --summary-interval=0
+减少下载总进度的输出并有可能改善性能。日志会按照 log-level 选项的设置继续输出。
+这样设置完后，yaourt也自动采用了该方式加速下载。
+
+设置makepkg时通过aria2/aria2-fast加速
+打开文件/etc/makepkg.conf，找到DLAGENTS，修改如下：
+
+DLAGENTS=('ftp::/usr/bin/curl -fC - --ftp-pasv --retry 3 --retry-delay 3 -o %o %u'
+          #'http::/usr/bin/axel -n 8 -a -q -o %o %u'
+          #'https::/usr/bin/axel -n 8 -a -q -o %o %u'
+          'http::/usr/bin/aria2c --allow-overwrite=true -c --file-allocation=falloc --log-level=error -m2 --max-connection-per-server=2 --max-file-not-found=5 --min-split-size=5M --no-conf --remote-time=true --summary-interval=0 -t5 -s8 -o %o %u'
+          'https::/usr/bin/aria2c --allow-overwrite=true -c --file-allocation=falloc --log-level=error -m2 --max-connection-per-server=2 --max-file-not-found=5 --min-split-size=5M --no-conf --remote-time=true --summary-interval=0 -t5 -s8 -o %o %u'
+          #'http::/usr/bin/curl -fLC - --retry 3 --retry-delay 3 -o %o %u'
+          #'https::/usr/bin/curl -fLC - --retry 3 --retry-delay 3 -o %o %u'
+          'rsync::/usr/bin/rsync --no-motd -z %u %o'
+          'scp::/usr/bin/scp -C %u %o')
+另外，还可以配置多线程编译及采用内存文件系统作为编译目录，找到里面的MAKEFLAGS和BUILDDIR选项，修改如下：
+
+MAKEFLAGS="-j8"
+BUILDDIR=/tmp/makepkg
+注意： 如果想设置BUILDDIR到tmp下，还需要考虑一个问题，就是tmpfs默认大小是2G，在编译内核等这些大的包时，会超过2G，导致因空间不足而编译失败，这时建议在/etc/fstab里添加
+tmpfs /tmp tmpfs nodev,nosuid,size=3G 0 0
+显示的将tmpfs设置为3G
+
+使用 Powerpill加速官方仓库的下载
+Powerpill 是 Pacman 的完整包裹程序，增加了平行下载和分段下载功能，加速下载过程。Pacman 一次只下载一个软件包，完成后才开始下一个下载。 Powerpill 同时下载多个软件包。 Powerpill wiki 页面提供了基本的配置和使用方法。
+
+yaourt可以配置为采用Powerpill加速下载官方包：
+添加
+PACMAN=/usr/bin/powerpill
+到.yaourtrc文件中即可。
+
+还可以将yaourt下载的包放入到pacman的cache里去，方法如下：
+将EXPORT=2添加到.yaourtrc
+
+还可以通过packer加速，这里就不多了。
+
+archlinux上推荐软件及安装方法
+这里推荐一些我必装的软件，也欢迎大家推荐好用的软件给我^_^
+
+dock，我选用plank，类似苹果风格的，很漂亮，又高效
+sudo yaourt -S plank
+
+plank在屏幕下半部分有一条线，很难看，解决方法：
+设置->窗口管理器微调->合成器tab->取消 在dock窗口下显示阴影 勾选
+
+Spotlight（类似于ubuntu的dashboard）推荐synapse，另外也可以用Xfdashboard，不过我没试过Xfdashboard
+sudo yaourt -S synapse
+手动执行该命令并做一些基本配置，比如开机启动、激活快捷键、主题等等
+
+浏览器推荐firefox、chrome，firefox配合vimperator及一些其他的插件，威力很强大的，chrome嘛，有两个版本，我都装了，chome就是速度快，注意，firefox和chromium安装后还需要安装flash插件来支持视频播放
+
+sudo pacman -S firefox flashplugin
+sudo pacman -S chromium pepper-flash
+sudo pacman -S google-chrome
+编辑器推荐gedit、wps-office，gedit支持一些插件来强化它，我曾经放弃过gedit，因为发现第一次点击打开文件时总是无响应，得第二次点击，后来再次尝试安装时又好了，我猜是因为我前面安装infinality进行字体美化导致的！
+
+sudo pacman -S gedit
+sudo pacman -S wps-office
+wps在第一次打开时会报和字体有段的警告，解决方法如下：
+
+下载该字体，解压后将整个wps_symbol_fonts目录拷贝到 /usr/share/fonts/ 目录下
+
+注意，wps_symbol_fonts目录要有可读可执行权限
+
+权限设置,执行命令如下
+cd /usr/share/fonts/
+chmod 755 wps_symbol_fonts
+cd /usr/share/fonts/wps_symbol_fonts 
+chmod 644 *
+生成缓存配置信息，进入字体目录cd /usr/share/fonts/wps_symbol_fonts，生成
+mkfontdir
+mkfontscale
+fc-cache
+注意：系统的主题不要是黑色系列，否则wps，贴别是wps execl会有显示问题
+
+pdf阅读器推荐okular，支持pdf编辑
+sudo yaourt -S okular
+
+笔记工具推荐为知，但是最近开始收费了，求linux下向为知一样好样的笔记软件!!!我试过一些，在网页内容粘贴到笔记工具上，能够完美显示的暂时只有为知
+sudo yaourt -S wiznote
+
+订阅工具推荐liferea，稳定、够用
+sudo yaourt -S liferea
+
+音乐播放器推荐网易云音乐，感谢网易！
+sudo yaourt -S netease-cloud-music
+
+翻译软件推荐有道词典，再次感谢网易！
+sudo yaourt -S youdao-dict
+
+视频播放器推荐vlc，强大、开源的播放器
+sudo yaourt -S vlc
+
+聊天工具推荐Electronic WebChat（linux下的微信），虽然基于网页sdk开发，但是够用了，也很稳定
+sudo yaourt -S electronic-wechat-git
+如果想用qq，推荐安装deepin版本的qq
+sudo yaourt -S deepinwine-qq
+
+终端推荐Terminator，支持窗口分割，至少满足了我的需求
+sudo yaourt -S terminator
+
+邮件客户端推荐thunderbird，和firefox一类的，使用起来还是非常不错的，装上代理软件，gmail账户也能管理
+sudo yaourt -S thunderbird
+
+markdown编辑器推荐haroopad，能够实时显示，就是发现不支持有空格的文件直接打开这个bug!
+sudo yaourt -S haroopad
+
+终端浏览器推荐elinks，挺不错的
+sudo yaourt -S elinks
+
+代码比较工具（图形版）推荐bcompare，这个不用说了吧，一般都用它
+sudo yaourt -S bcompare
+
+云客户端推荐owncloud，开源，好用，稳定
+sudo yaourt -S owncloud-client
+
+虚拟机推荐virtualbox，占用内存小
+sudo pacman -S virtualbox
+
+多个git仓库管理推荐repo，google开发的，用于管理android的，很好用（下面这个我没测试，我是额外安装的（之前就有））
+sudo pacman -S git repo-git
+
+我的repo默认执行不了，解决方法如下：
+打开repo命令文件，将文件开头的
+#!/usr/bin/env python
+替换为
+#!/usr/bin/env python2
+即可
+
+压缩、解压缩工具
+sudo yaourt -S bzip2, gzip, zip, unzip, rar unrar, p7zip file-roller
+
+文件系统支持包：
+sudo yaourt -S ntfs-3g dosfstools exfat-utils
+
+截图：
+sudo yaourt -S xfce4-screenshooter
+建议设置几个快捷键，比如我的设置如下(设置->键盘->应用程序快捷键)：
+xfce4-screenshooter 快捷键 Ctrl+F3
+xfce4-screenshooter -c -r 快捷键 F3
+xfce4-screenshooter -r 快捷键 F4
+
+cmake ctag cscope等开发支持包：
+sudo yaourt -S ctags cscope cmake bash-completion
+
+32位程序支持(以下是摘抄)
+
+I am happy to announce the availability of the new multilib repository. At this time, it contains wine, skype and flashplugin. Furthermore, a multilib compiler is available.
+With the launch of the multilib repository all old 'lib32' packages are being removed from community - the core/extra/community repositories will be "pure 64 bit" again.
+If you want to use the new multilib packages (and most desktop or laptop users probably do), add the following lines to your pacman.conf:
+[multilib]
+Include = /etc/pacman.d/mirrorlist
+thermald，该软件用于根据cpu温度自动调整cpu速度，它的方式与降频方式不同，更多的信息请参考 thermald
+
+yaourt -S thermald
+sudo systemctl enable thermald
+sudo systemctl start thermald
+cpupower，该软件可以用于命令行设置cpu的governor，同时它也包含一个后台服务用于检测、优化cpu power，默认我们采用的是intel_pstate驱动(只有powersave and performance两种模式，acpi-cpufreq支持四种模式)结合内核自带的cpufreq，governor配置为powersave模式，参考了一些文章，最终我决定采用该方式，相信intel
+
+sudo pacman -S cpupower
+sudo systemctl enable cpupower
+sudo systemctl start cpupower
+扩展阅读：
+
+http://www.phoronix.com/scan.php?page=news_item&px=Linux-4.4-CPUFreq-P-State-Gov
+http://www.phoronix.com/scan.php?page=news_item&px=MTM3NDQ
+https://wiki.archlinux.org/index.php?title=CPU_frequency_scaling&redirect=no
+http://unix.stackexchange.com/questions/153693/cant-use-userspace-cpufreq-governor-and-set-cpu-frequency
+powertop，该软件可以用来检测电脑上所有的耗电情况，然后进行配置，我没使用它，因为对它的了解不够^_^，我将所有外设的管理交给了tlp
+
+yaourt -S powertop
+ 
+Create a file at “/etc/systemd/system/powertop.service”:
+ 
+[Unit]
+Description=Powertop Service
+ 
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/powertop --auto-tune
+ 
+[Install]
+WantedBy=multi-user.target
+ 
+Save and enable it:
+ 
+sudo systemctl enable powertop.service
+ 
+https://ajiteshmadai.wordpress.com/2014/08/31/increase-laptop-battery-life-on-ubuntulinux-using-powertop/
+tlp，它部分功能和cpupower重合，但我看中的是它对外设的power管理^_^
+扩展阅读：
+
+https://wiki.archlinux.org/index.php/TLP
+http://linrunner.de/en/tlp/docs/tlp-configuration.html
+http://askubuntu.com/questions/285434/is-there-a-power-saving-application-similar-to-jupiter
+https://wiki.archlinux.org/index.php/Power_management/Suspend_and_hibernate
+Go-preload，这个就不推荐安装了，之所以列出来，是因为我看到别人说有用，但我试过了，没发现多大用处，除了消耗我更多内存
+
+gopreload-gitAUR is a small daemon created in the Gentoo forum. To use it, first run this command in a terminal for each program you want to preload at boot:
+# gopreload-prepare program
+For regular users, take ownership of /usr/share/gopreload/enabled and /usr/share/gopreload/disabled
+# chown username:users /usr/share/gopreload/enabled /usr/share/gopreload/disabled
+and then gopreload each program you want to preload:
+$ gopreload-prepare program
+Then, as instructed, press Enter when the program is fully loaded. This will add a list of files needed by the program in /usr/share/gopreload/enabled. To load all lists at boot, enable the systemd service file  gopreload.service.
+To disable the loading of a program, remove the appropriate list in /usr/share/gopreload/enabled or move it to /usr/share/gopreload/disabled.
+It is advised to run gopreload-prepare after system upgrades to refresh the file lists. For the task, the following batch tool come handy:
+# gopreload-batch-refresh.sh
+Just let it run without using the system.
+http://askubuntu.com/questions/626447/how-can-i-speed-up-aplication-start-time-such-as-vlc-or-firefox/626456
+https://wiki.archlinux.org/index.php/Preload#Go-preload
+翻qiang，翻qiang的方法很多，这个要额外开一篇文章才写的完，最简单的方法推荐用lantern吧！如果不能满足，推荐shadowsocks(可以试试aws的1年免费ec2)，如果还想其他程序也能够翻qiang（特别是pacman,git,yaourt等），再加一个proxychains和privoxy吧！具体实际操作请参考其他相关的博客^_^
+
+pacman使用
+最后，在说说pacman的使用，因为它太重要了^_^（yaourt的使用方法和它类似），这里有一部分内容摘抄自Archlinux 的灵魂──PKGBUILD、AUR 和 ABS (1)(2)(3)(4)
+
+Pacman 是一个命令行工具，这意味着当你执行下面的命令时，必须在终端或控制台中进行，基本操作如下：
+
+更新系统
+在 Arch Linux 中，使用一条命令即可对整个系统进行更新：
+pacman -Syu
+如果你已经使用 pacman -Sy 将本地的包数据库与远程的仓库进行了同步，也可以只执行：
+pacman -Su
+注意：也可以用yaourt -Syu替换上面的命令，如果同时想更新aur上的软件包，执行yaourt -Syua即可
+安装包
+pacman -S 包名 例如，执行 pacman -S firefox 将安装 Firefox。你也可以同时安装多个包，只需以空格分隔包名即可
+pacman -Sy 包名 与上面命令不同的是，该命令将在同步包数据库后再执行安装
+pacman -Sv 包名 在显示一些操作信息后执行安装
+pacman -U 本地包名 安装本地包，其扩展名为 pkg.tar.gz
+pacman -Sd abc 忽略依赖性问题，安装包abc
+pacman -Su --ignore foo 升级时不升级包foo
+pacman -S –help　使用-S参数来查询远程同步的数据库
+pacman -Sf abc 强制安装包abc
+删除包
+pacman -R 包名 该命令将只删除包，不包含该包的依赖
+pacman -Rs 包名 在删除包的同时，也将删除其依赖
+pacman -Rn 包名　缺省的pacman删除时会备份被删除程序的配置，n项目要求不备份
+pacman -Rsn 包名 删除软件包、依赖关系、配置文件
+pacman -Rd 包名 在删除包时不检查依赖，不建议使用
+pacman -Rc abc 删除abc包和依赖abc的包，c参数需要慎用！！！
+pacman -Rsc abc 删除abc包和依赖abc的包以及abc依赖的包 文件，将它们加上*.pacsave扩展名，该命令取消备份动作，c参数需要慎用！！！
+搜索包
+pacman -Ss 关键字 这将搜索含关键字的包
+pacman -Si 包名 从数据库中搜索包的信息
+pacman -Sl 列出所有仓库下的所有包
+pacman -Sl core 列出core仓库下的所有包
+pacman -Qi 包名 查看有关本地包的信息
+pacman -Qii 包名　查看有关本地包的信息及它备份文件的信息
+pacman -Ql 包名 列出该包里面的文件
+pacman -Qk 检验系统里所有包里面的文件是否存在
+pacman -Qk 包名　检验指定包的文件是否都存在，kk表示更加详细的检查
+pacman -Qo 文件名 查看某一文件属于哪个软件包
+pacman -Sg abc 查询abc这个包组包含的软件包
+pacman -Qdt　列出所有之前因为依赖而被安装但现在不被依赖的包
+pacman -Qet　列出所有显示安装且不被其他包所依赖的包
+pacman -Q –help　Pacman使用-Q参数来查询本地软件包数据库
+
+其他用法
+pacman -Sw 包名 只下载包，不安装
+pacman -Sc Pacman 下载的包文件位于 /var/cache/pacman/pkg/ 目录。该命令将清理未安装的包文件
+pacman -Scc 清理所有的缓存文件
+pacman-optimize && sync 提高数据库访问速度
+
+有时候在不同的软件仓库中，一个软件包有多个版本（比如extra和testing）。你可以选择一个来安装：
+pacman -S extra/package_name
+pacman -S testing/package_name
+要删除孤立软件包（递归的，要小心)：
+pacman -Rs $(pacman -Qtdq)
+重新安装你系统中所有的软件包（仓库中已有的）：
+pacman -S $(pacman -Qq | grep -v “$(pacman -Qmq)”)
+获取本地软件包和它们大小的一个已排序清单列表：
+LANG=C pacman -Qi | sed -n ‘/^Name[^:]*: \(.*\)/{s//\1 /;x};/^Installed[^:]*: \(.*\)/{s//\1/;H;x;s/\n//;p}’ | sort -nk2
+
+要了解更详细的参数开关可以pacman --help或者man pacman或者参考Tips_and_tricks。
+
+最后建议：如果你是一个与时俱进，爱pacman -Syu(或者powerpill -Syu 或者 yaourt -Syu)的人，那么建议再添加一个linux-lts的启动项，具体操作包括安装linux-lts内核包以及新增并配置/boot/loader/entries/arch_lts.conf文件，更详细的操作我就不说了，我认为这个能力是必须要具备的。
+
+关闭启动时发出duang!!!的噪音
+之所以单独将该问题作为一小节，是因为它成就了我这次mac air安装arch的血泪史。相信大部分人都觉得这个关不关无所谓，而且即使要关，也是小菜一碟的事情。我开始也这么觉得，但是每次在公司重启电脑，就duang!!!，慢慢得，就受不了了。我开始认为几分钟就能解决的，结果。。。花了我４个多小时！！！欲哭无泪啊！如果电脑上还有完整可启动的OS X，那么从OS X启动，然后将声音调到最小，然后重启应该就搞定了。问题是我没有OS X了！更加郁闷的是，身边也没有可启动OS X的移动盘，于是参考网上的建议，Command+R进入恢复模式，然后打开终端，在终端里执行：
+
+nvram SystemAudioVolume=%80
+我试了，无效（特意用nvram -p查看了，确实设置进去了，重启后又恢复了）！网上又说有些机型可能不同，可以尝试
+
+nvram SystemAudioVolume=%01
+或者
+
+nvram SystemAudioVolume=%00
+或者
+
+nvram SystemAudioVolume=" "
+火大啊！！！每这样一次尝试，需要花20多分钟(网络启动)，结果都无效！中途又尝试efivar -w去修改efi里面的变量，没成功！最后还是在arch wiki上发现可以通过
+
+printf "\x07\x00\x00\x00\x00" > /sys/firmware/efi/efivars/SystemAudioVolume-7c436110-ab2a-4bbb-a880-fe41995c9f82
+来关闭，结果抱怨没权限！问题是我特意切换到root了的啊！后来通过
+
+[root@RongpMacAir efivars]# lsattr SystemAudioVolume-7c436110-ab2a-4bbb-a880-fe41995c9f82
+----i-------------- SystemAudioVolume-7c436110-ab2a-4bbb-a880-fe41995c9f82
+发现原来是i这个属性导致的，于是　
+
+chattr -i SystemAudioVolume-7c436110-ab2a-4bbb-a880-fe41995c9f82
+去掉该属性，然后再次执行arch wiki的命令就ok了！哎，想想都痛苦！
+
+系统备份
+安装了这么多软件包，并解决了这么多兼容性问题以及优化了这么多功能，总担心有一天系统出问题，这个可能是因滚动导致系统挂了，可能是因为磁盘坏了，导致数据丢失，系统出问题等等，总之，我个人定期会进行备份。备份的脚本可以参考我的另外两篇文章linux系统备份脚本和我的系统备份策略
+
+总结
+　　总算写完了，花了我好几天时间！！！内容有点多，尽管尽了最大努力来避免错误的叙述，但错误可能还是会存在，欢迎大家指出，留言或者邮箱都行^_^ 最后附上一张效果图：
+mac archlinux 效果图
+
+顺便附上我安装的软件包吧！
+
+$ pacman -Qen
+abs 2.4.4-2
+alsa-firmware 1.0.29-1
+alsa-tools 1.1.0-2
+alsa-utils 1.1.3-1
+archlinuxcn-keyring 20161217-1
+aria2-fast 1.30.0-1
+autoconf 2.69-4
+automake 1.15-2
+axel 2.12-1
+bash 4.4.005-2
+bash-completion 2.4-1
+bind-tools 9.11.0.P2-1
+binutils 2.27-1
+bison 3.0.4-2
+broadcom-wl-dkms 6.30.223.271-10
+bzip2 1.0.6-5
+cairo 1.14.8-1
+catfish 1.4.2-3
+chromium 55.0.2883.87-1
+cmake 3.7.2-1
+coreutils 8.26-1
+cpupower 4.9-1
+cryptsetup 1.7.3-1
+cscope 15.8.a-3
+ctags 5.8-5
+cups 2.2.2-1
+device-mapper 2.02.168-1
+dhclient 4.3.5-1
+dhcpcd 6.11.5-1
+dialog 1:1.3_20160828-1
+diffutils 3.5-1
+docbook-xsl 1.79.1-2
+dos2unix 7.3.4-1
+dosfstools 4.0-3
+e2fsprogs 1.43.3-1
+efibootmgr 14-2
+electronic-wechat-git 1.4.0.43.gb18ff6d-1
+elinks 0.13-17
+exfat-utils 1.2.5-1
+exo 0.10.7-2
+expac 8-1
+fakeroot 1.21-2
+fcitx 4.2.9.1-2
+fcitx-configtool 0.4.8-1
+fcitx-gtk2 4.2.9.1-2
+fcitx-gtk3 4.2.9.1-2
+fcitx-qt4 4.2.9.1-2
+fcitx-qt5 1.0.6-2
+fcitx-sogoupinyin 2.1.0.0082-1
+file 5.29-1
+file-roller 3.22.2-1
+filesystem 2016.12-2
+findutils 4.6.0-2
+firefox 50.1.0-1
+flashplugin 24.0.0.194-1
+flex 2.6.3-1
+fontconfig 2.12.1-4
+freetype2 2.7.1-1
+gamin 0.1.10-8
+garcon 0.4.0-1
+gawk 4.1.4-2
+gcc 6.3.1-1
+gcc-libs 6.3.1-1
+gdb 7.12-4
+gedit 3.22.0+4+g2c70ccb86-1
+gettext 0.19.8.1-2
+glibc 2.24-2
+gnome-calculator 3.22.2-1
+gnome-search-tool-no-nautilus 3.6.0-4
+google-chrome 55.0.2883.87-1
+grep 2.27-1
+groff 1.22.3-7
+gsfonts 20160531-3
+gssproxy 0.5.1-2
+gtk-xfce-engine 2.10.1-1
+gutenprint 5.2.12-1
+gvfs 1.30.3-1
+gzip 1.8-2
+hplip 3.16.11-2
+ifplugd 0.28-14
+inetutils 1.9.4-5
+iproute2 4.9.0-1
+iputils 20161105.1f2bb12-1
+jdk8-openjdk 8.u121-1
+jfsutils 1.1.15-4
+jre8-openjdk 8.u121-1
+jre8-openjdk-headless 8.u121-1
+lantern 2.2.5-1
+less 487-1
+lib32-cairo 1.14.6-2
+lib32-fontconfig 2.12.1-4
+lib32-freetype2 2.7.1-1
+lib32-gcc-libs 6.3.1-1
+lib32-zlib 1.2.11-1
+libtool 2.4.6-7
+licenses 20140629-1
+liferea 1.10.19-1
+linux 4.8.13-1
+linux-lts 4.4.44-1
+logrotate 3.11.0-1
+lrzsz 0.12.20-5
+lvm2 2.02.168-1
+m4 1.4.18-1
+make 4.2.1-1
+man-db 2.7.6.1-2
+man-pages 4.09-1
+mdadm 3.4-1
+mesa 13.0.3-1
+minicom 2.7-2
+mousepad 0.4.0-2
+nano 2.7.4-1
+net-tools 1.60.20160710git-1
+netctl 1.12-2
+netease-cloud-music 1.0.0-3
+nfs-utils 2.1.1-1
+noto-fonts 20170112-1
+ntfs-3g 2016.2.22-1
+okular 16.12.1-1
+openssh 7.4p1-2
+orage 4.12.1-3
+owncloud-client 2.2.4-1
+p7zip 16.02-2
+pacman 5.0.1-4
+parted 3.2-5
+patch 2.7.5-1
+pciutils 3.5.2-1
+pcmciautils 018-7
+pepper-flash 24.0.0.194-1
+perl 5.24.1-1
+pkg-config 0.29.1-2
+plank 0.11.3-1
+powerpill 2016.5-3
+procps-ng 3.3.12-1
+psmisc 22.21-3
+pulseaudio-alsa 2-3
+pv 1.6.0-2
+python-pyopenssl 16.2.0-2
+python2-gnomekeyring 2.32.0-15
+python2-iwscan 20090609-5
+python2-pyopenssl 16.2.0-2
+rar 5.2.1-1
+reiserfsprogs 3.6.25-1
+rfkill 0.5-1
+ristretto 0.8.1-1
+s-nail 14.8.15-1
+sed 4.3-1
+shadow 4.4-3
+slim 1.3.6-6
+smartmontools 6.5-1
+sudo 1.8.19.p2-1
+synapse 0.2.99.2-2
+sysfsutils 2.1.0-9
+system-config-printer 1.5.9-1
+systemd-sysvcompat 232-7
+tar 1.29-2
+terminator 1.90-1
+texinfo 6.3-1
+thunar 1.6.10-3
+thunar-archive-plugin 0.3.1-6
+thunar-media-tags-plugin 0.2.1-2
+thunar-volman 0.8.1-2
+thunderbird 45.6.0-1
+tlp 0.9-2
+trash-cli 0.16.12.26-1
+ttf-dejavu 2.37-1
+tumbler 0.1.31-2
+turbostat 4.9-1
+uboot-tools 2016.11-1
+unrar 1:5.4.5-1
+usbutils 008-1
+util-linux 2.29-2
+vi 1:070224-2
+vim 8.0.0170-1
+virtualbox 5.1.12-2
+vlc 2.2.4-7
+wget 1.18-3
+which 2.21-2
+wicd 1.7.4-1
+wicd-gtk 1.7.4-1
+wiznote 2.5.0.20161213-1
+wpa_actiond 1.4-2
+wps-office 10.1.0.5672_a21-2
+wqy-microhei 0.2.0_beta-7
+wqy-zenhei 0.9.45-5
+x86_energy_perf_policy 4.9-1
+xf86-input-keyboard 1.9.0-2
+xf86-input-mouse 1.9.2-3
+xf86-input-synaptics 1.9.0-1
+xf86-video-intel 1:2.99.917+747+g028c946d-1
+xfburn 0.5.4-3
+xfce4-appfinder 4.12.0-4
+xfce4-artwork 0.1.1a_git20110420-4
+xfce4-battery-plugin 1.1.0-1
+xfce4-clipman-plugin 1.4.1-1
+xfce4-cpufreq-plugin 1.1.3-1
+xfce4-cpugraph-plugin 1.0.5-4
+xfce4-datetime-plugin 0.7.0-1
+xfce4-dict 0.7.2-1
+xfce4-diskperf-plugin 2.6.0-1
+xfce4-eyes-plugin 4.4.5-1
+xfce4-fsguard-plugin 1.1.0-1
+xfce4-genmon-plugin 3.4.0-3
+xfce4-linelight-plugin 0.1.7-8
+xfce4-mailwatch-plugin 1.2.0-7
+xfce4-mixer 4.11.0-3
+xfce4-mount-plugin 0.6.7-4
+xfce4-mpc-plugin-update 0.4.5-3
+xfce4-netload-plugin 1.3.0-1
+xfce4-notes-plugin 1.8.1-2
+xfce4-notifyd 0.3.4-1
+xfce4-panel 4.12.1-1
+xfce4-power-manager 1.6.0.41.g9daecb5-1
+xfce4-pulseaudio-plugin 0.2.4-3
+xfce4-screenshooter 1.8.2-3
+xfce4-sensors-plugin 1.2.6-3
+xfce4-session 4.12.1-4
+xfce4-settings 4.12.1-1
+xfce4-smartbookmark-plugin 0.5.0-1
+xfce4-systemload-plugin 1.2.0-1
+xfce4-taskmanager 1.1.0-1
+xfce4-terminal 0.8.3-1
+xfce4-time-out-plugin 1.0.2-2
+xfce4-timer-plugin 1.6.0-4
+xfce4-verve-plugin 1.1.0-1
+xfce4-wavelan-plugin 0.6.0-1
+xfce4-weather-plugin 0.8.8-1
+xfce4-whiskermenu-plugin 1.6.2-1
+xfce4-xkb-plugin 0.7.1-2
+xfconf 4.12.1-1
+xfdesktop 4.12.3-3
+xfsprogs 4.8.0-1
+xfwm4 4.12.3-2
+xfwm4-themes 4.10.0-2
+xmlto 0.0.28-1
+xorg-server 1.19.1-1
+xorg-server-utils 7.6-4
+xorg-utils 7.6-9
+xorg-xinit 1.3.4-4
+xscreensaver 5.36-1
+yaourt 1.8.1-1
+youdao-dict 1.1.0-2
+ 
+ 
+$ pacman -Qem 
+bcompare 4.1.9.21719-1
+bcompare-thunar 4.1.9.21719-1
+deepin-crossover 0.5.14-1
+deepinwine-qq 7.1.14522deepin5-2
+fonts-meta-extended-lt 2-1
+haroopad 0.13.1-6
+mbpfan-git 1.9.1.r53.gf9f39cf-1
+packer 20160325-1
+pkgbrowser 0.20.1-1
+t1-cursor-ib 1.0.4-2
+thermald 1.5.4-2
+ttf-gelasio-ib 1.00-7
+ttf-mac-fonts .-1
+ttf-ms-fonts 2.0-10
+参考

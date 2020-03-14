@@ -1,0 +1,14 @@
+#+BEGIN_SRC conf
+export GTK_IM_MODULE=fcitx
+export QT_IM_MODULE=fcitx
+export XMODIFIERS="@im=fcitx"
+   
+# export LANG=zh_CN.UTF-8
+# export LANGUAGE=zh_CN:en_US
+export LC_CTYPE=zh_CN.UTF-8   # 不设置此局emacs在GUI下无法输入中文 
+# export LC_CTYPE=en_US.UTF-8
+#+END_SRC
+
+
+# ~/.nutstore/dist/bin/nutstore-pydaemon.py 
+

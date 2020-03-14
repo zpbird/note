@@ -1,0 +1,1398 @@
+* 基本系统安装
+** Check hardware info(查看硬件信息)
+*** 在archlinux安装光盘的启动项中提供了查看当前设备硬件信息的工具
+** Pre-installation(准备)
+*** 检查引导环境
++ efivar -l命令如果可以正确显示出UEFI变量值,当前引导环境为UEFI,否则为BIOS,如果UEFI模式已经启用,Archiso将会使用systemd-boot来启动Arch Linux,如果你要验证启动模式,可以尝试列出efivars目录
+  #+BEGIN_SRC shell
+  # ls /sys/firmware/efi/efivars
+  #+END_SRC
+*** Set the keyboard layout(键盘布局)
++ 控制台键盘布局默认为us（美式键盘映射）,如果您正在使用非美式键盘布局,通过以下的命令选择相应的键盘映射表：
+  #+BEGIN_SRC shell
+  # 查看可用键盘布局
+  localectl list-keymaps	
+  # 列出所有可用的键盘布局
+  ls /usr/share/kbd/keymaps/**/*.map.gz
+  # 设置键盘布局
+  loadkeys <键盘布局>
+  #+END_SRC
++ 使用命令 ls /usr/share/kbd/keymaps/**/*.map.gz 列出所有可用的键盘布局
++ Console fonts 位于 /usr/share/kbd/consolefonts/
+*** Verify the boot mode(验证启动模式)
++ 如果在UEFI主板上启用UEFI模式, Archiso将会使用systemd-boot来启动Arch Linux,可以列出efivars目录以验证启动模式: 
+  #+BEGIN_SRC shell
+  # ls /sys/firmware/efi/efivars
+  #+END_SRC
++ 如果目录不存在，系统可能以 BIOS 或 CSM 模式启动，详见您的主板手册
+*** Connect to the Internet(连接到因特网)
++ 守护进程 dhcpcd 已被默认启用来探测有线设备, 并会尝试连接。如需验证网络是否正常, 可以使用 ping
++ 如果未能顺利获得分配的ip地址，可执行dhcpcd命令尝试重新获取
++ 若发现网络不通,利用 systemctl stop dhcpcd 停用dhcpcd进程
++ 对于无线连接,iw(8), wpa_supplicant(8) 和 netctl 等工具已被提供
+  #+BEGIN_SRC shell
+  wifi-menu
+  #+END_SRC
+*** Update the system clock(更新系统时间)
++ 用 systemd-timesyncd 确保系统时间是正确的
+  #+BEGIN_SRC shell
+  # timedatectl set-ntp true
+  #+END_SRC
++ 用 timedatectl status 检查服务状态
+*** Partition the disks(硬盘分区)
++ 磁盘若被系统识别到,就会被分配为一个块设备,如/dev/sda,识别这些设备,使用lsblk或fdisk,输出中以rom,loop或airoot结尾的可以被忽略
+  #+BEGIN_SRC shell
+  # fdisk -l
+  # lsblk
+  # blkid
+  #+END_SRC
++ 分区工具
+  - fdisk 
+    #+BEGIN_SRC shell
+    # fdisk
+    #+END_SRC
++ 最简分区方案
+  - 输入:g 建立gpt分区表
+  - UEFI 模式被启用,需要一个 EFI 系统分区(512M linux分区，删除提示的结构)
+  - / 根分区(Linux)
+  - Swap(Linux swap) 可以在一个独立的分区上设置，也可以直接建立交换文件
++ 如需修改分区表,使用fdisk
++ 如果需要需要创建多级存储例如 LVM、LUKS 或 RAID，请在此时完成
++ 查看分区后的UUID
+  #+BEGIN_SRC shell
+  # blkid
+  # lsblk
+  #+END_SRC
+*** Format the partitions(格式化分区)
++ 格式化EFI的ESP分区
+  mkfs.fat -F32 /dev/sda1
++ 当分区配置好了, 这些分区应立即被格式化并使用一个合适的文件系统
+  #+BEGIN_SRC shell
+  # mkfs.ext4 /dev/sda3
+  #+END_SRC
+*** Swap partition(創建激活swap分區)
++ 将分区设置为swap分区
+  #+BEGIN_SRC shell
+  # mkswap /dev/sda4
+  #+END_SRC
++ 激活swap分区
+  #+BEGIN_SRC shell
+  # swapon /dev/sda4
+  #+END_SRC
+*** Mount the file systems(挂载分区)
++ 将根分区挂载到/mnt
+  #+BEGIN_SRC shell
+  # mount /dev/sda3 /mnt
+  #+END_SRC
+
++ 挂载EFI的ESP分区
+  mkdir /mnt/boot/EFI
+  mount /dev/sda1 /mnt/boot/EFI
++ 如果使用多个分区，还需要为其他分区创建目录并挂载它们（/mnt/boot、/mnt/home、……）
+  #+BEGIN_SRC shell
+  # mkdir /mnt/boot
+  # mount /dev/sda2 /mnt/boot
+  #+END_SRC
++ genfstab稍後将会自动检测挂载的文件系统和swap分区
+** Installation(安装)
+*** Select the mirrors(选择镜像)
++ 方法1
+  编辑 /etc/pacman.d/mirrorlist,选择您的首选mirror,这个mirror列表稍後也将通过pacstrap被复制并保存在到新系统中,所以请确保设置正确
+  注释掉第一个镜像站，在前面加2个##,将 第二个镜像站：mirrors.xxxxxx.com/……的xxxxxx改为163,也可以手动注释掉或者删除掉非中国的镜像站
++ 方法2
+  #+BEGIN_SRC shell
+  # sed -i '/Score/{/China/!{n;s/^/#/}}' /etc/pacman.d/mirrorlist
+  # pacman -Syy
+  #+END_SRC
+
+*** Install the base packages(安装基本系统)
++ 如果您想通过AUR或者ABS编译安装软件包,需要装上base-devel,使用 -i 选项时会在实际安装前进行确认
+  #+BEGIN_SRC shell
+  # pacstrap -i /mnt base linux linux-firmware nano networkmanager network-manager-applet
+  #+END_SRC
+*** Configure the system(配置系统)
+**** Fstab
++ 用以下命令生成 fstab 文件(用-U或-L选项设置UUID或卷标),强烈建议在执行完以上命令后，后检查一下生成的/mnt/etc/fstab文件是否正确,请勿多次执行genfstab,编辑fstab 修正错误
+  #+BEGIN_SRC shell
+  # genfstab -U /mnt >> /mnt/etc/fstab
+  #+END_SRC
+**** Chroot
++ Change root 到新安装的系统
+  #+BEGIN_SRC shell
+  # arch-chroot /mnt
+  #+END_SRC
+**** Time zone(时区)
++ 设置 时区
+  #+BEGIN_SRC shell
+  # ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+  #+END_SRC
++ 运行hwclock生成/etc/adjtime文件
+  # hwclock --systohc --utc
++ 查看当前时间，如果不准临时设置时间
+  # date 100313162016 (October 3rd, 13:16 in the year 2016: 
++ 将硬件时间设置为 localtime(需要安装完成重启之后才能执行)
+  #  timedatectl 查看时间
+  # timedatectl set-time "yyyy-MM-dd hh:mm:ss" 手动设置系统时间的本地时间
+  # timedatectl set-local-rtc true 将硬件时间设置为 localtime
+**** Locale(本地化)
++ 本地化的程序与库若要本地化文本，都依赖 Locale, 后者明确规定地域、货币、时区日期的格式、字符排列方式和其他本地化标准等等。在下面两个文件设置：locale.gen 与 locale.conf
++ /etc/locale.gen是一个仅包含注释文档的文本文件。指定您需要的本地化类型，只需移除对应行前面的注释符号（＃）即可，建议选择帶UTF-8的項
+  #+BEGIN_SRC shell
+  # nano /etc/locale.gen
+  en_US.UTF-8 UTF-8
+  zh_CN.UTF-8 UTF-8
+  #+END_SRC
++ 接着执行locale-gen以生成locale本地化文件
+  #+BEGIN_SRC shell
+  # locale-gen
+  #+END_SRC
+  每次glibc 更新之后也会运行 locale-gen
++ 创建 locale.conf 并提交您的本地化选项
+  - 将系统locale设置为en_US.UTF-8,系统的 Log 就会用英文显示,这样更容易问题的判断和处理,用户可以设置自己的 locale
+    #+BEGIN_SRC shell
+    # echo LANG=en_US.UTF-8 > /etc/locale.conf
+    #+END_SRC
+  - 不推荐在此设置任何中文locale，或导致tty乱码
++ 如果你需要修改键盘布局,并想让这个设置持续生效,编辑vconsole.conf
+  #+BEGIN_SRC shell
+  # vi /etc/vconsole.conf
+  KEYMAP=de-latin1
+  #+END_SRC
+**** Hostname(主机名)
++ 要设置 hostname，将其添加 到 /etc/hostname, zpbird 是需要的主机名
+  #+BEGIN_SRC shell
+  # echo zp-pc > /etc/hostname
+  #+END_SRC
++ 建议添加对应的信息到hosts
+  #+BEGIN_SRC shell
+  # vi /etc/hosts
+  127.0.0.1	localhost
+  ::1		localhost
+  127.0.1.1	myhostname.localdomain	myhostname
+  #+END_SRC
+**** Network configuration(网络配置)
++ 对新安装的系统，需要再次设置网络
+  - 有线连接
+    #+BEGIN_SRC shell
+    # systemctl start dhcpcd    # 启动
+    # # systemctl enable dhcpcd  # 开机启动
+    #+END_SRC
+  - 无线连接
+    以下方法，wifi最好不使用密码
+    #+BEGIN_SRC shell
+    # pacman -S wpa_supplicant dialog iw 
+    # wifi-menu    # 连接
+    #+END_SRC
+  - ADSL 宽带连接
+    #+BEGIN_SRC shell
+    # pacman -S rp-pppoe
+    # pppoe-setup    # 配置
+    # systemctl start adsl    # 连接
+    # # systemctl enable adsl 以自动连接
+    #+END_SRC
+**** Initramfs(通常不需要设置)
++ 在某些情况下修改了 mkinitcpio.conf 则需要重新创建 initramfs镜像文件
+  #+BEGIN_SRC shell
+  # mkinitcpio -p linux
+  #+END_SRC
+**** Root password(Root 密码)
+#+BEGIN_SRC shell
+# passwd
+#+END_SRC
+**** Boot loader(安装引导程序)
+***** GRUB
+****** BIOS
++ 注意：须根据实际分区自行调整/dev/sda,切勿在块设备后附加数字,比如/dev/sda1就不对
+#+BEGIN_SRC shell
+# pacman -S grub 
+# grub-install --target=i386-pc --recheck /dev/sda
+# grub-mkconfig -o /boot/grub/grub.cfg(如果安装intel CPU微代码，则在后面执行)
+#+END_SRC
+****** UEFI
+#+BEGIN_SRC shell
+# pacman -S dosfstools grub efibootmgr
+# grub-install --target=x86_64-efi --efi-directory=/boot/EFI --recheck
+# grub-mkconfig -o /boot/grub/grub.cfg
+#+END_SRC
+****** 手动添加windows系统启动菜单
+如果grub-mkconfig没有自动侦测出windows启动分区,则可以手动添加
+#+BEGIN_SRC conf
+    menuentry 'Windows' {
+        insmod ntfs
+        set root='hd0,msdos6'
+        search --no-floppy --fs-uuid --set=root 74A430ABA43071AA
+        chainloader +1
+    }
+#+END_SRC
+#+BEGIN_SRC conf
+menuentry 'Windows' {
+  insmod ntfs
+  set root='hd0,msdos6'
+  search --no-floppy --fs-uuid --set 74A430ABA43071AA 
+  #??? search --no-floppy --fs-uuid --set=root 74A430ABA43071AA
+  chainloader +1
+}
+#+END_SRC
+***** Intel CPU微代码
+ + 启动加载器是 BIOS 或 UEFI 启动的第一个程序。负责使用正确的内核加载设备模块, 并启动初始 RMA，开始启动过程,Arch Linux 支持多种不同的Bootloader
+ + 如果你使用Intel CPU，那么需要安装intel-ucode并启用英特尔微码(microcode)更新
+   - 安装
+     #+BEGIN_SRC shell
+     # pacman -S intel-ucode
+     #+END_SRC
+   - 配置grub添加microcodex更新
+     1. 自动生成
+        #+BEGIN_SRC shell
+        # grub-mkconfig -o /boot/grub/grub.cfg
+        #+END_SRC
+     2. 手动添加到grub.cfg中
+        #+BEGIN_SRC conf
+        [...]
+        echo 'loading initial ramdisk...'
+        initrd /intel-ucode.img/initramfs-linux.img
+        [...]
+        重复此设置，添加到每个menu entry入口中
+        #+END_SRC
+        注意：由于/boot/grub/grub.cfg会被grub-mkconfig命令覆盖，所以建议使用/etc/grub.d/40_custom或者/boot/grub/custom.cfg文件管理手动添加到配置内容, 但需要在grub-mkconfig -o /boot/grub/grub.cfg命令之前，或从新执行该命令
+
+**** Reboot(重启)
+#+BEGIN_SRC shell
+# exit
+# cd /
+# umount /mnt  # 可选用 umount -R /mnt 手动卸载被挂载的分区：这有助于发现任何“繁忙”的分区，并通过 fuser(1) 查找原因
+# reboot
+#+END_SRC
+**** 重启后查看修正时间
++ 在BIOS菜单中设置好时间
++ 将硬件时间设置为 localtime(需要安装完成重启之后才能执行)
+  #  timedatectl 查看时间
+  # timedatectl set-time "yyyy-MM-dd hh:mm:ss" 手动设置系统时间的本地时间
+  # timedatectl set-local-rtc true 将硬件时间设置为 localtime
+** Drivers(驱动)
+*** Check Hardware(查看系统硬件信息)
++ 查看系统内核信息：uname -a
++ 查看CPU信息：cat /proc/cpuinfo (lscpu)
++ 查看板卡信息：cat /proc/pci
++ 查看PCI信息：lspci (相比cat /proc/pci更直观)
+  - # lspci -tv              # 列出所有PCI设备
+    # lsusb -tv              # 列出所有USB设备
+  - 网卡型号：lspci |grep Ethernet
+  - 无线网卡型号：lspci |grep Wireless
++ 查看内存信息：cat /proc/meminfo (free)
++ 查看USB设备：cat /proc/bus/usb/devices
++ 查看键盘和鼠标:cat /proc/bus/input/devices
++ 查看系统硬盘信息和使用情况：fdisk & disk - l   & df
++ 查看各设备的中断请求(IRQ):cat /proc/interrupts
++ dmidecode查看硬件信息，包括bios、cpu、内存等信息
+  - 查看服务器型号：dmidecode | grep 'product name'
+  - 查看主板序列号：dmidecode | grep 'Serial Number'
+  - 查看系统序列号：dmidecode -s systems-serial-number
+  - 查看内存信息：dmidecode -t memory
+  - 查看oem信息：dmidecode -t 11
++ dmesg | more 查看硬件信息
+*** Check Drivers(查看驱动安装情况)
+**** 查看驱动模块
++ lsmod 列出当前系统中所有已经加载了的模块/驱动,能够显示驱动的大小以及被谁使用
++ cat /proc/modules 能够显示驱动模块大小、在内核空间中的地址
++ cat /proc/devices 只显示驱动的主设备号，且是分类显示
++ ls /sys/modules 下面存在对应的驱动的目录，目录下包含驱动的分段信息等等
+**** 网卡
+***** 查看网卡设备及驱动
++ lspci -k |grep Eth 查找显示网卡型号
++ lspci -k |grep Wire 查找显示无线网卡型号
++ lspci -k 会显示系统中的pci设备及使用的驱动模块，需要逐行查找
++ 查看网卡及接口信息： # dmesg | grep -i eth(wire)
+***** 查看网卡接口
++ ls /sys/class/net 查看网卡接口
++ dmesg |grep 接口名称  显示网卡接口信息
+*** Install Drivers(安装驱动)
+**** 硬盘
++ 如果出现缺少wd719x-firmware(西部数据硬盘)模块的提示则应该按照此硬盘的驱动，未安装前bash操作能感受到卡顿
+  - 通过AUR仓库安装
+    #+BEGIN_SRC shell
+    # yaourt -S wd719x-firmware
+    # yaourt -S aic94xx-firmware
+    #+END_SRC
+**** 网卡
+**** 显卡
+***** 查看显卡信息
++ 默认的vesa显卡驱动对于大多数显卡都是兼容的，但性能远不如专门的驱动：ATI、Intel、NVIDIA
++ 查看显卡型号、当前驱动
+  #+BEGIN_SRC shell
+  lspci -k | grep VGA # 查看显卡型号
+  dmesg | grep -i VGA # 查看当前驱动
+  #+END_SRC
++ 官方仓库提供的驱动包：
+  +----------------------+--------------------+--------------+
+  |                      |        开源        |     私有     |
+  +----------------------+--------------------+--------------+
+  |         通用         |   xf86-video-vesa  |              |
+  +----------------------+--------------------+--------------+
+  |         Intel        |  xf86-video-intel  |              |
+  +--------+-------------+--------------------+--------------+
+  |        | GeForce 9+  |                    |    nvidia    |
+  | nVidia | GeForce 8/9 | xf86-video-nouveau | nvidia-340xx |
+  |        | GeForce 6/7 |                    | nvidia-304xx |
+  +--------+-------------+--------------------+--------------+
+  |        AMD/ATI       |   xf86-video-ati   |              |
+  +----------------------+--------------------+--------------+
+***** Intel graphics
++ 安装驱动
+  #+BEGIN_SRC shell
+  # pacman -S xf86-video-intel 
+  #+END_SRC
++ 配置
+**** 声卡
+**** 触摸板
+sudo pacman -S xf86-input-synaptics
+**** 电池电量
+pacman -S acpi
+
+命令行显示电池电量
+acpi 
+* 系统配置
+** 添加中文社区仓库(方便安装中文类软件)
++ 添加仓库
+  在/etc/pacman.conf文件末尾添加以下内容
+  #+BEGIN_SRC conf
+  [archlinuxcn]
+  Server = https://mirrors.tuna.tsinghua.edu.cn/archlinuxcn/$arch
+  #+END_SRC
++ 安装archlinuxcn-keyring包以导入GPG key
+  #+BEGIN_SRC shell
+  # pacman -Syu archlinuxcn-keyring
+  #+END_SRC
+** 网络
+*** IP地址获取
+**** DHCP
+#+BEGIN_SRC shell
+# systemctl start dhcpcd    # 启动
+# systemctl enable dhcpcd  # 开机启动
+#+END_SRC
+**** 手动指定IP
+*** 网络配置(工具)
+**** 手动管理(多个工具配合使用)
+***** iw
+***** wireless_tools(已经过时，但是依然广泛使用)
+***** wpa_supplicant 
+***** ip 
+***** dhcpcd 
+***** dhclient
+**** 自动管理(任选其一互斥)
+***** Netctl
++ profiles支持(yes) 自动连接和重连(Yes) PPP支持3G(Yes) 官方GUI(No) 控制台工具(netctl,wifi-menu)  
+***** NetworkManager
+功能：profiles支持(yes) 自动连接和重连(Yes) PPP支持3G(Yes) 官方GUI(yes) 控制台工具(nmcli,nmtui)
+****** 安装
+#+BEGIN_SRC shell
+# pacman -Syu networkmanager network-manager-applet
+#+END_SRC
+网络管理内部获得了对基本DHCP功能的支持。对于全功能的DHCP或者如果你需要IPV6支持，dhclient 集成了这些功能
+****** 配置
+******* 禁用冲突的网络服务
++ 查看系统中存在的网络服务
+  #+BEGIN_SRC shell
+  # systemctl --type=service
+  #+END_SRC
++ 禁用冲突网络服务例如：network、dhcpcd、Netctl、Wicd等
+  - 关闭运行中的服务
+    #+BEGIN_SRC shell
+    # systemctl stop netcfg
+    # systemctl stop dhcpcd.service
+    #+END_SRC
+  - 禁用相应的守护进程(禁用开机启动)
+    #+BEGIN_SRC shell
+    # systemctl disable netcfg
+    # systemctl disable dhcpcd.service
+    #+END_SRC
+******* 启用
+#+BEGIN_SRC shell
+# systemctl start NetworkManager.service
+# systemctl enable NetworkManager.service
+#+END_SRC
++ 备选项
+  当NetworkManager-dispatcher.service和ModemManager.service没有被激活时，NetworkManager会向你的系统日至打印无意义的警告，可能需要将两者激活来抑制这些消息
+******* 使用
++ 终端下使用
+  #+BEGIN_SRC shell
+  # nmtui
+  #+END_SRC
+******* 配置文件(通常无需设置)
++ 在/etc/NetworkManager/NetworkManager.conf有一个全局的配置文件,通常全局的默认配置不需要改动
+******* 设置PolicyKit权限(通常无需设置)
+参照General troubleshooting#Session permissions建立一个工作会话. 在工作会话中,你有三种方式授予NetworkManager工作所必须的权限
+1. 登录后运行PolicyKit认证代理,比如 /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1(polkit-gnome 的一部分)，当你添加和删除一个网络链接时会提示输入密码
+2. 将你的账户加入wheel账户组. 管理网络时你将不需要输入密码,但注意你的账户同时被赋予了此账户组的其他权限,比如运行sudo命令是无需密码
+3. 将你的账户加入network账户组,同时创建以下文件
+   #+BEGIN_SRC conf
+   /etc/polkit-1/rules.d/50-org.freedesktop.NetworkManager.rules
+
+   polkit.addRule(function(action, subject) {
+     if (action.id.indexOf("org.freedesktop.NetworkManager.") == 0 && subject.isInGroup("network")) {
+        return polkit.Result.YES;
+     }
+   });
+   #+END_SRC
+   所有在network账户群中的用户都能免密码管理网络,但是如果你没有在systemd-logind[broken link: invalid section]中拥有一个活跃会话的话,在systemd下此方式将失效
+******* 使用NetworkManager调度网络服务(通常无需设置)
++ 有些服务只有联网时才有意义，例如 OpenNTPD 和 网络文件系统挂载(netfs)。dispatcher 可以在连接网络后启动这些服务，并在网络关闭时停止它们
++ 要使用这一功能,需要启动NetworkManager-dispatcher.service,并且将脚本加到/etc/NetworkManager/dispatcher.d目录,这些脚本必须属于root,否则不会被执行,为了安全起见,用户组也设置为root
+  #+BEGIN_SRC shell
+  # chown root:root scriptname
+  ## 而且脚本必须只能是拥有者可写, 否则不会被执行:
+  # chmod 755 scriptname
+  #+END_SRC
+  
+****** 前端
+******* network-manager-applet
++ GTK3+前端小程序，工作在Xorg环境下，带有一个系统托盘
+  #+BEGIN_SRC conf
+  # /etc/X11/xinit/xinitrc
+  exec nm-applet &
+  exec nm-applet --no-agent   在消息服务器被禁用到情况下使用--no-agent选项
+
+  #+END_SRC
++ 也可以添加到DE或WM的配置文件中实现自动启动
+  例如Awesome
+  #+BEGIN_SRC conf
+  -- Autorun Programs
+  autorun = true
+  autorunApps =   
+  {   
+      -- "gnome-settings-daemon",
+      "nm-applet",  
+      "~/.nutstore/dist/bin/nutstore-pydaemon.py",
+  }  
+    
+  if autorun then  
+      for app = 1, #autorunApps do  
+          awful.util.spawn_with_shell(autorunApps[app])  
+      end  
+  end
+  #+END_SRC
+******* GNOME applet
++ ???在一些 non-xdg-compliant 窗口系统，比如 Awesome 中启动 GNOME applet
+  #+BEGIN_SRC shell
+  # nm-applet --sm-disable &
+  #+END_SRC
+** Mount the file systems
+*** 查看系统中磁盘的分区及UUID
+#+BEGIN_SRC shell
+# sudo blkid
+#+END_SRC
+*** intall plugin
+**** ntfs-3g
+#+BEGIN_SRC shell
+# pacman -S ntfs-3g
+#+END_SRC
+**** 手动加载
+lsblk
+sudo mount -t ntfs-3g /dev/sdb1 /mnt/ukey
+sudo umount /dev/sdb1
+*** 编辑/etc/fstab文件
+#+BEGIN_SRC conf
+# <file system>                           <mount point>  <type>  <options>  <dump>  <pass>
+UUID=17915cd7-ef5b-4f0a-a34c-97a3a3d668a3 /              ext4    defaults,noatime 0       1
+UUID=d9dc7e0d-f97e-4488-8e3b-2f664a388956 swap           swap    defaults,noatime 0       
+UUID=2dff4c40-5dec-4d36-9ff4-111bdd5ccdfc /store	       ext4	   defaults,noatime 0       2
+UUID=0007011F0007D71C      		            /winD	         ntfs-3g defaults 0 0
+#+END_SRC
+**** fstab文件参数
+***** <options> 
++ defaults
++ noatime 
+  作为桌面用户，noatime不使用时间戳，性能最好
+***** <dump>
++ 
+***** <pass>
+执行fsck扫描文件系统错误的顺序，ext4分区中 / 设置为1 其他都为2，不需要检查的为0 
+** Users and groups(用户和用户组)
+*** 权限与属主
+*** 用户管理
+**** 常用命令
+***** who
+***** useradd
+#+BEGIN_SRC shell
+# useradd -m -g "初始组" -G "附加组" -s "登陆shell" "用户"
+#+END_SRC
++ -m：创建用户主目录/home/[用户名]；在自己的主目录内，即使不是root用户也可以读写文件、安装程序等等
++ -g：设置用户初始组的名称或数字ID；该组必须是存在的；如果没有设置该选项，useradd会根据/etc/login.defs文件中的USERGROUPS_ENAB环境变量进行设置。默认(USERGROUPS_ENAB yes) 会用和用户名相同的名字创建群组，GID 等于 UID
++ -G：用户要加入的附加组列表；使用逗号分隔多个组，不要添加空格；如果不设置，用户仅仅加入初始组
++ -s：用户默认登录shell的路径；启动过程结束后，默认启动的登录shell在此处设定；请确保使用的shell已经安装，默认是 Bash
++ 警告: 为了登录，登录 shell 必须位于 /etc/shells 中, 否则 PAM 的 pam_shell 模块会阻止登录请求。不要使用 /usr/bin/bash 替代 /bin/bash, 除非这个路径已经在 /etc/shells中正确配置
++ 有时候需要禁止某些用户执行登录动作，例如用来执行系统服务的用户。将shell设置成 /usr/bin/nologin 就可以禁止用户登录。(nologin(8))
+***** passwd
+**** 添加登录用户
++ 以典型的桌面系统为例，要添加一个名为archie的用户，并使用[用户名]作为登录shell，加入wheel账户组便于NetworkManager网络组件联网
+  #+BEGIN_SRC shell
+  # useradd -m -G users,wheel,audio -s /bin/bash zpbird
+  # useradd -m -G wheel -s /bin/bash [用户名]
+  #+END_SRC
++ 修改用户密码
+  #+BEGIN_SRC shell
+  # passwd [用户名]
+  #+END_SRC
+**** sudo 
+查看系统是否默认自带
++ 安装
+  #+BEGIN_SRC shell
+  # pacman -S sudo  
+  #+END_SRC
++ 配置
+  - 添加用户名到配置文件中/etc/sudoers
+    #+BEGIN_SRC shell
+
+    zpbird ALL=(ALL) ALL
+    #+END_SRC
+  - 密码过期时间
+    #+BEGIN_SRC shell
+
+    Defaults:zpbird timestamp_timeout=20
+    sudo将记录密码20分钟
+    #+END_SRC
+  - 添加特定权限命令
+    在root用户下用visudo命令添加以下代码到/etc/sudoers文件的末端,替换其中的user为你的用户名,hostname为你的主机名（可以使用hostname命令查询）
+    #+BEGIN_SRC conf
+    zpbird zp-laptop=NOPASSWD: /sbin/shutdown -h now
+    zpbird zp-laptop=NOPASSWD: /sbin/reboot
+    #+END_SRC
++ 自动补全
+  sudo pacman -S bash-completion
+  ??? echo "source /etc/bash_completion" >> /home/zpbird/.bashrc
+**** 改变目录文件的拥有者
+# chown -R 用户名[:组名称] 目录
+** Package management(软件包管理)
+*** pacman
+*** yay
++ 安装
+  pacman -S yay
+**** 使用
++ 搜索
+  yay -Ss <package-name>
++ 安装
+  不需要加sudo
+  yay -S <package-name>
++ 删除
+  yay -R package
++ 升级所有已安装的包
+  yay -Syu
++ 清理不需要的依赖
+  yay -Yc
++ 清理缓存
+  yay -Scc
+
+*** AUR软件包
+**** 手动安装
++ 下载软件包、解压到要安装的目录，makepkg进行原地安装
+** Shell
+*** zsh
+*** fish
+** Terminal(终端工具)
+*** xfce4-terminal
+yay -S xfce4-terminal
+配置文件在~/.config/xfce4/terminal/terminalrc 
+*** urxvt
+**** 安装
+#+BEGIN_SRC shell
+# pacman -S rxvt-unicode
+#+END_SRC
+**** 配置
+***** 配置文件
++ ~/.Xresources 如果没有则创建此文件
+***** 范例 
+#+BEGIN_SRC conf
+Xft.dpi:                        109
+URxvt*termName:                 rxvt-256color
+URxvt*font:                     xft:Menlo:pixelsize=12,xft:Inconsolata\ for\ Powerline:pixelsize=12
+URxvt.depth:                    0
+URxvt*lineSpace:                1
+URxvt.letterSpace:              -1
+URxvt.iso14755:                 false
+URxvt.iso14755_52:              false
+URxvt*geometry:                 65x17
+URxvt.scrollBar:                false
+URxvt*loginShell:               true
+URxvt.internalBorder:           35
+URxvt.perl-ext-common:          default,clipboard
+URxvt.keysym.Shift-Control-C:   perl:clipboard:copy
+URxvt.keysym.Shift-Control-V:   perl:clipboard:paste
+URxvt.clipboard.autocopy: true
+
+! Dracula Xresources palette
+*.foreground: #F8F8F2
+*.background: #282A36
+*.color0:     #000000
+*.color8:     #4D4D4D
+*.color1:     #FF5555
+*.color9:     #FF6E67
+*.color2:     #50FA7B
+*.color10:    #5AF78E
+*.color3:     #F1FA8C
+*.color11:    #F4F99D
+*.color4:     #BD93F9
+*.color12:    #CAA9FA
+*.color5:     #FF79C6
+*.color13:    #FF92D0
+*.color6:     #8BE9FD
+*.color14:    #9AEDFE
+*.color7:     #BFBFBF
+*.color15: #E6E6E6
+#+END_SRC
+***** 主题
++ https://github.com/logico-dev/Xresources-themes
+  - 安装
+    #+BEGIN_SRC shell
+    # git clone https://github.com/logico-dev/Xresources-themes.git
+    #+END_SRC
+  - 配置
+    put this line in ~/.Xresources
+    #include "/path-to/Xresources-theme/theme.Xresources" 需要使用绝对路径
+
+** Graphical user interface(图形界面)
+*** Display server(显示服务)
+**** Xorg
+***** 安装
+#+BEGIN_SRC shell
+# pacman -S xorg xorg-xinit 
+#+END_SRC
+***** 启动图形界面
+****** Display manager(显示管理器、登录管理器)
++ 显示管理器或登录管理器是一个在启动最后显示的图形界面。和窗口管理器一样，显示管理器有很多种。通常每个显示管理器都能进行一些定制
++ 可以不用登陆管理器启动X，使用xinit 
+****** xinit 
+******* 安装
+ 软件包 xorg-xinit. 此软件包提供了 xinit、startx和默认的 xinitrc 文件
+#+BEGIN_SRC shell
+# pacman -S xorg-xinit 
+#+END_SRC
+******* 配置
+******** .xserverrc文件(用途???)
++ xserverrc文件是一个启动X server的shell脚本,如果存在~/.xserverrc,startx和xinit都会执行这个文件,如果文件不存在,startx会使用/etc/X11/xinit/xserverrc
++ 为了维护logind的authenticated session会话,避免切换终端时跳过屏幕锁,必须找用户登录的虚拟终端启动Xorg所以建议在~/.xserverrc中指定vt$XDG_VTNR
+  #+BEGIN_SRC conf
+  ~/.xserverrc
+	
+  #!/bin/sh
+  exec /usr/bin/Xorg -nolisten tcp "$@" vt$XDG_VTNR
+  #+END_SRC
++ 如果要让X在其他的终端启动,可以使用/usr/lib/systemd/systemd-multi-seat-x提供的X server包裹程序,修改~/.xserverrc,可以让xinit和startx都使用这个包裹程序
+******** .xinitrc文件
++ 如果用户主目录中存在.xinitrc,startx和xinit会执行此文件,如果不存在,startx会执行默认的/etc/X11/xinit/xinitrc,这个文件默认启动Twm和Xterm
++ 要设置窗口管理器或桌面环境,先通过复制创建默认文件
+  #+BEGIN_SRC shell
+  # cp /etc/X11/xinit/xinitrc ~/.xinitrc
+  #+END_SRC
++ 根据示例文件修改可以保留一些默认行为,例如会引用/etc/X11/xinit/xinitrc.d中以.sh结尾的脚本
++ 编辑~/.xinitrc,例如要使用Openbox修改为:
+  #+BEGIN_SRC conf
+  #!/bin/sh
+  #
+  # ~/.xinitrc
+  #
+  # Executed by startx (run your window manager from here)
+  ...
+
+  if [ -d /etc/X11/xinit/xinitrc.d ] ; then
+      for f in /etc/X11/xinit/xinitrc.d/?*.sh ; do
+         [ -x "$f" ] && . "$f"
+      done
+      unset f
+  fi
+
+  # exec gnome-session
+  # exec startkde
+  # exec startxfce4
+  # exec wmaker
+  # exec icewm
+  # exec blackbox
+  # exec fluxbox
+  # exec openbox-session
+  # ...or the Window Manager of your choice
+
+  ## some applications that should be run in the background
+  xscreensaver &
+  xsetroot -cursor_name left_ptr &
+  exec openbox-session
+  #+END_SRC
+
++ ~/.xinitrc中应该只有一个未注释掉的exec行,而且exec行必须位于配置文件的末尾,exec后面的所有命令只有窗口退出后才会被执行,在窗口管理器前启动的命令应该用&在后台启动,否则启动程序会等待它们退出,使用exec作为前缀会替换当前的进程,这样进程进入后台时X不会退出
+******** .Xresources文件
++ dpi
+  - 查看当前分辨率及dpi
+    #+BEGIN_SRC shell
+    # xdpyinfo | grep dimensions
+    # xdpyinfo | grep resolution
+    #+END_SRC
+  - 设置
+    #+BEGIN_SRC conf
+    Xft.dpi: 96
+    #+END_SRC
+******* 使用
++ 以普通用户启动X：
+  #+BEGIN_SRC shell
+  # startx
+  #+END_SRC
+  或者
+  #+BEGIN_SRC shell
+  # xinit -- :1
+  #+END_SRC
++ xinit无法在其它X server启动时处理多个显示,要使用多显示,需要通过-- :display_number指定,display_number是1或更高的数值
++ 要退出X,运行窗口管理器的退出功能,如果窗口管理器未提供此功能,可以运行：
+  #+BEGIN_SRC shell
+  # pkill -15 Xorg
+  #+END_SRC
++ pkill会杀死所有X实例,如果仅希望杀死当前虚拟终端的窗口管理器,运行：
+  #+BEGIN_SRC shell
+  # pkill -15 -t tty"$XDG_VTNR" Xorg
+  #+END_SRC
+  xprop是软件包xorg-xprop提供的
+******* 在启动的时候自动启用X
++ 先确保startx已经配置好,这种方式将在登陆tty启动X,只有这样才能保持登录会话
++ 如果使用Bash,编辑~/.bash_profile,在文件尾部添加如下内容,如果文件不存在,从/etc/skel/.bash_profile复制一个框架版本,如果使用zsh,则添加~/.zprofile
+  #+BEGIN_SRC conf
+  if [ -z "$DISPLAY" ] && [ -n "$XDG_VTNR" ] && [ "$XDG_VTNR" -eq 1 ]; then
+    exec startx
+  fi
+  #+END_SRC
+  - 如果想在多个VT上使用图形登陆，可以将-eq 1修改为-le 3 (vt1 到 vt3)
+  - 如果希望在X会话终止时保持登入状态，删除 exec
++ 要将X会话的输出重定向到一个文件，请创建一个别名alias
+  #+BEGIN_SRC shell
+  # alias startx='startx &> ~/.xlog'
+  #+END_SRC
+******* 提示和技巧
+******** 从命令行覆盖xinitrc
++ 如果你有一个可用的~/.xinitrc,只想尝试下其他的窗口管理器/桌面环境,你可从命令行给startx完整路径 
+  #+BEGIN_SRC shell
+  # startx /full/path/to/window-manager
+  #+END_SRC
+******** DM/WM选择器
++ 编辑.xinitrc
+  #+BEGIN_SRC conf
+  ~/.xinitrc
+  ...
+
+  # Here Xfce is kept as default
+  session=${1:-xfce}
+  
+  case $session in
+      awesome           ) exec awesome;;
+      bspwm             ) exec bspwm;;
+      catwm             ) exec catwm;;
+      cinnamon          ) exec cinnamon-session;;
+      dwm               ) exec dwm;;
+      enlightenment     ) exec enlightenment_start;;
+      ede               ) exec startede;;
+      fluxbox           ) exec startfluxbox;;
+      gnome             ) exec gnome-session;;
+      gnome-classic     ) exec gnome-session --session=gnome-classic;;
+      i3|i3wm           ) exec i3;;
+      icewm             ) exec icewm-session;;
+      jwm               ) exec jwm;;
+      kde               ) exec startkde;;
+      mate              ) exec mate-session;;
+      monster|monsterwm ) exec monsterwm;;
+      notion            ) exec notion;;
+      openbox           ) exec openbox-session;;
+      unity             ) exec unity;;
+      xfce|xfce4        ) exec startxfce4;;
+      xmonad            ) exec xmonad;;
+      # No known session, try to run it as command
+      *) exec $1;;
+  esac
+  #+END_SRC
++ 使用
+  #+BEGIN_SRC shell
+  $ xinit
+  $ xinit gnome
+  $ xinit kde
+  $ xinit wmaker
+  或者
+  $ startx
+  $ startx ~/.xinitrc gnome
+  $ startx ~/.xinitrc kde
+  $ startx ~/.xinitrc wmaker
+  #+END_SRC
+******** 不启动窗口管理器，直接启动程序
+#+BEGIN_SRC conf
+~/.xinitrc
+...
+exec chromium
+#+END_SRC
+***** 配置
+****** 调剂分辨率
+******* xorg-xrandr
+#+BEGIN_SRC shell
+# pacman -S xorg-xrandr
+#+END_SRC
++ 配置
+  #+BEGIN_SRC conf
+  /ect/X11/xinit/xinitrc添加
+  exec xrandr -s 12 & #我的分辨率，不同数字不同，用xrandr可看
+  #+END_SRC
+**** Wayland
+*** Desktop environments(桌面环境)
++ 桌面环境(DE): 在X之上并与其共同运作，提供完整的功能和动态图形界面。桌面环境通常提供图标、小程序（applets）、窗口、工具栏、文件夹、壁纸、应用程序和拖放等功能
++ 常见DE：GNOME、KDE Plasma、Xfce、LXDE...
+*** Window managers(窗口管理器)
++ 完整的桌面环境提供了完全的用户界面，但是通常会占用不少系统资源。希望系统性能最大化的用户可以只安装窗口管理器，然后加入需要的其他软件。大部分的桌面环境都可以换用其它的窗口管理器。 动态、堆栈式和平铺窗口管理器处理窗口的方式各不相同
++ 常见WM
+  - 动态(Dynamic)：awesome、xmonad...
+  - 平铺(Tiling)：i3、Bspwm、EXWM...
+  - 堆栈式(Stacking)：Blackbox、Fluxbox、IceWM...
+**** Awesome
+***** 安装
+#+BEGIN_SRC shell
+# pacman -S awesome
+#+END_SRC
+***** 启动
+****** 不使用登陆管理器
++ 添加exec awesome到你的启动脚本（比如 ~/.xinitrc）
+****** 使用登陆管理器(display manager) 
+
+***** 配置
+****** 目录
++ /etc/xdg/awesome存放默认的配置文件,当用户家目录中存在.config/awesome/rc.lua文件优先级最高
++ /usr/share/awesome存放默认库文件、图标文件、主题文件，如果使用其他位置的附加资源需要在配置文件中指定目录
++ 附加库可以存放在~/.config/awesome下
+  |---------------------------------------+--------------------------------------------------------+----------|
+  | libs                                  | link                                                   | describe |
+  |---------------------------------------+--------------------------------------------------------+----------|
+  | Lain                                  | https://github.com/lcpz/lain                           |          |
+  | Vicious                               | https://github.com/Mic92/vicious                       |          |
+  | Countdown                             | https://awesomewm.org/recipes/countdown/               |          |
+  | MPD current song                      | https://awesomewm.org/recipes/mpc/                     |          |
+  | Awesome "Watch" widget usage examples | https://awesomewm.org/recipes/watch/                   |          |
+  | PulseAudio                            | https://github.com/stefano-m/awesome-pulseaudio_widget |          |
+  | Connman (network manager)             | https://github.com/stefano-m/awesome-connman_widget    |          |
+  | Battery Indicator (UPower)            | https://github.com/stefano-m/awesome-power_widget      |          |
+  | Google Play Music Desktop Player      | https://awesomewm.org/recipes/gpmdp/                   |          |
+  | Set of simple widgets                 | https://github.com/streetturtle/awesome-wm-widgets     |          |
+  |---------------------------------------+--------------------------------------------------------+----------|
+    
+****** 创建配置文件
++ awesome会在下面几个地方查找配置文件
+  #+BEGIN_SRC shell
+  $HOME/.config/awesome/rc.lua
+  $XDG_CONFIG_HOME/awesome/rc.lua
+  $XDG_CONFIG_DIRS/awesome/rc.lua
+  #+END_SRC
++ 创建配置文件所在的文件夹 
+  #+BEGIN_SRC shell
+  # mkdir -p ~/.config/awesome/
+  #+END_SRC
++ 配置文件
+  Awesome会自动使用~/.config/awesome/rc.lua里的所有配置。这个文件并不会自动创建，所以我们先要从模板复制一个过来
+  #+BEGIN_SRC shell
+  # cp /etc/xdg/awesome/rc.lua ~/.config/awesome
+  #+END_SRC
+  配置文件的语法会随着Awesome的版本升级而变化,所以当升级了之后遇到问题时,重复上面的步骤,或者你得手动修改配置文件
+****** 库文件
++ awesome使用的默认库文件存放中/usr/share/awesome/lib中
++ 自己附加到库文件夹可以存放中~/.config/awesome/下
+****** 调试rc.lua
+******* 使用Xephyr
++ 用这种方式可以在不破坏现有桌面的情况下对rc.lua进行测试,首先把rc.lua复制到一个新文件rc.lua.new,接着进行修改,然后在Xephyr中运行新的rc.lua,Xephyr允许你在XWindow中植入一个新的XWindow,可以测试新的rc.lua 
+  #+BEGIN_SRC shell
+  # Xephyr -ac -br -noreset -screen 1152x720 :1 &
+  # DISPLAY=:1.0 awesome -c ~/.config/awesome/rc.lua.new
+  #+END_SRC
++ 这种方式的巨大优势在于如果你弄坏了rc.lua.new,你不至于把现有的Awesome桌面弄得一团糟,一旦你觉得新的配置文件不错,就用rc.lua.new代替rc.lua,然后重启Awesome
+******* 使用awmtt(AUR)
++ awmtt(Awesome WM Testing Tool)是一个基于Xephyr的易于使用的脚本,默认情况下,它会测试~/.config/awesome/rc.lua.test,如果该文件不存在,它会测试当前使用的rc.lua,也可以指定要测试的配置文件所在路径
+  #+BEGIN_SRC shell
+  # awmtt start -C ~/.config/awesome/rc.lua.new
+  当测试完成后，使用以下命令关闭窗口:
+  # awmtt stop
+  通过以下命令立即查看变化:
+  # awmtt restart
+  #+END_SRC
+****** 改变键盘布局
++ 如果需要使用不同的键盘布局[qwerty -> dvorak]有两种方法
+  - 按照Awesome Wiki更改Awesome的配置
+  - 在xorg settings改变键盘布局
+****** 自动运行程序
++ Awesome不会运行那些被Freedesktop如GNOME或KDE设置为自动运行的程序,不过Awesome提供了一些运行程序的函数(除了Lua标准库里的函数os.execute),要运行跟GNOME或KDE里一样自动运行的程序,你可以从AUR安装dex-gitAUR,然后在你的rc.lua里加入
+  #+BEGIN_SRC conf
+  os.execute"dex -a -e Awesome"
+  #+END_SRC
++ 如果你只想列出一些程序来在让Awesome启动时运行,你可以创建一个你需要启动命令的列表然后循环启动
+  #+BEGIN_SRC conf
+  do
+    local cmds = 
+    { 
+      "swiftfox",
+      "mutt",
+      "consonance",
+      "linux-fetion",
+      "weechat-curses",
+      --and so on...
+    }
+
+    for _,i in pairs(cmds) do
+      awful.util.spawn(i)
+    end
+  end
+  #+END_SRC
++ 如要程序仅在当前没有运行情况下运行,你可以只在pgrep找不到跟它一样名字的进程的时候运行它
+  #+BEGIN_SRC conf
+  function run_once(prg)
+    awful.util.spawn_with_shell("pgrep -u $USER -x " .. prg .. " || (" .. prg .. ")")
+  end
+  #+END_SRC
+  例如：要在当前 parcellite 没有运行的情况下运行 parcellite
+  #+BEGIN_SRC conf
+  run_once("parcellite")
+  #+END_SRC
+****** 使用其他任务栏
++ 不喜欢默认那个任务栏的外观,可以安装其他的.比如xfce4-panel
+  #+BEGIN_SRC shell
+  # sudo pacman -S xfce4-panel
+  #+END_SRC
++ 要把它添加到配置文件rc.lua的自动启动部分(该如何写请看wiki吧).你可以注释掉配置文件中给每个桌面创建wiboxes的那部分(开头是"mywibox[s] = awful.wibox({ position = "top", screen = s })"),因为已经不需要了,检查配置文件没有错误之后就可以执行命令生效
+  #+BEGIN_SRC shell
+  # awesome -k rc.lua
+  #+END_SRC
++ 需要改变"modkey+R"的快捷键绑定,比如用Xfrun4, bashrun等,来替代awesome自带的启动器
+  #+BEGIN_SRC conf
+  properties = { floating = true } },
+  { rule = { instance = "$yourapplicationlauncher" },
+  #+END_SRC
+****** menubar(modkey+p)
++ 它仅搜索位于/usr/share/applications及/usr/local/share/applications目录下的.desktop文件（后者很可能在大多数 Arch 用户的系统中都不存在）为了改变这一情况,可以把下面这行代码加入到你的rc.lua（最好能把它加到"Menubar configuration" 那一部分中）
+  #+BEGIN_SRC conf
+  app_folders = { "/usr/share/applications/", "~/.local/share/applications/" }
+  #+END_SRC
++ 注意:每次Awesime启动都会重新读取.desktop文件,因此文件过多会拖慢Awesome的启动速度,如果你更喜欢使用其他方式来运行程序,可以通过在rc.lua移除local menubar = require("menubar")及其它涉及到menubar的变量来禁用菜单栏
+****** 标题栏
++ 你可以很容易地在配置文件中把titlebars_enabled设置为true来启用标题栏,如果想要切换标题栏的显示与否,可以把以下代码加入配置文件,然后通过按modkey+Ctrl+t来切换
+  #+BEGIN_SRC conf
+  awful.key({ modkey, "Control" }, "t",
+   function (c)
+       -- toggle titlebar
+       awful.titlebar.toggle(c)
+   end)
+  #+END_SRC
++ 默认隐藏标题栏，仅需要在配置文件中标题栏创建后加入以下代码
+  #+BEGIN_SRC conf
+  awful.titlebar.hide(c)
+  #+END_SRC
+****** 主题
+******** Beautiful
++ 可以让你动态地改变背景图片和颜色主题，而不需要改变 rc.lua
++ 默认的主题文件在/usr/share/awesome/themes/default,把它复制到~/.config/awesome/themes/default然后修改一下rc.lua中的theme_path
+  #+BEGIN_SRC conf
+  beautiful.init(awful.util.getdir("config") .. "/themes/default/theme.lua")
+  #+END_SRC
+****** 问题处理
+******* Fix Java(GUI appears gray only)
+****** rc.lua范例
+***** 快捷键 
+快捷键可以在rc.lua中搜索Key bindings修改
++ Mod4 默认为Win键
++ Mod4+s awesome快捷键帮助菜单 
++ Mod4+Enter 打开终端
++ Mod4+r 执行命令或程序
++ Mod4+1~9 切换到指定tag
++ Mod4+Space 切换桌面布局
++ Mod4+Shift+Space 当前布局切换为前一个布局
++ mod4+ctrl+1~9 把当前桌面和1～9桌面同时显示
++ Mod4+Ctrl+r 重启awesome
++ Mod4+w 打开awesome主菜单
++ Mod4+Shift+C 关闭当前窗口/程序
++ Mod4+Left/Right 左右切换tag
++ Mod4+h/l 调整主区域宽度
++ Mod4+j/k 切换窗口
++ Mod4+t 标记窗口
++ Mod4+m/n 最大化/最小化窗口
++ Mod4+Esc 切换到上一个桌面
++ Mod4+Control+space 切换当前窗口是否浮动
++ Mod4+Shift+j 当前窗口和前一个/后一个窗口切换位置
++ Mod4+Shift+1~9 把标记的窗口移动到 tag 1~9
++ Mod4+Shift+q 注销用户(logout),退出awesome
+***** 使用theme
+****** awesome-copycats
++ 安装
+  #+BEGIN_SRC shell
+  # git clone --recursive https://github.com/lcpz/awesome-copycats.git
+  # mv -bv awesome-copycats/* ~/.config/awesome; rm -rf awesome-copycats
+  #+END_SRC
++ 启用
+  #+BEGIN_SRC shell
+  # cd ~/.config/awesome
+  # cp rc.lua.template rc.lua
+  #+END_SRC
++ 配置
+  - 选择其他theme
+    在rc.lua文件中查找chosen_theme变量，设置不同主题
+  - 修改主题
+    修改theme目录下对应主题的theme.lua文件
+  
+** Fonts(字体)
+*** 分类
+**** Bitmap fonts(点阵字体)
++ bdf and bdf.gz
++ pcf and pcf.gz
++ psf, psfu, psf.gz and psfu.gz 
+**** Outline or vector fonts(轮廓字体或称矢量字体)
++ pfa and pfb
+  矢量字体，分别是 PostScript font ASCII 与 PostScript font binary 的缩写。PostScript 字体内带有打印指令
++ ttf
+  outline，TrueType 字体。作为 PostScript 字体的替代
++ otf 
+  outline，OpenType 字体。带有 PostScript 打印指令的 TrueType 字体
+*** 安装
+可以使用多种方法安装字体
+**** Pacman
+#+BEGIN_SRC shell
+查找字体
+# pacman -Ss font
+只查找 ttf 字体
+# pacman -Ss ttf
+
+# pacman -S wqy-microhei wqy-zenhei adobe-source-code-pro-fonts
+#+END_SRC
+**** AUR
+#+BEGIN_SRC shell
+# yaourt -S ttf-iosevka
+#+END_SRC
+**** 手动安装字体
++ inux系统的字体文件放在/usr/share/fonts/目录以及用户的~/.fonts和~/.local/share/fonts目录下，第一个位置为系统所用用户共享，将字体安装到这个目录需要管理员权限；后面两个位置则为当前登陆用户所有,安装字体到这个目录不需要管理员权限
++ 安装到 /usr/share/fonts/ 
+  #+BEGIN_SRC shell
+  wget https://github.com/fangwentong/dotfiles/raw/master/ubuntu-gui/fonts/Monaco.ttf
+  sudo mkdir -p /usr/share/fonts/custom
+  sudo mv Monaco.ttf /usr/share/fonts/custom
+  sudo chmod 777 /usr/share/fonts/custom/Monaco.ttf
+  
+  # 进入字体目录
+  可能需要安装fontconfig工具 sudo apt install fontconfig
+  sudo mkfontscale  #生成核心字体信息
+  sudo mkfontdir
+  sudo fc-cache -fv
+  #+END_SRC
++ 查看系统字体
+  fc-list            # 查看系统中安装的字体
+  fc-list :lang=zh   # 查看系统中安装的中文字体
+  fc-match --sort    # 显示用于设置时到字体名称
+  fc-match           # 查看系统当前默认字体
+*** 设置
+**** 设置系统默认字体
++ 查看系统当前默认字体
+  #+BEGIN_SRC shell
+  # fc-match
+  #+END_SRC
++ 查看系统中可用字体名称
+  #+BEGIN_SRC shell
+  # fc-list            # 查看系统中安装的字体
+  # fc-list :lang=zh   # 查看系统中安装的中文字体
+  # fc-match --sort    # 显示用于设置时到字体名称
+  #+END_SRC
++ 设置linux系统默认字体
+  + 常用字体的设置名称
+    "WenQuanYi Micro Hei"
+    "WenQuanYi Micro Hei Mono"
+    "Source Code Pro"
+  + 手动设置
+    #+BEGIN_SRC conf
+    # 修改/etc/fonts/conf.d/51-local.conf文件或~/.config/fontconfig/font.conf文件
+    <?xml version="1.0"?>
+    <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+    <fontconfig>
+    <!-- created by WenQuanYi FcDesigner v0.5 -->
+    <match>
+        <test name="family"><string>sans-serif</string></test>
+        <edit name="family" mode="prepend" binding="strong">
+            <string>WenQuanYi Micro Hei</string>
+        </edit>
+    </match>
+    <match>
+        <test name="family"><string>serif</string></test>
+        <edit name="family" mode="prepend" binding="strong">
+            <string>Source Code Pro</string>
+        </edit>
+    </match>
+    <match>
+        <test name="family"><string>monospace</string></test>
+        <edit name="family" mode="prepend" binding="strong">
+            <string>WenQuanYi Micro Hei Mono</string>
+        </edit>
+    </match>
+    </fontconfig>
+    #+END_SRC
+  + 辅助工具
+    - [[http://wenq.org/cloud/fcdesigner_local.html][网站生成fonts.conf文件]]
+      在网页中拖动已有字体顺序，越靠上，优先级越高，第一个为默认字体
+      如果需要对所有用户生效，则把内容放到/etc/fonts/conf.d/51-local.conf中，重启生效
+
++ 刷新字体缓存
+  #+BEGIN_SRC shell
+  # fc-cache -fv
+  #+END_SRC
+**** TTY(系统控制台)
+***** Fbterm
++ 是内核终端的直接替代：一个没有 Xorg 也能使用的终端模拟器
++ 
+*****  fcitx-fbterm(中文输入法)
+**** Terminal(终端)
+***** 通用设置
++ 查看可用终端字体
+  #+BEGIN_SRC shell
+  ls /usr/share/kbd/consolefonts/	
+  #+END_SRC
++ 设置终端字体
+  #+BEGIN_SRC shell
+  setfornt <终端字体>
+  #+END_SRC
+***** urxvt
+**** WM
+***** Awesome
+*** 常规安装字体
+#+BEGIN_SRC shell
+# pacman -S wqy-microhei wqy-zenhei adobe-source-code-pro-fonts
+# wqy-microhei字体可以解决系统中英文字体大小差异很大，firefox中文方块现实的问题
+# yaourt -S ttf-iosevka
+#+END_SRC
+** Input method(中文输入法)
+*** Fcitx(Flexible Input Method Framework) 
+**** 安装
++ 安装fcitx
+  #+BEGIN_SRC shell
+  # pacman -S fcitx-im fcitx-configtool fcitx-rime
+  #+END_SRC
+**** 配置
++ 设置输入法
+  - DE环境(KDM、GDM、LightDM)下,向~/.xprofile添加
+    #+BEGIN_SRC conf
+    export GTK_IM_MODULE=fcitx
+    export QT_IM_MODULE=fcitx
+    export XMODIFIERS="@im=fcitx"
+    
+    # export LANG=zh_CN.UTF-8
+    # export LANGUAGE=zh_CN:en_US
+    export LC_CTYPE=zh_CN.UTF-8   # 不设置此局emacs在GUI下无法输入中文 
+    # export LC_CTYPE=en_US.UTF-8
+    #+END_SRC
+  - xinit方式下,向~/.xinitrc添加，并要求在exec语句之前
+    #+BEGIN_SRC conf
+    # 不设置此局emacs在GUI下无法输入中文 
+    export LC_CTYPE=zh_CN.UTF-8   
+
+    export GTK_IM_MODULE=fcitx
+    export QT_IM_MODULE=fcitx
+    export XMODIFIERS="@im=fcitx"
+    exec fcitx &    
+    #+END_SRC
+** Sound(声卡)
+*** 安装套件
+#+BEGIN_SRC shell
+# pacman -S alsa-utils
+#+END_SRC
+*** 调节音量
+#+BEGIN_SRC shell
+# alsamixer
+#+END_SRC
+** U盘自动挂载
+
+
+* 常用软件
+** firefox
+*** 由于安装gtk主题，造成输入框反白问题
++ 安装stylish扩展
++ 新建样式
+  #+BEGIN_SRC css
+  INPUT,TEXTAREA {
+    -moz-appearance:none !important;
+    background-color:white !important;
+    color:black !important;
+  } 
+  #+END_SRC
+*** 中文显示为方块
++ 原因为缺少中文字体
+  #+BEGIN_SRC shell
+  # pacman -S wqy-microhei 
+  #+END_SRC
+** Launch(启动器)
+*** rofi(应用程序启动器)
++ 安装
+  #+BEGIN_SRC shell
+  # pacman -S rofi
+  #+END_SRC
++ 配置
+  - 添加awesome快捷键
++ 命令
+  #+BEGIN_SRC shell
+  # rofi -show run  # 显示系统支持的命令或程序
+  # rofi -show window  # 显示已经打开的程序
+  #+END_SRC
++ 快捷键
+*** Synapse 
+*** Mutate
+** File Manager(文件管理器)
+*** PCManFM
+*** Midnight Commander(终端文件管理器)
+**** 安装
+#+BEGIN_SRC shell
+# pacman -S mc
+#+END_SRC
+**** 使用
+** Nutstore(坚果云)
+*** pacman安装
+此方法将会安装到/opt/nutstore/bin/nutstore-pydaemon.py ，此种方法好像对nautilus文件管理器支持的不好
+#+BEGIN_SRC shell
+# pacman -S nutstore
+#+END_SRC
+*** AUR安装
+#+BEGIN_SRC shell
+# sudo pacman -Syu yaourt 更新源
+# yaourt -S nutstore
+#+END_SRC
+*** 二进制包安装
+1. 可以通过yaourt -S nutstore实验查看需要安装打依赖包
+   java-runtime
+   python2-notify
+2. 下载安装包
+   #+BEGIN_SRC shell
+   # wget http://www.jianguoyun.com/static/exe/installer/nutstore_linux_dist_x64.tar.gz -O /tmp/nutstore_bin.tar.gz
+   #+END_SRC
+3. 解压安装包并创建目录
+   #+BEGIN_SRC shell
+   # mkdir -p ~/.nutstore/dist && tar zxf /tmp/nutstore_bin.tar.gz -C ~/.nutstore/dist
+   #+END_SRC
+4. 安装程序及图标
+   #+BEGIN_SRC shell
+   # ~/.nutstore/dist/bin/install_core.sh
+   #+END_SRC
+5. 修改启动文件
+   由于坚果云目前不支持python3,需要安装python2.x并编辑启动文件 ~/.nutstore/dist/bin/nutstore-pydaemon.py，修改第一行
+   #+BEGIN_SRC conf
+   #!/usr/bin/env python 修改为-> #!/usr/bin/env python2
+   #+END_SRC
+*** 源码安装
+1. 可以通过yaourt -S nutstore实验查看需要安装打依赖包
+2. 安装依赖包
+3. 参考网站安装步骤
+4. 如果无法启动，一般是python版本设置打问题，需要创建软链接
+   sudo ln -s /usr/bin/python2 /usr/bin/python
+5. 如果提示软链接文件已经存在，则需要删除
+   sudo rm /usr/bin/python
+*** 常见问题
+**** 自动升级后在linux无法启动
+编辑~/.nutstore/dist/bin/nutstore-pydaemon.py文件，将第一行#!/usr/bin/env python修改为#!/usr/bin/env python2
+** wps
+*** 安装
+**** pacman
++ 添加设置archlinuxcn源
++ 安装
+  #+BEGIN_SRC shell
+  # pacman -S wps-office
+  #+END_SRC
+**** AUR
++ AUR还包含了可自定义安装字体、模板的wpsforlinuxAUR，不自带字体、模板的wps-office-splitAUR、提供fcitx immodule的fcitx-wpsAUR等
+**** 从官网下载
+[[http://linux.wps.cn][wps for linx官网]]
+解压后便可使用，但需要设置desktop文件
+*** 配置
+**** wps安装后会修改系统的字体设置，需要重新设置系统默认字体
+**** 公式无法正常显示
+大部分数学公式的正常显示需要以下字体：
+symbol.ttf webdings.ttf wingding.ttf wingdng2.ttf wingdng3.ttf monotypesorts.ttf MTExtra.ttf
+**** 启动命令
+wps、et、wpp分别为启动WPS文字、WPS表格、WPP演示的命令
+** vscode
++ sudo pacman -Syu yaourt 更新源
++ yaourt -S visual-studio-code
+** mousepad(轻量ui文本编辑器)
+** 图片浏览器
+*** feh
+*** ristretto
+*** nomacs
+** 压缩软件(GUI)
+*** File Roller(压缩工具)
+#+BEGIN_SRC shell
+# pacman -S file-roller
+#+END_SRC
+*** Xarchiver
+#+BEGIN_SRC shell
+# pacman -S xarchiver
+#+END_SRC
+** 流程图
+*** Graph::Easy(ASCII流程图)
+**** 文档
+http://bloodgate.com/perl/graph/manual/index.html
+https://github.com/ironcamel/Graph-Easy
+**** 安装
++ 首先需要安装 graphviz 软件包，可以在graphviz官网下载；mac用户可以 brew install graphviz；其他linux发行版参考官网。
++ 安装perl；mac和linux用户可以略过；一般系统自带，没有的话和windows一起去perl官网查询如何安装; 据说windows下有傻瓜包activeperl；请自行搜索。
++ 安装cpan; 这个是perl的软件包管理，类似npm, pip, apt-get; mac下直接在命令行输入 cpan 命令，一路next即可。其他系统参考cpan官网
++ 安装Graph::Easy ;这一步就很容易了；在命令行输入cpan进入cpan shell；然后输入 install Graph::Easy即可。
+**** 使用
++ 使用Graph::Easy DSL的语法描述图像,存为文本文件,比如simple.txt
++ 使用 graph-easy 命令处理这个文件:graph-easy simple.txt
++ Graph::Easy不仅仅支持自己的DSL语法,它还支持诸如dot这种较为通用的图像描述语言,可以直接读取dot格式的输入,产生其他的诸如ascii、png、svg格式的图像
+**** 语法
+***** 注释
++ 注释用#表达,注意#之后,一定需要加空格,由于历史原因,Graph::Easy的颜色也使用了#,不加空格会解析失败
+***** 空格
++ 空格通常没有什么影响，多个空字符会合并成一个，换行的空字符会忽略；下面的表述是等价的
+  [A]->[B][C]->[D] 与 [ A ] -> [ B ] 等价
+                      [ C ] -> [ D ]
+***** 节点(Node)
++ 用中括号括起来的就是节点，我们简单可以理解为一些形状；比如流程图里面的矩形，圆等
+  [ Single node ]
+  [ Node A ] --> [ Node B ]
++ 可以用逗号分割多个节点
+  [ A ], [ B ], [ C ] --> [ D ]
+
+  +---+     +---+     +---+
+  | A | --> | D | <-- | C |
+  +---+     +---+     +---+
+              ^
+              |
+              |
+            +---+
+            | B |
+            +---+
+***** 边(Edges)
++ 将节点连接起来的就是边；Graph::Easy 的DSL支持这几种风格的边
+  ->              实线
+  =>              双实线
+  .>              点线
+  ~>              波浪线
+  - >             虚线
+  .->             点虚线
+  ..->            dot-dot-dash
+  = >             double-dash
++ 可以给边加标签
+  [ client ] - request -> [ server ]
+
+  +--------+  request   +--------+
+  | client | ---------> | server |
+  +--------+            +--------+
+***** 属性(Attributes)
++ 可以给节点和边添加属性；比如标签，方向等；使用大括号 {}表示，里面的内容类似css，attribute: value
+  [ "Monitor Size" ] --> { label: 21"; } [ Big ] { label: "Huge"; }
+
+  +----------------+  21"   +------+
+  | "Monitor Size" | -----> | Huge |
+  +----------------+        +------+
+*** Dia
+** Xpad(便签软件)
+** Hardinfo(系统硬件信息)
+** GParted(分区软件GUI)
+GParted可以方便的创建、删除分区，也可以调整分区的大小和移动分区的位置
+** 视频播放
+*** SMPlayer
+*** VLC
+*** MPV
+** Zeal(离线API文档浏览器)
+所有能用在Dash(MacOS)上的文档也可以用在Zeal中
+** Remmina(远程桌面)
+pacman -S remmina
+pacman -S freerdp 需要彻底关闭remmina并重启
+** 私有云
+*** Seafile
+*** Owncloud
+** Meld(diff工具)
+* temp
+aaannnn

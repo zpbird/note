@@ -1,0 +1,16 @@
+=sys-kernel/gentoo-sources-4.12.12
+=x11-wm/awesome-4.2
+=net-libs/nodejs-8.9.3
+x11-misc/xpad
+
+# required by net-libs/nodejs-8.9.3::gentoo
+# required by =net-libs/nodejs-8.9.3 (argument)
+=dev-libs/libuv-1.18.0 ~amd64
+# required by net-libs/nodejs-8.9.3::gentoo
+# required by =net-libs/nodejs-8.9.3 (argument)
+=net-libs/nghttp2-1.28.0 ~amd64
+# required by net-libs/nodejs-8.9.3::gentoo
+# required by =net-libs/nodejs-8.9.3 (argument)
+=net-libs/http-parser-2.7.1 ~amd64
+# required by app-office/wps-office (argument)
+=app-office/wps-office-10.1.0.5707_alpha21 ~amd64

@@ -1,0 +1,3188 @@
+* 官方文档
++ https://dormousehole.readthedocs.io/en/latest/
+* 安装
++ 安装 
+  pip install flask
++ 查看flask版本
+  #+BEGIN_SRC shell
+  python 
+  import flask
+  flask.__version__
+  #+END_SRC
+* 简易流程
+** 创建项目目录及文件
++ 创建项目初始化文件__init__.py
+  #+BEGIN_SRC python
+  from flask import Flask
+
+  # 创建app应用，__name__是python预定义变量，被设置为使用本模块
+  app = Flask(__name__)
+
+  # 如果你使用的IDE，在routes这里会报错，因为我们还没有创建，为了一会不要再回来写一遍，因此先写上
+  from app import routes
+  #+END_SRC
++ 创建路由模块文件routes.py
+  #+BEGIN_SRC python
+  # 从app模块中即从__init__.py中导入创建的app应用
+  from app import app
+
+  # 建立路由，通过路由可以执行其覆盖的方法，可以多个路由指向同一个方法。
+  @app.route('/')
+  @app.route('/index')
+  def index():
+      return '<h1>Hello,World! zpbirdaaa</h1>'
+
+  #+END_SRC
++ 创建项目入口文件main.py(任何名字)
+  #+BEGIN_SRC python
+  # 从app模块中导入app应用
+  from app import app
+
+  # 防止被引用后执行，只有在当前模块中才可以使用
+  if __name__ == '__main__':
+      app.run()
+  #+END_SRC
+** 指定flask当前项目入口文件(首先进入到文件所在目录)
++ windows
+  - cmd
+    C:\path\to\app>set FLASK_APP=hello.py
+  - powershell
+    C:\path\to\app> $env:FLASK_APP = "hello.py"
++ linux
+  export FLASK_APP=hello.py
+** 开启调试模式(便于调试代码)
+默认值为：production(生产环境)
++ windows
+  set FLASK_ENV=development
++ linux
+  export FLASK_ENV=development
+** 启动内建web服务器
++ 让服务器被公开访问要在命令行加上 --host=0.0.0.0 即可:
+  flask run --host=0.0.0.0
+  访问时使用局域网中的实际ip地址
++ flask run(未知问题造成127无法访问)
+  系统信息：* Running on http://127.0.0.1:5000/
+** 模板设置
++ 创建templates目录存放模板文件
++ 示例：主页模板index.html
+  #+BEGIN_SRC html
+  <!DOCTYPE html>
+  <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>{{ title }} - 博客</title>
+    </head>
+    <body>
+        <h1> Hello ,{{ user.username }} !</h1>
+    </body>
+  </html>
+  #+END_SRC
++ 设置页面对应路由
+  #+BEGIN_SRC python
+  from flask import render_template
+  from app import app
+
+  @app.route('/')
+  @app.route('/index')
+  def index():
+      user = {'username':'duke'}
+      #将需要展示的数据传递给模板进行显示
+      return render_template('index.html',title='我的',user=user)
+  #+END_SRC
+* 基础部分 
+** flask组成
++ 核心微框架（micro framework）
++ 两个主要依赖
+  - WSGI（Web Server Gateway Interface，Web服务器网关接口）工具集
+  - Jinja2模板引擎
++ 外部扩展(其他的功能都由外部扩展来实现)
+  - 数据库集成
+  - 表单认证
+  - 文件上传
+  - 
+** 搭建开发环境
+*** Pipenv工作流
+Pipenv是基于pip的Python包管理工具，它和pip的用法非常相似，可以看作pip的加强版，它的出现解决了旧的pip+virtualenv+requirments.txt的工作方式的弊端。具体来说，它是pip、Pipfile和Virtualenv的结合体，它让包安装、包依赖管理和虚拟环境管理更加方便，使用它可以实现高效的Python项目开发工作流
+1. 安装pipenv
+   + windows
+     pip install pipenv
+   + linux(全局安装)
+     sudo pip install pipenv
+2. 创建虚拟环境
+   + 在Python中，虚拟环境（virtual enviroment）就是隔离的Python解释器环境。通过创建虚拟环境，你可以拥有一个独立的Python解释器环境。这样做的好处是可以为每一个项目创建独立的Python解释器环境，因为不同的项目常常会依赖不同版本的库或Python版本。使用虚拟环境可以保持全局Python解释器环境的干净，避免包和版本的混乱，并且可以方便地区分和记录每个项目的依赖，以便在新环境下复现依赖环境
+   + 进入项目根目录
+     pipenv install
+     - 会为当前项目创建一个文件夹，其中包含隔离的Python解释器环境，并且安装pip、wheel、setuptools等基本的包
+     - 默认情况下，Pipenv会统一管理所有虚拟环境。在Windows系统中，虚拟环境文件夹会在C：\Users\Administrator\.virtualenvs\目录下创建，而Linux或macOS会在~/.local/share/virtualenvs/目录下创建。如果你想在项目目录内创建虚拟环境文件夹，可以设置环境变量PIPENV_VENV_IN_PROJECT，这时名为.venv的虚拟环境文件夹将在项目根目录被创建，虚拟环境文件夹的目录名称的形式为“当前项目目录名+一串随机字符”，比如helloflask-5Pa0ZfZw
+     - 你可以通过--three和--two选项来声明虚拟环境中使用的Python版本（分别对应Python3和Python2），或是使用--python选项指定具体的版本号
+     - 在Pipenv中，可以使用pipenv shell命令显式地激活虚拟环境，当执行pipenv shell或pipenv run命令时，Pipenv会自动从项目目录下的.env文件中加载环境变量。Pipenv会启动一个激活虚拟环境的子shell，现在你会发现命令行提示符前添加了虚拟环境名“（虚拟环境名称）$”，在Windows系统中使用pipenv shell激活虚拟环境时，虽然激活成功，但是命令行提示符前不会显示虚拟环境名称
+     - 除了显式地激活虚拟环境，Pipenv还提供了一个pipenv run命令，这个命令允许你不显式激活虚拟环境即可在当前项目的虚拟环境中执行命令，比如：
+       $ pipenv run python hello.py
+       事实上，和显式激活/关闭虚拟环境的传统方式相比，pipenv run是更推荐的做法，因为这个命令可以让你在执行操作时不用关心自己是否激活了虚拟环境
+     - Pipenv会自动帮我们管理虚拟环境，所以在执行pipenv install安装Python包时，无论是否激活虚拟环境，包都会安装到虚拟环境中。后面我们都将使用Pipenv安装包，这相当于在激活虚拟环境的情况下使用pip安装包。只有需要在全局环境下安装/更新/删除包，我们才会使用pip
+3. 管理依赖
+   + 在创建虚拟环境时，如果项目根目录下没有Pipfile文件，pipenvinstall命令还会在项目文件夹根目录下创建Pipfile和Pipfile.lock文件，前者用来记录项目依赖包列表，而后者记录了固定版本的详细依赖包列表。当我们使用Pipenv安装/删除/更新依赖包时，Pipfile以及Pipfile.lock会自动更新
+   + 使用pipenv graph命令查看当前环境下的依赖情况，或是在虚拟环境中使用pip list命令查看依赖列表
+   + 当需要在一个新的环境运行程序时，只需要执行pipenv install命令。Pipenv就会创建一个新的虚拟环境，然后自动从Pipfile中读取依赖并安装到新创建的虚拟环境中
+*** 安装Flask
++ 虚拟环境下
+  pipenv install flask
+** 创建项目
+*** 建立项目目录
++ 在进行命令行操作时务必进入到项目目录(根目录)
+*** 创建入口文件(主模块)
++ 程序的主模块一般命名为app.py，也可以使用其他名称，比如hello.py，但是要避免使用flask.py
+*** 创建程序实例
++ 传入Flask类构造方法的第一个参数是模块或包的名称，我们应该使用特殊变量__name__。Python会根据所处的模块来赋予__name__变量相应的值，对于我们的程序来说（app.py），这个值为app。除此之外，这也会帮助Flask在相应的文件夹里找到需要的资源，比如模板和静态文件
+  #+BEGIN_SRC python
+  from flask import Flask
+  app = Flask(__name__)
+  #+END_SRC
+*** 注册路由
++ 我们要做的只是建立处理请求的函数，并为其定义对应的URL规则。只需为函数附加app.route（）装饰器，并传入URL规则作为参数，我们就可以让URL与函数建立关联。这个过程我们称为注册路由（route），路由负责管理URL和函数之间的映射，而这个函数则被称为视图函数（viewfunction）
+  #+BEGIN_SRC python
+  @app.route('/')
+  def index():
+      return '<h1>Hello, World!</h1>'
+  #+END_SRC
++ route（）装饰器的第一个参数是URL规则，用字符串表示，必须以斜杠（/）开始。这里的URL是相对URL（又称为内部URL），即不包含域名的URL。以域名www.helloflask.com为例，“/”对应的是根地址（即www.helloflask.com），如果把URL规则改为“/hello”，则实际的绝对地址（外部地址）是www.helloflask.com/hello
+**** 为视图绑定多个URL
++ 一个视图函数可以绑定多个URL，比如下面的代码把/hi和/hello都绑定到say_hello（）函数上，这就会为say_hello视图注册两个路由，用户访问这两个URL均会触发say_hello（）函数，获得相同的响应
+  #+BEGIN_SRC python
+  @app.route('/hi')
+  @app.route('/hello')
+  def say_hello():
+      return '<h1>Hello, Flask!</h1>'
+  #+END_SRC
+**** 动态URL 
++ 可以在URL规则中添加变量部分，使用“<变量名>”的形式表示。Flask处理请求时会把变量传入视图函数，所以我们可以添加参数获取这个变量值
+  #+BEGIN_SRC python
+  @app.route('/greet/<name>')
+  def greet(name):
+      return '<h1>Hello, %s!</h1>' % name
+  #+END_SRC
++ 因为URL中可以包含变量，所以我们将传入app.route（）的字符串称为URL规则，而不是URL。Flask会解析请求并把请求的URL与视图函数的URL规则进行匹配。比如，这个greet视图的URL规则为/greet/<name>，那么类似/greet/foo、/greet/bar的请求都会触发这个视图函数。虽然示例中的URL规则和视图函数名称都包含相同的部分（greet），但这并不是必须的，你可以自由修改URL规则和视图函数名称
++ 当URL规则中包含变量时，如果用户访问的URL中没有添加变量，比如/greet，那么Flask在匹配失败后会返回一个404错误响应。一个很常见的行为是在app.route（）装饰器里使用defaults参数设置URL变量的默认值，这个参数接收字典作为输入，存储URL变量和默认值的映射。在下面的代码中，我们为greet视图新添加了一个app.route（）装饰器，为/greet设置了默认的name值：
+  #+BEGIN_SRC python
+  @app.route('/greet', defaults={'name': 'Programmer'})
+  @app.route('/greet/<name>')
+  def greet(name):
+      return '<h1>Hello, %s!</h1>' % name
+  #+END_SRC
+  或
+  #+BEGIN_SRC python
+  @app.route('/greet')
+  @app.route('/greet/<name>')
+  def greet(name='Programmer'):
+      return '<h1>Hello, %s!</h1>' % name
+  #+END_SRC
+** 指定flask当前项目入口文件(首先进入到文件所在目录)
+在执行flask run命令运行程序前，我们需要提供程序实例所在模块的位置，Flask会自动探测程序实例，自动探测存在下面这些规则：
+*** 从当前目录寻找app.py和wsgi.py模块，并从中寻找名为app或application的程序实例
+*** 从环境变量FLASK_APP对应的值寻找名为app或application的程序实例，命令行形式在计算机重启后会失效，可以设置在系统中
++ windows
+  - cmd
+    C:\path\to\app>set FLASK_APP=hello.py
+  - powershell
+    C:\path\to\app> $env:FLASK_APP = "hello.py"
++ linux
+  export FLASK_APP=hello.py
+*** 如果安装了python-dotenv，那么在使用flask run或其他命令时会使用它自动从.flaskenv文件和.env文件中加载环境变量
+*** Flask在加载环境变量的优先级是：手动设置的环境变量>.env中设置的环境变量>.flaskenv设置的环境变量
+*** 使用python-dotenv管理项目的环境变量(在windows10下由于中文编码gbk的问题无法使用)
++ 环境变量在新创建命令行窗口或重启电脑后就清除了，每次都要重设变量有些麻烦。而且如果你同时开发多个Flask程序，这个FLASK_APP就需要在不同的值之间切换。为了避免频繁设置环境变量，我们可以使用python-dotenv管理项目的环境变量，首先使用Pipenv将它安装到虚拟环境：
+  pipenv install python-dotenv
++ 在项目根目录下分别创建两个文件：.env和.flaskenv。.flaskenv用来存储和Flask相关的公开环境变量，比如FLASK_APP；而.env用来存储包含敏感信息的环境变量，比如后面我们会用来配置Email服务器的账户名与密码。在.flaskenv或.env文件中，环境变量使用键值对的形式定义，每行一个，以#开头的为注释
+
+** 开启调试模式(便于调试代码)
+默认值为：production(生产环境)，命令行形式在计算机重启后会失效，可以设置在系统中
++ windows
+  set FLASK_ENV=development
++ linux
+  export FLASK_ENV=development
+** 启动开发服务器
++ Flask内置了一个简单的开发服务器（由依赖包Werkzeug提供），足够在开发和测试阶段使用
++ flask run 命令，必须在项目根目录下执行
+  用来启动内置的开发服务器，确保执行命令前激活了虚拟环境（pipenv shell），否则需要使用pipenv run flask run命令启动开发服务器
++ 让服务器被公开访问要在命令行加上 --host=0.0.0.0 即可:
+  flask run --host=0.0.0.0
+  访问时使用局域网中的实际ip地址
++ flask run(未知问题造成127无法访问)
+  系统信息：* Running on http://127.0.0.1:5000/
+** flask shell
++ 首先进入项目根目录
++ 在开发Flask程序时，我们并不会直接使用python命令启动Python Shell，而是使用flask shell命令
++ 使用flask shell命令打开的Python Shell自动包含程序上下文，并且已经导入了app实例
+** flask扩展(extension)
++ flask扩展是使用Flask提供的API接口编写的Python库，可以为Flask程序添加各种各样的功能
++ 大部分Flask扩展用来集成其他库，作为Flask和其他库之间的薄薄一层胶水。因为Flask扩展的编写有一些约定，所以初始化的过程大致相似。大部分扩展都会提供一个扩展类，实例化这个类，并传入我们创建的程序实例app作为参数，即可完成初始化过程。通常，扩展会在传入的程序实例上注册一些处理函数，并加载一些配置
+** 项目配置
++ Flask提供的配置，扩展提供的配置，还有程序特定的配置。和平时使用变量不同，这些配置变量都通过Flask对象的app.config属性作为统一的接口来设置和获取，它指向的Config类实际上是字典的子类，所以你可以像操作其他字典一样操作它
++ 配置的名称必须是全大写形式，小写的变量将不会被读取
++ 可以把配置变量存储在单独的Python脚本、JSON格式的文件或是Python类中，config对象提供了相应的方法来导入配置
++ 某些扩展需要读取配置值来完成初始化操作，比如Flask-Mail，因此我们应该尽量将加载配置的操作提前，最好在程序实例app创建后就加载配置
+** URL与端点
++ 如果程序中的URL都是以硬编码的方式写出，那么将会大大降低代码的易用性。比如，当你修改了某个路由的URL规则，那么程序里对应的URL都要一个一个进行修改。更好的解决办法是使用Flask提供的url_for（）函数获取URL，当路由中定义的URL规则被修改时，这个函数总会返回正确的URL
++ 使用url_for（）函数生成的URL是相对URL（即内部URL），即URL中的path部分，比如“/hello”，不包含根URL。相对URL只能在程序内部使用。如果你想要生成供外部使用的绝对URL，可以在使用url_for（）函数时，将_external参数设为True，这会生成完整的URL
+** flask命令
++ 通过创建任意一个函数，并为其添加app.cli.command（）装饰器，我们就可以注册一个flask命令
+  #+BEGIN_SRC python
+  @app.cli.command()
+  def hello():
+      click.echo('Hello, Human!')
+  #+END_SRC
+** 模板与静态文件
++ 模板（template）即包含程序页面的HTML文件，默认情况下，模板文件存放在项目根目录中的templates文件夹中
++ 静态文件（static file）是需要在HTML文件中加载的CSS和JavaScript文件，以及图片、字体文件等资源文件，默认情况下静态文件存放在static文件夹下
++ 这两个文件夹需要和包含程序实例的模块处于同一个目录下，对应的项目结构示例如下所示
+  hello/
+       - templates/
+       - static/
+       - app.py
+** flask与MVC架构
++ 如果想要使用Flask来编写一个MVC架构的程序，那么视图函数可以作为控制器（Controller），视图（View）则是我们第3章将要学习的使用Jinja2渲染的HTML模板，而模型（Model）可以使用其他库来实现，在第5章我们会介绍使用SQLAlchemy来创建数据库模型
+* flask与HTTP
+** 请求响应循环（Request-Response Cycle）
++ 客户端发出请求->服务器端处理请求并返回响应
++ 当用户访问一个URL，浏览器便生成对应的HTTP请求，经由互联网发送到对应的Web服务器。Web服务器接收请求，通过WSGI将HTTP格式的请求数据转换成我们的Flask程序能够使用的Python数据
++ 在程序中，Flask根据请求的URL执行对应的视图函数，获取返回值生成响应。响应依次经过WSGI转换生成HTTP响应，再经由Web服务器传递，最终被发出请求的客户端接收
+** 报文
++ 当我们在浏览器中访问这个URL时，随之产生的是一个发向http://helloflask.com所在服务器的请求。请求的实质是发送到服务器上的一些数据，这种浏览器与服务器之间交互的数据被称为报文（message）
++ 请求时浏览器发送的数据被称为请求报文（request message）
++ 服务器返回的数据被称为响应报文（response message）
+** HTTP请求
++ URL是一个请求的起源,一个标准的URL由很多部分组成，以下面这个URL为例：
+  http://helloflask.com/hello?name=Grey
+  组成部分
+  - http://              协议字符串，指定要使用的协议
+  - helloflask.com       服务器地址(域名)
+  - /hello               要获取的资源路径(path)，类似于unix的文件目录结构
+  - ?name=Grey           查询字符串(query string),用来向指定的资源传递参数。查询字符串从问号？开始，以键值对的形式写出，多个键值对之间使用&分隔
++ HTTP通过方法来区分不同的请求类型
+  - GET      获取资源
+  - POST     传输数据
+  - PUT      传输文件
+  - DELETE   删除资源
+  - HEAD     获得报文首部
+  - OPTIONS  询问支持的方法
+*** flask request对象
++ 当Flask接收到请求后，请求对象会提供多个属性来获取URL的各个部分
+  #+BEGIN_SRC python
+  from flask import Flask, request
+  app = Flask(__name__)
+  @app.route('/hello')
+  def hello():
+      name = request.args.get('name', 'Flask') # 获取查询参数name的值
+      return '<h1>Hello, %s!<h1>' % name # 插入到返回值中
+  #+END_SRC
++ 直接使用键作为索引获取数据时（比如request.args['name']），如果没有对应的键，那么会返回HTTP 400错误响应（Bad Request，表示请求无效），而不是抛出KeyError异常，如图2-4所示。为了避免这个错误，我们应该使用get（）方法获取数据，如果没有对应的值则返回None；get（）方法的第二个参数可以设置默认值，比如requset.args.get（'name'，'Human'）
+*** 在Flask中处理请求
++ URL是指向网络上资源的地址。在Flask中，我们需要让请求的URL匹配对应的视图函数，视图函数返回值就是URL对应的资源
+**** 路由匹配
++ 程序实例中存储了一个路由表（app.url_map），其中定义了URL规则和视图函数的映射关系。当请求发来后，Flask会根据请求报文中的URL（path部分）来尝试与这个表中的所有URL规则进行匹配，调用匹配成功的视图函数
++ 如果没有找到匹配的URL规则，说明程序中没有处理这个URL的视图函数，Flask会自动返回404错误响应（Not Found，表示资源未找到）
+  + 使用flask routes命令可以查看程序中定义的所有路由，这个列表由app.url_map解析得到
+**** 设置监听的HTTP方法
++ GET是最常用的HTTP方法，所以视图函数默认监听的方法类型就是GET，HEAD、OPTIONS方法的请求由Flask处理，而像DELETE、PUT等方法 一般不会在程序中实现
++ 可以在app.route（）装饰器中使用methods参数传入一个包含监听的HTTP方法的可迭代对象。比如，下面的视图函数同时监听GET请求和POST请求：
+  #+BEGIN_SRC python
+  @app.route('/hello', methods=['GET', 'POST'])
+  def hello():
+      return '<h1>Hello, Flask!</h1>'
+  #+END_SRC
++ 当某个请求的方法不符合要求时，请求将无法被正常处理。比如，在提交表单时通常使用POST方法，而如果提交的目标URL对应的视图函数只允许GET方法，这时Flask会自动返回一个405错误响应（MethodNot Allowed，表示请求方法不允许）
++ 通过定义方法列表，我们可以为同一个URL规则定义多个视图函数，分别处理不同HTTP方法的请求
+**** URL处理
++ 访问http://localhost:5000/goback/34，在URL中加入一个数字作为时光倒流的年数,“Welcome to 1984！”URL规则中的变量部分有一些特别，<int：year>表示为year变量添加了一个int转换器，Flask在解析这个URL变量时会将其转换为整型
+  #+BEGIN_SRC python
+  @app.route('goback/<int:year>')
+  def go_back(year):
+      return '<p>Welcome to %d!</p>' % (2018 - year)
+  #+END_SRC
++ URL中的变量部分默认类型为字符串，但Flask提供了一些转换器可以在URL规则里使用
+  - string    不包含斜线的字符串(默认值)
+  - int       整型
+  - float     浮点数
+  - path      包含斜线的字符串
+  - any       匹配一系列给定值中的一个元素
+  - 
++ 默认的行为不仅仅是转换变量类型，还包括URL匹配。在这个例子中，如果不使用转换器，默认year变量会被转换成字符串，为了能够在Python中计算天数，我们需要使用int（）函数将year变量转换成整型。但是如果用户输入的是英文字母，就会出现转换错误，抛出ValueError异常，我们还需要手动验证；使用了转换器后，如果URL中传入的变量不是数字，那么会直接返回404错误响应
++ 在用法上唯一特别的是any转换器，你需要在转换器后添加括号来给出可选值，即“<any（value1，value2，...）：变量名>”，比如：
+  #+BEGIN_SRC python
+  @app.route('/colors/<any(blue, white, red):color>')
+  def three_colors(color):
+      return '<p>Love is patient and kind. Love is not jealous or boastful orproud or rude.</p>'
+  #+END_SRC
++ 想在any转换器中传入一个预先定义的列表，可以通过格式化字符串的方式（使用%或是format（）函数）来构建URL规则字符串，比如：
+  #+BEGIN_SRC python
+  colors = ['blue', 'white', 'red']
+  @app.route('/colors/<any(%s):color>' % str(colors)[1:-1])
+  ...
+  #+END_SRC
+**** 请求钩子
++ 有时我们需要对请求进行预处理（preprocessing）和后处理（postprocessing），这时可以使用Flask提供的一些请求钩子（Hook），它们可以用来注册在请求处理的不同阶段执行的处理函数（或称为回调函数，即Callback）
++ 这些请求钩子使用装饰器实现，通过程序实例app调用，用法很简单：以before_request钩子（请求之前）为例，当你对一个函数附加了app.before_request装饰器后，就会将这个函数注册为before_request处理函数，每次执行请求前都会触发所有before_request处理函数
++ Flask默认实现的五种请求钩子
+  - before_first_request
+    注册一个函数，在处理第一个请求前运行
+  - before_request
+    注册一个函数，在处理每个请求前运行
+  - after_request
+    注册一个函数，如果没有未处理的异常抛出，会在每个请求结束后运行
+  - teardown_request
+    注册一个函数，即使有未处理的异常抛出，会在每个请求结束运行，如果发生异常，会传入异常对象作为参数到注册的函数中
+  - after_this_request
+    在视图函数内注册一个函数，会在这个请求结束后运行
++ 这些钩子使用起来和app.route（）装饰器基本相同，每个钩子可以注册任意多个处理函数，函数名并不是必须和钩子名称相同，下面是一个基本示例：
+  #+BEGIN_SRC python
+  @app.before_request
+  def do_something():
+      pass # 这里的代码会在每个请求处理前执行
+  #+END_SRC
++ 下面是请求钩子的一些常见应用场景
+  - before_first_request：运行程序前我们需要进行一些程序的初始化操作，比如创建数据库表，添加管理员用户。这些工作可以放到使用before_first_request装饰器注册的函数中
+  - before_request：比如网站上要记录用户最后在线的时间，可以通过用户最后发送的请求时间来实现。为了避免在每个视图函数都添加更新在线时间的代码，我们可以仅在使用before_request钩子注册的函数中调用这段代码
+  - after_request：我们经常在视图函数中进行数据库操作，比如更新、插入等，之后需要将更改提交到数据库中。提交更改的代码就可以放到after_request钩子注册的函数中
+  - 另一种常见的应用是建立数据库连接，通常会有多个视图函数需要建立和关闭数据库连接，这些操作基本相同。一个理想的解决方法是在请求之前（before_request）建立连接，在请求之后（teardown_request）关闭连接。通过在使用相应的请求钩子注册的函数中添加代码就可以实现。这很像单元测试中的setUp（）方法和tearDown（）方法
++ after_request钩子和after_this_request钩子必须接收一个响应类对象作为参数，并且返回同一个或更新后的响应对象
+** HTTP响应
+在Flask程序中，客户端发出的请求触发相应的视图函数，获取返回值会作为响应的主体，最后生成完整的响应，即响应报文
+*** 响应报文
++ 响应报文主要由协议版本、状态码（status code）、原因短语（reason phrase）、响应首部和响应主体组成
++ 响应报文的首部包含一些关于响应和服务器的信息，这些内容由Flask生成，而我们在视图函数中返回的内容即为响应报文中的主体内容。浏览器接收到响应后，会把返回的响应主体解析并显示在浏览器窗口上
++ HTTP状态码用来表示请求处理的结果，表2-9是常见的几种状态码和相应的原因短语
+  - 2XX 成功
+    200  OK          表示服务器成功执行了客户端所请求的动作
+    201  Created     请求创建了一个新资源
+    202  Accepted    客户端的请求无法或将不被实时处理。请求稍后会被处理。请求看上去是合法的，但在实际处理它时有出现问题的可能
+    203  Non-Authoritative Information  这个响应代码跟200一样，只不过服务器想让客户端知道，有些响应报头并非来自该服务器--他们可能是从客户端先前发送的一个请求里复制的，或者从第三方得到的
+    204  No Content  若服务器拒绝对PUT、POST或者DELETE请求返回任何状态信息或表示，那么通常采用此响应代码，204常常用在Ajax应用里
+    205  Reset Content  它与204类似，但与204不同的是，它表明客户端应重置数据源的视图或数据结构
+    206  Partial Content  对于支持部分GET（partial GET）的服务而言“非常高”，其他情况下“低”
+  - 3XX 重定向
+    300  Multiple Choices
+    301  Moved Permanently
+    302  Found
+    303  See Other
+    304  Not Modified
+    305  Use Proxy
+    306  未使用
+    307  Temporary Redirect
+  - 4XX 客户端错误
+    400  Bad Request
+    401  Unauthorized
+    402  Payment Required
+    403  Forbidden
+    404  Not Found
+    405  Method Not Allowd
+    406  Not Acceptable
+    407  Proxy Authentication Required
+    408  Reqeust Timeout
+    409  Conflict
+    410  Gone
+    411  Length Required
+    412  Precondition Failed
+    413  Request Entity Too Large
+    414  Request-URI Too Long
+    415  Unsupported Media Type
+    416  Requestd Range Not Satisfiable
+    417  Expectation Failed
+  - 5XX 服务端错误
+    500  Internal Server Error
+    501  Not Implemented
+    502  Bad Gateway
+    503  Service Unavailable
+    504  Gateway Timeout
+    505  HTTP Version Not Supported
++ 当关闭调试模式时，即FLASK_ENV使用默认值production，如果程序出错，Flask会自动返回500错误响应；而调试模式下则会显示调试信息和错误堆栈
+*** 在Flask中生成响应
++ 响应在Flask中使用Response对象表示，响应报文中的大部分内容由服务器处理，大多数情况下，我们只负责返回主体内容
++ Flask会先判断是否可以找到与请求URL相匹配的路由，如果没有则返回404响应。如果找到，则调用对应的视图函数，视图函数的返回值构成了响应报文的主体内容，正确返回时状态码默认为200。Flask会调用make_response（）方法将视图函数返回值转换为响应对象
++ 完整地说，视图函数可以返回最多由三个元素组成的元组：响应主体、状态码、首部字段。其中首部字段可以为字典，或是两元素元组组成的列表
+  - 普通的响应可以只包含主体内容：
+    #+BEGIN_SRC python
+    @app.route('/hello')
+    def hello():
+        ...
+        return '<h1>Hello, Flask!</h1>'
+    #+END_SRC
+  - 默认的状态码为200，下面指定了不同的状态码：
+    #+BEGIN_SRC python
+    @app.route('/hello')
+    def hello():
+        ...
+        return '<h1>Hello, Flask!</h1>', 201
+    #+END_SRC
+  - 有时你会想附加或修改某个首部字段。比如，要生成状态码为3XX的重定向响应，需要将首部中的Location字段设置为重定向的目标URL：
+    #+BEGIN_SRC python
+    @app.route('/hello')
+    def hello():
+        ...
+        return '', 302, {'Location', 'http://www.example.com'}
+    #+END_SRC
+    现在访问http://localhost:5000/hello，会重定向到http://www.example.com。在多数情况下，除了响应主体，其他部分我们通常只需要使用默认值即可
+**** 重定向
++ 如果你访问http://localhost:5000/hi，你会发现页面加载后地址栏中的URL变为了http://localhost:5000/hello。这种行为被称为重定向（Redirect），你可以理解为网页跳转。在上一节的示例中，状态码为302的重定向响应的主体为空，首部中需要将Location字段设为重定向的目标URL，浏览器接收到重定向响应后会向Location字段中的目标URL发起新的GET请求
++ 在Web程序中，我们经常需要进行重定向。比如，当某个用户在没有经过认证的情况下访问需要登录后才能访问的资源，程序通常会重定向到登录页面
++ 对于重定向这一类特殊响应，Flask提供了一些辅助函数。除了像前面那样手动生成302响应，我们可以使用Flask提供的redirect（）函数来生成重定向响应，重定向的目标URL作为第一个参数。前面的例子可以简化为：
+  #+BEGIN_SRC python
+  from flask import Flask, redirect
+  # ...
+  @app.route('/hello')
+  def hello():
+      return redirect('http://www.example.com')
+  #+END_SRC
++ 使用redirect（）函数时，默认的状态码为302，即临时重定向。如果你想修改状态码，可以在redirect（）函数中作为第二个参数或使用code关键字传入
++ 如果要在程序内重定向到其他视图，那么只需在redirect（）函数中使用url_for（）函数生成目标URL即可
+  #+BEGIN_SRC python
+  from flask import Flask, redirect, url_for
+  ...
+  @app.route('/hi')
+  def hi():
+      ...
+      return redierct(url_for('hello')) # 重定向到/hello
+  @app.route('/hello')
+      def hello():
+      ...
+  #+END_SRC
+**** 错误响应
++ 大多数情况下，Flask会自动处理常见的错误响应。HTTP错误对应的异常类在Werkzeug的werkzeug.exceptions模块中定义，抛出这些异常即可返回对应的错误响应。如果你想手动返回错误响应，更方便的方法是使用Flask提供的abort（）函数
++ 在abort（）函数中传入状态码即可返回对应的错误响应
+  #+BEGIN_SRC python
+  from flask import Flask, abort
+  ...
+  @app.route('/404')
+  def not_found():
+      abort(404)
+  #+END_SRC
++ abort（）函数前不需要使用return语句，但一旦abort（）函数被调用，abort（）函数之后的代码将不会被执行
++ 虽然我们有必要返回正确的状态码，但这不是必须的。比如，当某个用户没有权限访问某个资源时，返回404错误要比403错误更加友好
+**** 响应格式
++ 在HTTP响应中，数据可以通过多种格式传输。大多数情况下，我们会使用HTML格式，这也是Flask中的默认设置。在特定的情况下，我们也会使用其他格式。不同的响应数据格式需要设置不同的MIME类型，MIME类型在首部的Content-Type字段中定义，以默认的HTML类型为例：
+  #+BEGIN_SRC html
+  Content-Type: text/html; charset=utf-8
+  #+END_SRC
++ MIME类型（又称为media type或content type）是一种用来标识文件类型的机制，它与文件扩展名相对应，可以让客户端区分不同的内容类型，并执行不同的操作。一般的格式为“类型名/子类型名”，其中的子类型名一般为文件扩展名。比如，HTML的MIME类型为“text/html”，png图片的MIME类型为“image/png”。完整的标准MIME类型列表可以在这里看到：https://www.iana.org/assignments/media-types/media-types.xhtml
++ 如果你想使用其他MIME类型，可以通过Flask提供的make_response（）方法生成响应对象，传入响应的主体作为参数，然后使用响应对象的mimetype属性设置MIME类型
+  #+BEGIN_SRC python
+  from flask import make_response
+  @app.route('/foo')
+  def foo():
+      response = make_response('Hello, World!')
+      response.mimetype = 'text/plain'
+      return response
+  #+END_SRC
++ 可以直接设置首部字段，比如response.headers['Content-Type']='text/xml；charset=utf-8'。但操作mimetype属性更加方便，而且不用设置字符集（charset）选项
++ 常用的数据格式有纯文本、HTML、XML和JSON，下面我们分别对这几种数据进行简单的介绍和分析。为了对不同的数据类型进行对比，我们将会用不同的数据类型来表示一个便签的内容
+  - 纯文本 MIME类型：text/plain
+    #+BEGIN_SRC text
+    Note
+    to: Peter
+    from: Jane
+    heading: Reminder
+    body: Don't forget the party!
+    #+END_SRC
+  - HTML MIME类型：text/html
+    #+BEGIN_SRC html
+    <!DOCTYPE html>
+    <html>
+    <head></head>
+    <body>
+        <h1>Note</h1>
+        <p>to: Peter</p>
+        <p>from: Jane</p>
+        <p>heading: Reminder</p>
+        <p>body: <strong>Don't forget the party!</strong></p>
+    </body>
+    </html>
+    #+END_SRC
+  - XML MIME类型：application/xml
+    #+BEGIN_SRC xml
+    <?xml version="1.0" encoding="UTF-8"?>
+    <note>
+        <to>Peter</to>
+        <from>Jane</from>
+        <heading>Reminder</heading>
+        <body>Don't forget the party!</body>
+    </note
+    #+END_SRC
+  - JSON MIME类型：application/json
+    #+BEGIN_SRC json
+    {
+        "note":{
+        "to":"Peter",
+        "from":"Jane",
+        "heading":"Remider",
+        "body":"Don't forget the party!"
+        }
+    }
+    #+END_SRC
+    Flask通过引入Python标准库中的json模块（或simplejson，如果可用）为程序提供了JSON支持。你可以直接从Flask中导入json对象，然后调用dumps（）方法将字典、列表或元组序列化（serialize）为JSON字符串，再使用前面介绍的方法修改MIME类型，即可返回JSON响应
+    #+BEGIN_SRC python
+    from flask import Flask, make_response, json
+    ...
+    @app.route('/foo')
+        def foo():
+            data = {
+                'name':'Grey Li',
+                'gender':'male'
+            }
+            response = make_response(json.dumps(data))
+            response.mimetype = 'application/json'
+            return response
+    #+END_SRC
+    一般并不直接使用json模块的dumps（）、load（）等方法，因为Flask通过包装这些方法提供了更方便的jsonify（）函数。借助jsonify（）函数，我们仅需要传入数据或参数，它会对我们传入的参数进行序列化，转换成JSON字符串作为响应的主体，然后生成一个响应对象，并且设置正确的MIME类型。使用jsonify函数可以将前面的例子简化为这种形式：
+    #+BEGIN_SRC python
+    from flask import jsonify
+    @app.route('/foo')
+    def foo():
+        return jsonify(name='Grey Li', gender='male')
+    #+END_SRC
+    jsonify（）函数接收多种形式的参数。你既可以传入普通参数，也可以传入关键字参数。如果你想要更直观一点，也可以像使用dumps（）方法一样传入字典、列表或元组
+    #+BEGIN_SRC python
+    from flask import jsonify
+    @app.route('/foo')
+    def foo():
+        return jsonify({name: 'Grey Li', gender: 'male'})
+    #+END_SRC
+    另外，jsonify（）函数默认生成200响应，你也可以通过附加状态码来自定义响应类型
+    #+BEGIN_SRC python
+    @app.route('/foo')
+    def foo():
+        return jsonify(message='Error!'), 500
+    #+END_SRC
+    Flask在获取请求中的JSON数据上也有很方便的解决方案，具体可以参考我们在Request对象小节介绍的request.get_json（）方法和request.json属性
+*** Cookie
++ HTTP是无状态（stateless）协议。也就是说，在一次请求响应结束后，服务器不会留下任何关于对方状态的信息。但是对于某些Web程序来说，客户端的某些信息又必须被记住，比如用户的登录状态，这样才可以根据用户的状态来返回不同的响应。为了解决这类问题，就有了Cookie技术。Cookie技术通过在请求和响应报文中添加Cookie数据来保存客户端的状态信息
++ Cookie指Web服务器为了存储某些数据（比如用户信息）而保存在浏览器上的小型文本数据。浏览器会在一定时间内保存它，并在下一次向同一个服务器发送请求时附带这些数据。Cookie通常被用来进行用户会话管理（比如登录状态），保存用户的个性化信息（比如语言偏好，视频上次播放的位置，网站主题选项等）以及记录和收集用户浏览数据以用来分析用户行为等
++ 在Flask中，如果想要在响应中添加一个cookie，最方便的方法是使用Response类提供的set_cookie（）方法。要使用这个方法，我们需要先使用make_response（）方法手动生成一个响应对象，传入响应主体作为参数。这个响应对象默认实例化内置的Response类。表2-10是内置的Response类常用的属性和方法
+  - headers     一个Headers对象，表示响应首部，可以像字典一样操作
+  - status      状态吗，文本类型
+  - status_code 状态码，整型
+  - mimetype    MIME类型(仅包括内容类型部分)
+  - set_cookie  用来设置一个cookie
++ Respone类同样拥有和Request类相同的get_json（）方法、is_json（）方法以及json属性
++ set_cookie（）方法支持多个参数来设置Cookie的选项
+  - key  cookie键名称
+  - value cookie的值
+  - max_age  cookie被保存的时间数，单位为秒：默认在用户会话结束(即关闭浏览器时过期)
+  - expires  具体的过期时间，一个datetime对象或UNIX时间线
+  - path  限制cookie只在给定的路径可用，默认为整个域名
+  - domain  设置cookie可用的域名
+  - secure  如果设置为True，只有通过HTTPS才可以使用
+  - httponly  如果设置为True，禁止客服端JavaScript获取cookie
++ set_cookie视图用来设置cookie，它会将URL中的name变量的值设置到名为name的cookie里
+  #+BEGIN_SRC python
+  from flask import Flask, make_response
+  ...
+  @app.route('/set/<name>')
+  def set_cookie(name):
+      response = make_response(redirect(url_for('hello')))
+      response.set_cookie('name', name)
+      return response
+  #+END_SRC
+  在这个make_response（）函数中，我们传入的是使用redirect（）函数生成的重定向响应。set_cookie视图会在生成的响应报文首部中创建一个Set-Cookie字段，即“Set-Cookie：name=Grey；Path=/”
++ 在Flask中，Cookie可以通过请求对象的cookies属性读取。在修改后的hello视图中，如果没有从查询参数中获取到name的值，就从Cookie中寻找
+  #+BEGIN_SRC python
+  from flask import Flask, request
+  @app.route('/')
+  @app.route('/hello')
+  def hello():
+      name = request.args.get('name')
+      if name is None:
+          name = request.cookies.get('name', 'Human') # 从Cookie中获取name值
+      return '<h1>Hello, %s</h1>' % name
+  #+END_SRC
+  这时服务器就可以根据Cookie的内容来获得客户端的状态信息，并根据状态返回不同的响应。如果你访问http://localhost:5000/set/Grey，那么就会将名为name的cookie设为Grey，重定向到/hello后，你会发现返回的内容变成了“Hello，Grey！”。如果你再次通过访问http://localhost:5000/set/修改name cookie的值，那么重定向后的页面返回的内容也会随之改变
+*** session：安全的Cookie
++ Flask提供了session对象用来将Cookie数据加密储存,默认情况下，它会把数据存储在浏览器上一个名为session的cookie里
+**** 设置程序密钥
++ session通过密钥对数据进行签名以加密数据，因此，我们得先设置一个密钥。这里的密钥就是一个具有一定复杂度和随机性的字符串，比如“Drmhze6EPcv0fN_81Bj-nA”
++ 程序的密钥可以通过Flask.secret_key属性或配置变量SECRET_KEY设置，比如：
+  app.secret_key = 'secret string'
++ 更安全的做法是把密钥写进系统环境变量（在命令行中使用export或set命令），或是保存在.env文件中：
+  SECRET_KEY=secret string
+  然后在程序脚本中使用os模块提供的getenv（）方法获取：
+  #+BEGIN_SRC python
+  import os
+  # ...
+  app.secret_key = os.getenv('SECRET_KEY', 'secret string')
+  #+END_SRC
+  我们可以在getenv（）方法中添加第二个参数，作为没有获取到对应环境变量时使用的默认值,在生产环境中，为了安全考虑，你必须使用随机生成的密钥
++ 尽管session对象会对Cookie进行签名并加密，但这种方式仅能够确保session的内容不会被篡改，加密后的数据借助工具仍然可以轻易读取（即使不知道密钥）。因此，绝对不能在session中存储敏感信息，比如用户密码。
+**** 模拟用户认证
++ 第103页-110页
+** Flask上下文
++ Flask中有两种上下文，程序上下文（application context）和请求上下文（request context）
+*** 上下文全局变量
++ Flask会在每个请求产生后自动激活当前请求的上下文，激活请求上下文后，request被临时设为全局可访问。而当每个请求结束后，Flask就销毁对应的请求上下文
++ 为了方便获取这两种上下文环境中存储的信息，Flask提供了四个上下文全局变量，这四个变量都是代理对象（proxy），即指向真实对象的代理。一般情况下，我们不需要太关注其中的区别。在某些特定的情况下，如果你需要获取原始对象，可以对代理对象调用_get_current_object（）方法获取被代理的真实对象
+  - current_app 程序上下文 指向处理请求的当前程序实例
+  - g           程序上下文 替代python的全局变量用法，确保仅在当前请求中可用，用于存储全局数据，每次请求都会重置
+    借助g我们可以将这个操作移动到before_request处理函数中执行，然后保存到g的任意属性上：
+    #+BEGIN_SRC python
+    from flask import g
+    @app.before_request
+    def get_name():
+        g.name = request.args.get('name')
+    #+END_SRC
+    设置这个函数后，在其他视图中可以直接使用g.name获取对应的值。另外，g也支持使用类似字典的get（）、pop（）以及setdefault（）方法进行操作
+  - request     请求上下文 封装客户端发出的请求报文数据
+  - session     请求上下文 用于保存请求之后的数据，通过签名的cookie实现
+*** 激活上下文
++ 在下面这些情况下，Flask会自动帮我们激活程序上下文
+  - 当我们使用flask run命令启动程序时
+  - 使用旧的app.run（）方法启动程序时
+  - 执行使用@app.cli.command（）装饰器注册的flask命令时
+  - 使用flask shell命令启动Python Shell时
++ 当请求进入时，Flask会自动激活请求上下文，这时我们可以使用request和session变量,当请求上下文被激活时，程序上下文也被自动激活。当请求处理完毕后，请求上下文和程序上下文也会自动销毁。也就是说，在请求处理时这两者拥有相同的生命周期
++ 在使用flask shell命令打开的Python Shell中，或是自定义的flask命令函数中，我们可以使用current_app和g变量，也可以手动激活请求上下文来使用request和session
++ 如果我们在没有激活相关上下文时使用这些变量，Flask就会抛出RuntimeError异常：“RuntimeError：Working outside of applicationcontext.”或是“RuntimeError：Working outside of request context.”
++ 同样依赖于上下文的还有url_for（）、jsonify（）等函数，所以你也只能在视图函数中使用它们。其中jsonify（）函数内部调用中使用了current_app变量，而url_for（）则需要依赖请求上下文才可以正常运行
++ 如果你需要在没有激活上下文的情况下使用这些变量，可以手动激活上下文。比如，下面是一个普通的Python shell，通过python命令打开。程序上下文对象使用app.app_context（）获取，我们可以使用with语句执行上下文操作：
+  #+BEGIN_SRC python
+  >>> from app import app
+  >>> from flask import current_app
+  >>> with app.app_context():
+      ... current_app.name
+  'app'
+  #+END_SRC
+  或是显式地使用push（）方法推送（激活）上下文，在执行完相关操作时使用pop（）方法销毁上下文：
+  #+BEGIN_SRC python
+  >>> from app import app
+  >>> from flask import current_app
+  >>> app_ctx = app.app_context()
+  >>> app_ctx.push()
+  >>> current_app.name
+  'app'
+  >>> app_ctx.pop()
+  #+END_SRC
+  而请求上下文可以通过test_request_context（）方法临时创建：
+  #+BEGIN_SRC python
+  >>> from app import app
+  >>> from flask import request
+  >>> with app.test_request_context('/hello'):
+  ... request.method
+  'GET'
+  #+END_SRC
+  同样的，这里也可以使用push（）和pop（）方法显式地推送和销毁请求上下文。
+*** 上下文钩子
++ Flask也为上下文提供了一个teardown_appcontext钩子，使用它注册的回调函数会在程序上下文被销毁时调用，而且通常也会在请求上下文被销毁时调用。比如，你需要在每个请求处理结束后销毁数据库连接：
+  #+BEGIN_SRC python
+  @app.teardown_appcontext
+  def teardown_db(exception):
+      ...
+      db.close()
+  #+END_SRC
++ 使用app.teardown_appcontext装饰器注册的回调函数需要接收异常对象作为参数，当请求被正常处理时这个参数值将是None，这个函数的返回值将被忽略
++ 上下文是Flask的重要话题
+** HTTP进阶实践
+*** 重定向回上一个页面 
++ 第115页-119页
+*** 使用AJAX技术发送异步请求
+**** 认识AJAX
++ AJAX指异步Javascript和XML（Asynchronous JavaScript AndXML），它不是编程语言或通信协议，而是一系列技术的组合体。简单来说，AJAX基于XMLHttpRequest（https://xhr.spec.whatwg.org/）让我们可以在不重载页面的情况下和服务器进行数据交换
++ 可以选择使用原生的XMLHttpRequest、其他JavaScript框架内置的AJAX接口，或是使用更新的Fetch API（https://fetch.spec.whatwg.org/）来发送异步请求
+**** 返回“局部数据”
+***** 纯文本或局部HTML模板
++ 纯文本可以在JavaScript用来直接替换页面中的文本值，而局部HTML则可以直接到插入页面中，比如返回评论列表
+  #+BEGIN_SRC python
+  @app.route('/comments/<int:post_id>')
+  def get_comments(post_id):
+      ...
+      return render_template('comments.html')
+  #+END_SRC
+***** JSON数据
++ JSON数据可以在JavaScript中直接操作
+  #+BEGIN_SRC python
+  @app.route('/profile/<int:user_id>')
+  def get_profile(user_id):
+      ...
+      return jsonify(username=username, bio=bio)
+  #+END_SRC
+***** 空值
++ 有些时候，程序中的某些接收AJAX请求的视图并不需要返回数据给客户端，比如用来删除文章的视图。这时我们可以直接返回空值，并将状态码指定为204（表示无内容）
+  #+BEGIN_SRC python
+  @app.route('/post/delete/<int:post_id>', methods=['DELETE'])
+  def delete_post(post_id):
+      ...
+      return '', 204
+  #+END_SRC
+***** 异步加载长文章示例
++ 显示一篇很长的虚拟文章，文章正文下方有一个“加载更多”按钮，当加载按钮被单击时，会发送一个AJAX请求获取文章的更多内容并直接动态插入到文章下方
+  #+BEGIN_SRC python
+  from jinja2.utils import generate_lorem_ipsum
+  @app.route('/post')
+  def show_post():
+      post_body = generate_lorem_ipsum(n=2) # 生成两段随机文本
+      return '''
+  <h1>A very long post</h1>
+  <div class="body">%s</div>
+  <button id="load">Load More</button>
+  <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+  <script type="text/javascript">
+  $(function() {
+      $('#load').click(function() {
+          $.ajax({
+              url: '/more', // 目标URL
+              type: 'get', // 请求方法
+              success: function(data){ // 返回2XX响应后触发的回调函数
+                  $('.body').append(data); // 将返回的响应插入到页面中
+              }
+          })
+      })
+  })
+  </script>''' % post_body
+  #+END_SRC
+*** HTTP服务器端推送
++ 在某些场景下，我们需要的通信模式是服务器端的主动推送（server push）实现服务器端推送的一系列技术被合称为HTTP Server Push（HTTP服务器端推送），目前常用的推送技术有
+  - 传统轮询
+  - 长轮询
+  - Server-Sent Events(SSE)
+  - WebSocket
+*** Web安全防范
+**** 注入攻击
++ 主要防范方法
+  - 使用ORM可以一定程度上避免SQL注入问题
+  - 验证输入类型
+    比如某个视图函数接收整型id来查询，那么就在URL规则中限制URL变量为整型
+  - 参数化查询
+    在构造SQL语句时避免使用拼接字符串或字符串格式化（使用百分号或format（）方法）的方式来构建SQL语句。而要使用各类接口库提供的参数化查询方法
+    #+BEGIN_SRC python
+    db.execute('SELECT * FROM students WHERE password=?, password)
+    #+END_SRC
+  - 转义特殊字符
+    比如引号、分号和横线等。使用参数化查询时，各种接口库会为我们做转义工作
+**** XSS攻击（Cross-Site Scripting，跨站脚本）
++ 主要防范方法
+  - HTML转义
+    把变量中与HTML相关的符号转换为安全字符，以避免变量中包含影响页面输出的HTML标签或恶意的JavaScript代码,使用Jinja2提供的escape（）函数对用户传入的数据进行转义：
+    #+BEGIN_SRC python
+    from jinja2 import escape
+    @app.route('/hello')
+    def hello():
+        name = request.args.get('name')
+        response = '<h1>Hello, %s!</h1>' % escape(name)
+    #+END_SRC
+  - 验证用户输入
+**** CSRF攻击（Cross Site Request Forgery，跨站请求伪造）
++ 主要防范措施
+  - 正确使用HTTP方法
+    - 目前在HTML中仅支持GET和POST方法（借助AJAX则可以使用其他方法）。在使用HTTP方法时，通常应该遵循下面的原则：
+      1. GET方法属于安全方法，不会改变资源状态，仅用于获取资源，因此又被称为幂等方法（idempotent method）。页面中所有可以通过链接发起的请求都属于GET请求
+      2. POST方法用于创建、修改和删除资源。在HTML中使用form标签创建表单并设置提交方法为POST，在提交时会创建POST请求
+  - CSRF令牌校验
+* 模板(Jinja2)
+** 概述
++ 借助模板引擎，我们可以在HTML文件中使用特殊的语法来标记出变量，这类包含固定内容和动态部分的可重用文件称为模板（template）
++ 模板引擎的作用就是读取并执行模板中的特殊语法标记，并根据传入的数据将变量替换为实际值，输出最终的HTML页面，这个过程被称为渲染（rendering）模板引擎的作用就是读取并执行模板中的特殊语法标记，并根据传入的数据将变量替换为实际值，输出最终的HTML页面，这个过程被称为渲染（rendering）
++ Flask默认使用的模板引擎是Jinja2，它是一个功能齐全的Python模板引擎，除了设置变量，还允许我们在模板中添加if判断，执行for迭代，调用函数等，以各种方式控制模板的输出。对于Jinja2来说，模板可以是任何格式的纯文本文件，比如HTML、XML、CSV、LaTeX等
+** Jinja2简易文档
+*** 语法
+**** 控制结构 {% %}
+**** 变量取值 {{ }}
++ jinja2模板中使用 {{ }} 语法表示一个变量，它是一种特殊的占位符。当利用jinja2进行渲染的时候，它会把这些特殊的占位符进行填充/替换，jinja2支持python中所有的Python数据类型比如列表、字段、对象等
+**** 注释 {# #}
+*** 变量
++ 使用 {{ }} 语法表示一个变量，它是一种特殊的占位符。当利用jinja2进行渲染的时候，它会把这些特殊的占位符进行填充/替换，jinja2支持python中所有的Python数据类型比如列表、字段、对象等
+#+BEGIN_SRC python
+<p>this is a dicectory:{{ mydict['key'] }} </p>
+<p>this is a list:{{ mylist[3] }} </p>
+<p>this is a object:{{ myobject.something() }} </p>
+#+END_SRC
+*** python对象
++ 允许你在模板中使用大部分Python对象，比如字符串、列表、字典、元组、整型、浮点型、布尔值。它支持基本的运算符号（+、-、*、/等）、比较符号（比如==、！=等）、逻辑符号（and、or、not和括号）以及in、is、None和布尔值（True、False）
+*** 过滤器
++ 变量可以通过“过滤器”进行修改，过滤器可以理解为是jinja2里面的内置函数和字符串处理函数
++ 常用的过滤器
+  - safe:      渲染时值不转义
+  - capitialize:   把值的首字母转换成大写，其他子母转换为小写
+  - lower:    把值转换成小写形式
+  - upper:    把值转换成大写形式
+  - title:    把值中每个单词的首字母都转换成大写
+  - trim:      把值的首尾空格去掉
+  - striptags:    渲染之前把值中所有的HTML标签都删掉
+  - join:      拼接多个值为字符串
+  - replace:      替换字符串的值
+  - round:  默认对数字进行四舍五入，也可以用参数进行控制
+  - int:       把值转换成整型
++ 使用过滤器只需要在变量后面使用管道(|)分割，多个过滤器可以链式调用，前一个过滤器的输出会作为后一个过滤器的输入
+  #+BEGIN_SRC python
+  {{ 'abc' | captialize  }}
+  # Abc
+ 
+  {{ 'abc' | upper  }}
+  # ABC
+ 
+  {{ 'hello world' | title  }}
+  # Hello World
+ 
+  {{ "hello world" | replace('world','daxin') | upper }}
+  # HELLO DAXIN
+ 
+  {{ 18.18 | round | int }}
+  # 18
+  #+END_SRC
++ 另一种用法是将过滤器作用于一部分模板数据，使用filter标签和endfilter标签声明开始和结束。比如，下面使用upper过滤器将一段文字转换为大写
+  #+BEGIN_SRC python
+  {% filter upper %}
+      This text becomes uppercase.
+  {% endfilter %}
+  #+END_SRC
++ 自定义过滤器
+  - 使用app.template_filter（）装饰器可以注册自定义过滤器，代码清单3-5注册了一个musical过滤器
+  - 和注册全局函数类似，你可以在app.template_filter（）中使用name关键字设置过滤器的名称，默认会使用函数名称。过滤器函数需要接收被处理的值作为输入，返回处理后的值
+    #+BEGIN_SRC python
+    from flask import Markup
+    @app.template_filter()
+    def musical(s):
+        return s + Markup(' &#9835;')
+    #+END_SRC
+  - 可以直接使用app.add_template_filter（）方法注册自定义过滤器，传入函数对象和可选的自定义名称（name）
+    #+BEGIN_SRC python
+    app.add_template_filter（your_filter_function）
+    #+END_SRC
+*** 测试器
++ 测试可以用于对照普通表达式测试一个变量。 要测试一个变量或表达式，你要在变量后加上一个 is 以及测试的名称，例如，要得出 一个值是否定义过，你可以用 name is defined ，这会根据 name 是否定义返回 true 或 false
++ 测试也可以接受参数。如果测试只接受一个参数，你可以省去括号来分组它们。例如， 下面的两个表达式做同样的事情:
+  #+BEGIN_SRC python
+  {% if loop.index is divisibleby 3 %}
+  {% if loop.index is divisibleby(3) %}
+  #+END_SRC
++ 自定义测试器
+  - app.template_test（）装饰器来注册一个自定义测试器。在示例程序中，我们创建了一个没有意义的baz过滤器，仅用来验证被测值是否为baz
+    #+BEGIN_SRC python
+    @app.template_test()
+    def baz(n):
+        if n == 'baz':
+            return True
+        return False
+    #+END_SRC
+  - 测试器的名称默认为函数名称，你可以在app.template_test（）中使用name关键字指定自定义名称。测试器函数需要接收被测试的值作为输入，返回布尔值
+  - 可以直接使用app.add_template_test（）方法注册自定义测试器，传入函数对象和可选的自定义名称（name）
+    #+BEGIN_SRC python
+    app.add_template_test（your_test_function）
+    #+END_SRC
+*** 空白控制
++ 默认配置中，模板引擎不会对空白做进一步修改，所以每个空白（空格、制表符、换行符 等等）都会原封不动返回,如果应用配置了 Jinja 的 trim_blocks ，模板标签后的 第一个换行符会被自动移除
++ 可以手动剥离模板中的空白。当你在块（比如一个 for 标签、一段注释或变 量表达式）的开始或结束放置一个减号（ - ），可以移除块前或块后的空白
+  #+BEGIN_SRC python
+  {% for item in seq -%}
+      {{ item }}
+  {%- endfor %}
+  #+END_SRC
++ 如果开启了 行语句 ，它们会自动去除行首的空白
+*** 转义
++ 有时想要或甚至必要让 Jinja 忽略部分，不会把它作为变量或块来处理。例如，如果 使用默认语法，你想在在使用把 {{ 作为原始字符串使用，并且不会开始一个变量 的语法结构，你需要使用一个技巧
++ 最简单的方法是在变量分隔符中（ {{ ）使用变量表达式输出
+  #+BEGIN_SRC python
+  {{ '{{' }}
+  #+END_SRC
++ 对于较大的段落，标记一个块为 raw 是有意义的。例如展示 Jinja 语法的实例， 你可以在模板中用这个片段:
+  #+BEGIN_SRC python
+  {% raw %}
+    <ul>
+    {% for item in seq %}
+        <li>{{ item }}</li>
+    {% endfor %}
+    </ul>
+  {% endraw %}
+  #+END_SRC
+*** 行语句
++ 如果应用启用了行语句，就可以把一个行标记为一个语句。例如如果行语句前缀配置为 # ，下面的两个例子是等价的:
+  #+BEGIN_SRC python
+  <ul>
+  # for item in seq
+      <li>{{ item }}</li>
+  # endfor
+  </ul>
+
+  <ul>
+  {% for item in seq %}
+    <li>{{ item }}</li>
+  {% endfor %}
+  </ul>
+  #+END_SRC
+*** 控制结构(if语句)
++ if语句类似与Python的if语句，它也具有单分支，多分支等多种结构，不同的是，条件语句不需要使用冒号结尾，而结束控制语句，需要使用endif关键字
+  #+BEGIN_SRC python
+{% if daxin.safe %}
+    daxin is safe.
+{% elif daxin.dead %}
+    daxin is dead
+{% else %}
+   daxin is okay
+{% endif %}
+  #+END_SRC
+*** for循环
++ for循环用于迭代Python的数据类型，包括列表，元组和字典。在jinja2中不存在while循环
++ 迭代列表
+  #+BEGIN_SRC python
+  <ul>
+      {% for user in users %}
+          <li>{{ user.username|title }}</li>
+      {% endfor %}
+  </ul>
+  #+END_SRC
++ 迭代字典
+  #+BEGIN_SRC python
+  <dl>
+      {% for key, value in my_dict.iteritems() %}
+          <dt>{{ key }}</dt>
+          <dd>{{ value}}</dd>
+      {% endfor %}
+  </dl>
+  #+END_SRC
++ 在一个 for 循环块中你可以访问这些特殊的变量:
+  - oop.index 当前循环迭代的次数（从 1 开始）
+  - loop.index0 当前循环迭代的次数（从 0 开始）
+  - loop.revindex 到循环结束需要迭代的次数（从 1 开始）
+  - loop.revindex0 到循环结束需要迭代的次数（从 0 开始）
+  - loop.first 如果是第一次迭代，为 True 。
+  - loop.last 如果是最后一次迭代，为 True 。
+  - loop.length 序列中的项目数。
+  - loop.cycle 在一串序列间期取值的辅助函数。见下面的解释
+    1. 在 for 循环中，可以使用特殊的 loop.cycle 辅助函数，伴随循环在一个字符串/变 量列表中周期取值:
+      #+BEGIN_SRC python
+      {% for row in rows %}
+          <li class="{{ loop.cycle('odd', 'even') }}">{{ row }}</li>
+      {% endfor %}
+      #+END_SRC
+    2. 模板中的循环内不能 break 或 continue 。但你可以在迭代 中过滤序列来跳过项目。下面的例子中跳过了所有隐藏的用户:
+       #+BEGIN_SRC python
+       {% for user in users if not user.hidden %}
+           <li>{{ user.username|e }}</li>
+       {% endfor %}
+       #+END_SRC
+    3. 如果因序列是空或者过滤移除了序列中的所有项目而没有执行循环，你可以使用 else 渲染一个用于替换的块:
+       #+BEGIN_SRC python
+       <ul>
+       {% for user in users %}
+           <li>{{ user.username|e }}</li>
+       {% else %}
+           <li><em>no users found</em></li>
+       {% endfor %}
+       </ul>
+       #+END_SRC
+    4. 也可以递归地使用循环。当你处理诸如站点地图之类的递归数据时很有用。要递归地 使用循环，你只需要在循环定义中加上 recursive 修饰，并在你想使用递归的地 方，对可迭代量调用 loop 变量
+       #+BEGIN_SRC python
+       <ul class="sitemap">
+       {%- for item in sitemap recursive %}
+           <li><a href="{{ item.href|e }}">{{ item.title }}</a>
+           {%- if item.children -%}
+               <ul class="submenu">{{ loop(item.children) }}</ul>
+           {%- endif %}</li>
+       {%- endfor %}
+       </ul>
+       #+END_SRC
+*** 宏
++ 宏类似于Python中的函数，我们在宏中定义行为，还可以进行传递参数
++ 定义一个宏的关键字是macro，后面跟其 宏的名称和参数等
+  #+BEGIN_SRC python
+  {% macro input(name,age=18) %}   # 参数age的默认值为18
+       <input type='text' name="{{ name }}" value="{{ age }}" >
+  {% endmacro %}
+  #+END_SRC
++ 调用宏
+  #+BEGIN_SRC python
+  <p>{{ input('daxin') }} </p>
+  <p>{{ input('daxin',age=20) }} </p>
+  #+END_SRC
+*** 继承和super函数
++ jinja2中最强大的部分就是模板继承。模板继承允许我们创建一个基本(骨架)文件，其他文件从该骨架文件继承，然后针对自己需要的地方进行修改
++ jinja2的骨架文件中，利用block关键字表示其包涵的内容可以进行修改
++ 下面的骨架文件base.html为例
+  #+BEGIN_SRC html
+  <!DOCTYPE html>
+  <html lang="en">
+    <head>
+      {% block head %}
+          <link rel="stylesheet" href="style.css"/>
+          <title>{% block title %}{% endblock %} - My Webpage</title>
+      {% endblock %}
+    </head>
+    <body>
+      <div id="content">{% block content %}{% endblock %}</div>
+      <div id="footer">
+          {% block  footer %}
+              <script>This is javascript code </script>
+          {% endblock %}
+      </div>
+    </body>
+  </html>
+  #+END_SRC
++ 这里定义了四处 block，即：head，title，content，footer。那怎么进行继承和变量替换呢？注意看下面的文件
+  #+BEGIN_SRC python
+  {% extend "base.html" %}       # 继承base.html文件
+ 
+  {% block title %} Dachenzi {% endblock %}   # 定制title部分的内容
+ 
+  {% block head %}
+      {{  super()  }}        # 用于获取原有的信息
+      <style type='text/css'>
+          .important { color: #FFFFFF }
+      </style>
+  {% endblock %}   
+ 
+  # 其他不修改的原封不动的继承
+  #+END_SRC
+*** 包含
++ include 语句用于包含一个模板，并在当前命名空间中返回那个文件的内容渲 染结果
+  #+BEGIN_SRC python
+  {% include 'header.html' %}
+      Body
+  {% include 'footer.html' %}
+  #+END_SRC
+*** 导入
++ Jinja2 支持在宏中放置经常使用的代码。这些宏可以被导入，并不同的模板中使用。这 与 Python 中的 import 语句类似。要知道的是，导入量会被缓存，并且默认下导入的 模板不能访问当前模板中的非全局变量
+*** 利用jinja2进行渲染
++ jinja2模块中有一个名为Enviroment的类，这个类的实例用于存储配置和全局对象，然后从文件系统或其他位置中加载模板
+**** 加载模板
++ 大多数应用都在初始化的时候撞见一个Environment对象，并用它加载模板。Environment支持两种加载方式
+***** PackageLoader：包加载器
++ 使用包加载器来加载文档的最简单的方式如下
+  #+BEGIN_SRC python
+  from jinja2 import PackageLoader,Environment
+  env = Environment(loader=PackageLoader('python_project','templates'))    # 创建一个包加载器对象
+ 
+  template = env.get_template('bast.html')    # 获取一个模板文件
+  template.render(name='daxin',age=18)   # 渲染
+  #+END_SRC
++ PackageLoader()的两个参数为：python包的名称，以及模板目录名称
++ get_template()：获取模板目录下的某个具体文件
++ render()：接受变量，对模板进行渲染
+***** FileSystemLoader
++ 文件系统加载器，不需要模板文件存在某个Python包下，可以直接访问系统中的文件
+**** 渲染模板
++ 渲染一个模板，就是执行模板中的代码，并传入所有在模板中使用的变量，渲染后的结果就是我们要返回给客户端的HTML响应。在视图函数中渲染模板时，我们并不直接使用Jinja2提供的函数，而是使用Flask提供的渲染函数render_template（）
+  #+BEGIN_SRC python
+  from flask import Flask, render_template
+  ...
+  @app.route('/watchlist')
+  def watchlist():
+      return render_template('watchlist.html', user=user, movies=movies)
+  #+END_SRC
++ 在render_template（）函数中，我们首先传入模板的文件名作为参数，Flask会在程序根目录下的templates文件夹里寻找模板文件，所以这里传入的文件路径是相对于templates根目录的。除了模板文件路径，我们还以关键字参数的形式传入了模板中使用的变量值，以user为例：左边的user表示传入模板的变量名称，右边的user则是要传入的对象
++ 除了render_template（）函数，Flask还提供了一个render_template_string（）函数用来渲染模板字符串
++ 其他类型的变量通过相同的方式传入。传入Jinja2中的变量值可以是字符串、列表和字典，也可以是函数、类和类实例，这完全取决于你在视图函数传入的值。下面是一些示例：
+  #+BEGIN_SRC python
+  <p>这是列表my_list的第一个元素：{{ my_list[0] }}</p>
+  <p>这是元组my_tuple的第一个元素：{{ my_tuple[0] }}</p>
+  <p>这是字典my_dict的键为name的值：{{ my_dict['name'] }}</p>
+  <p>这是函数my_func的返回值：{{ my_func() }}</p>
+  <p>这是对象my_object调用某方法的返回值：{{ my_object.name() }}</p>
+  #+END_SRC
++ 如果你想传入函数在模板中调用，那么需要传入函数对象本身，而不是函数调用（函数的返回值），所以仅写出函数名称即可。当把函数传入模板后，我们可以像在Python脚本中一样通过添加括号的方式调用，而且你也可以在括号中传入参数
+*** 模板环境对象
++ 渲染行为由jinja2.Enviroment类控制，所有的配置选项、上下文变量、全局函数、过滤器和测试器都存储在Enviroment实例上,当与Flask结合后，我们并不单独创建Enviroment对象，而是使用Flask创建的Enviroment对象，它存储在app.jinja_env属性上
++ 可以使用app.jinja_env更改Jinja2设置。比如，你可以自定义所有的定界符。下面使用variable_start_string和variable_end_string分别自定义变量定界符的开始和结束符号
+  #+BEGIN_SRC python
+  app = Flask(__name__)
+  app.jinja_env.variable_start_string = '[['
+  app.jinja_env.variable_end_string = ']]'
+  #+END_SRC
++ 模板环境中的全局函数、过滤器和测试器分别存储在Enviroment对象的globals、filters和tests属性中，这三个属性都是字典对象。除了使用Flask提供的装饰器和方法注册自定义函数，我们也可以直接操作这三个字典来添加相应的函数或变量，这通过向对应的字典属性中添加一个键值对实现，传入模板的名称作为键，对应的函数对象或变量作为值
+**** 添加自定义全局对象
++ 和app.template_global（）装饰器不同，直接操作globals字典允许我们传入任意Python对象，而不仅仅是函数，类似于上下文处理函数的作用。下面的代码使用app.jinja_env.globals分别向模板中添加全局函数bar和全局变量foo：
+  #+BEGIN_SRC python
+  def bar():
+      return 'I am bar.'
+  foo = 'I am foo.'
+  app.jinja_env.globals['bar'] = bar
+  app.jinja_env.globals['foo'] = foo
+  #+END_SRC
+**** 添加自定义过滤器
++ 使用app.jinja_env.filters向模板中添加自定义过滤器
+  #+BEGIN_SRC python
+  def smiling(s):
+      return s + ' :)'
+  app.jinja_env.filters['smiling'] = smiling
+  #+END_SRC
+**** 添加自定义测试器
++ 使用app.jinja_env.tests向模板中添加自定义测试器baz
+  #+BEGIN_SRC python
+  def baz(n):
+      if n == 'baz':
+          return True
+      return False
+  app.jinja_env.tests['baz'] = baz
+  #+END_SRC
+** 基本用法
+*** 创建模板
++ 
+*** 渲染模板
++ 渲染一个模板，就是执行模板中的代码，并传入所有在模板中使用的变量，渲染后的结果就是我们要返回给客户端的HTML响应。在视图函数中渲染模板时，我们并不直接使用Jinja2提供的函数，而是使用Flask提供的渲染函数render_template（）
+  #+BEGIN_SRC python
+  from flask import Flask, render_template
+  ...
+  @app.route('/watchlist')
+  def watchlist():
+      return render_template('watchlist.html', user=user, movies=movies)
+  #+END_SRC
++ 在render_template（）函数中，我们首先传入模板的文件名作为参数，Flask会在程序根目录下的templates文件夹里寻找模板文件，所以这里传入的文件路径是相对于templates根目录的。除了模板文件路径，我们还以关键字参数的形式传入了模板中使用的变量值，以user为例：左边的user表示传入模板的变量名称，右边的user则是要传入的对象
++ 除了render_template（）函数，Flask还提供了一个render_template_string（）函数用来渲染模板字符串
++ 其他类型的变量通过相同的方式传入。传入Jinja2中的变量值可以是字符串、列表和字典，也可以是函数、类和类实例，这完全取决于你在视图函数传入的值。下面是一些示例：
+  #+BEGIN_SRC python
+  <p>这是列表my_list的第一个元素：{{ my_list[0] }}</p>
+  <p>这是元组my_tuple的第一个元素：{{ my_tuple[0] }}</p>
+  <p>这是字典my_dict的键为name的值：{{ my_dict['name'] }}</p>
+  <p>这是函数my_func的返回值：{{ my_func() }}</p>
+  <p>这是对象my_object调用某方法的返回值：{{ my_object.name() }}</p>
+  #+END_SRC
++ 如果你想传入函数在模板中调用，那么需要传入函数对象本身，而不是函数调用（函数的返回值），所以仅写出函数名称即可。当把函数传入模板后，我们可以像在Python脚本中一样通过添加括号的方式调用，而且你也可以在括号中传入参数
+*** 模板辅助工具
++ 除了基本语法，Jinja2还提供了许多方便的工具，这些工具可以让你更方便地控制模板的输出。为了方便测试，我们在示例程序的templates目录下创建了一个根页面模板index.html。返回主页的index视图和watchlist视图类似：
+  #+BEGIN_SRC python
+  from flask import render_template
+  @app.route('/')
+  def index():
+      return render_template('index.html')
+  #+END_SRC
+**** 上下文
++ 模板上下文包含了很多变量，其中包括我们调用render_template（）函数时手动传入的变量以及Flask默认传入的变量。除了渲染时传入变量，你也可以在模板中定义变量，使用set标签：
+  #+BEGIN_SRC python
+  {% set navigation = [('/', 'Home'), ('/about', 'About')] %}
+  #+END_SRC
++ 你也可以将一部分模板数据定义为变量，使用set和endset标签声明开始和结束：
+  #+BEGIN_SRC python
+  {% set navigation %}
+      <li><a href="/">Home</a>
+      <li><a href="/about">About</a>
+  {% endset %}
+  #+END_SRC
+***** 内置上下文变量
++ Flask在模板上下文中提供了一些内置变量，可以在模板中直接使用
+  - config  当前的配置对象
+  - request 当前的请求对象，在已激活的请求环境下可用
+  - session 当前的会话对象，在已激活的请求环境下可用
+  - g       与请求绑定的全局变量，在已激活的请求环境下可用
+***** 自定义上下文
++ 如果多个模板都需要使用同一变量，那么比起在多个视图函数中重复传入，更好的方法是能够设置一个模板全局变量。Flask提供了一个app.context_processor装饰器，可以用来注册模板上下文处理函数，它可以帮我们完成统一传入变量的工作。模板上下文处理函数需要返回一个包含变量键值对的字典
+  #+BEGIN_SRC python
+  @app.context_processor
+  def inject_foo():
+      foo = 'I am foo.'
+      return dict(foo=foo) # 等同于return {'foo': foo}
+  #+END_SRC
+  调用render_template（）函数渲染任意一个模板时，所有使用app.context_processor装饰器注册的模板上下文处理函数（包括Flask内置的上下文处理函数）都会被执行，这些函数的返回值会被添加到模板中，因此我们可以在模板中直接使用foo变量
++ 除了使用app.context_processor装饰器，也可以直接将其作为方法调用，传入模板上下文处理函数：
+  #+BEGIN_SRC python
+  ...
+  def inject_foo():
+      foo = 'I am foo.'
+      return dict(foo=foo)
+  app.context_processor(inject_foo)
+  #+END_SRC
+  使用lambda可以简化为：
+  #+BEGIN_SRC 
+  app.context_processor(lambda: dict(foo='I am foo.'))
+  #+END_SRC
+**** 全局对象
++ 全局对象是指在所有的模板中都可以直接使用的对象，包括在模板中导入的模板
++ Flask除了把g、session、config、request对象注册为上下文变量，也将它们设为全局变量，因此可以全局使用
+***** 内置全局函数
++ 常用函数
+  - range([start, ]stop[, step])
+    与python中的range()用法相同
+  - lipsum(n=5, html=True, min=20, max=100)
+    生成随机文本
+  - dict(**items)
+    和python中的dict()用法相同
+***** 模板中内置全局函数
++ 常用函数
+  - url_for()
+    用来获取url，用法和在python中相同
+    #+BEGIN_SRC python
+    <a href="{{ url_for('index') }}">&larr; Return</a>
+    #+END_SRC
+  - get_flashed_messages（）
+***** 自定义全局函数
++ 除了使用app.context_processor注册模板上下文处理函数来传入函数，我们也可以使用app.template_global装饰器直接将函数注册为模板全局函数
++ 默认使用函数的原名称传入模板，在app.template_global（）装饰器中使用name参数可以指定一个自定义名称。app.template_global（）仅能用于注册全局函数
+  #+BEGIN_SRC python
+  @app.template_global()
+  def bar():
+      return 'I am bar.'
+  #+END_SRC
++ 可以直接使用app.add_template_global（）方法注册自定义全局函数，传入函数对象和可选的自定义名称（name）
+  #+BEGIN_SRC python
+  app.add_template_global（your_global_function）
+  #+END_SRC
+*** 模板结构组织
++ 除了使用函数、过滤器等工具控制模板的输出外，Jinja2还提供了一些工具来在宏观上组织模板内容
+**** 局部模板
++ 通常被称为局部模板或次模板，因为它们仅包含部分代码，所以我们不会在视图函数中直接渲染它，而是插入到其他独立模板中
++ 当程序中的某个视图用来处理AJAX请求时，返回的数据不需要包含完整的HTML结构，这时就可以返回渲染后的局部模板
++ 当多个独立模板中都会使用同一块HTML代码时，我们可以把这部分代码抽离出来，存储到局部模板中。这样一方面可以避免重复，另一方面也可以方便统一管理
++ 使用include标签来插入一个局部模板，这会把局部模板的全部内容插在使用include标签的位置。比如，在其他模板中，我们可以在任意位置使用下面的代码插入_banner.html的内容
+  #+BEGIN_SRC python
+  {% include '_banner.html' %}
+  #+END_SRC
++ 为了和普通模板区分开，局部模板的命名通常以一个下划线开始
+**** 宏
++ 宏（macro）是Jinja2提供的一个非常有用的特性，它类似Python中的函数。使用宏可以把一部分模板代码封装到宏里，使用传递的参数来构建内容，最后返回构建后的内容。在功能上，它和局部模板类似，都是为了方便代码块的重用
++ 为了便于管理，我们可以把宏存储在单独的文件中，这个文件通常命名为macros.html或_macors.html。在创建宏时，我们使用macro和endmacro标签声明宏的开始和结束。在开始标签中定义宏的名称和接收的参数，下面是一个简单的示例
+  #+BEGIN_SRC python
+  {% macro qux(amount=1) %}
+      {% if amount == 1 %}
+          I am qux.
+      {% elif amount > 1 %}
+          We are quxs.
+      {% endif %}
+  {% endmacro %}
+  #+END_SRC
++ 使用时，需要像从Python模块中导入函数一样使用import语句导入它，然后作为函数调用，传入必要的参数
+  #+BEGIN_SRC python
+  {% from 'macros.html' import qux %}
+  ...
+  {{ qux(amount=5) }}
+  #+END_SRC
++ 在使用宏时我们需要注意上下文问题。在Jinja2中，出于性能的考虑，并且为了让这一切保持显式，默认情况下包含（include）一个局部模板会传递当前上下文到局部模板中，但导入（import）却不会。具体来说，当我们使用render_template（）函数渲染一个foo.html模板时，这个foo.html的模板上下文中包含下列对象
+  - Flask使用内置的模板上下文处理函数提供的g、session、config、request
+  - 扩展使用内置的模板上下文处理函数提供的变量
+  - 自定义模板上下文处理器传入的变量
+  - 使用render_template（）函数传入的变量
+  - Jinja2和Flask内置及自定义全局对象
+  - Jinja2内置及自定义过滤器
+  - Jinja2内置及自定义测试器
++ 使用include标签插入的局部模板（比如_banner.html）同样可以使用上述上下文中的变量和函数。而导入另一个并非被直接渲染的模板（比如macros.html）时，这个模板仅包含下列这些对象
+  - Jinja2和Flask内置的全局函数和自定义全局函数
+  - Jinja2内置及自定义过滤器
+  - Jinja2内置及自定义测试器
++ 在导入的宏中使用第一个列表中的2、3、4项，就需要在导入时显式地使用with context声明传入当前模板的上下文： 
+  #+BEGIN_SRC python
+  {% from "macros.html" import foo with context %}
+  #+END_SRC
++ 虽然Flask使用内置的模板上下文处理函数传入session、g、request和config，但它同时也使用app.jinja_env.globals字典将这几个变量设置为全局变量，所以我们仍然可以在不显示声明传入上下文的情况下，直接在导入的宏中使用它们
+*** 模板继承
++ Jinja2的模板继承允许你定义一个基模板，把网页上的导航栏、页脚等通用内容放在基模板中，而每一个继承基模板的子模板在被渲染时都会自动包含这些部分。使用这种方式可以避免在多个模板中编写重复的代码
+**** 编写基模板
++ 基模板存储了程序页面的固定部分，通常被命名为base.html或layout.html
+  #+BEGIN_SRC html
+  <!DOCTYPE html>
+  <html>
+      <head>
+          {% block head %}
+              <meta charset="utf-8">
+              <title>{% block title %}Template - HelloFlask{% endblock %}</title>
+       　　　　{% block styles %}{% endblock %}
+          {% endblock %}
+      </head>
+      <body>
+          <nav>
+              <ul><li><a href="{{ url_for('index') }}">Home</a></li></ul>
+          </nav>
+          <main>
+              {% block content %}{% endblock %}
+          </main>
+          <footer>
+              {% block footer %}
+              ...
+              {% endblock %}
+          </footer>
+          {% block scripts %}{% endblock %}
+       </body>
+  </html>
+  #+END_SRC
++ 当子模板继承基模板后，子模板会自动包含基模板的内容和结构
++ 为了能够让子模板方便地覆盖或插入内容到基模板中，我们需要在基模板中定义块（block），在子模板中可以通过定义同名的块来执行继承操作,块的开始和结束分别使用block和endblock标签声明，而且块之间可以嵌套
++ 为了避免块的混乱，块的结束标签可以指明块名，同时要确保前后名称一致
+  #+BEGIN_SRC python
+  {% block body %}
+  ...
+  {% endblock body %}
+  #+END_SRC
+**** 编写子模板
++ 基模板中定义了HTML的基本结构，而且包含了页脚等固定信息，在子模板中我们不再需要定义这些内容，只需要对特定的块进行修改
+  #+BEGIN_SRC python
+  {% extends 'base.html' %}
+  {% from 'macros.html' import qux %}
+  {% block content %}
+  {% set name='baz' %}
+      <h1>Template</h1>
+      <ul>
+          <li><a href="{{ url_for('watchlist') }}">Watchlist</a></li>
+          <li>Filter: {{ foo|musical }}</li>
+          <li>Global: {{ bar() }}</li>
+          <li>Test: {% if name is baz %}I am baz.{% endif %}</li>
+          <li>Macro: {{ qux(amount=5) }}</li>
+      </ul>
+  {% endblock %}
+  #+END_SRC
++ 使用extends标签声明扩展基模板，它告诉模板引擎当前模板派生自base.html，且extends必须是子模板的第一个标签
++ 在子模板中，我们可以对父模板中的块执行两种操作
+  - 覆盖内容
+    当在子模板里创建同名的块时，会使用子块的内容覆盖父块的内容。比如我们在子模板index.html中定义了title块，内容为Home，这会把块中的内容填充到基模板里的title块的位置，最终渲染为<title>Home</title>，content块的效果同理
+  - 追加内容
+    如果想要向基模板中的块追加内容，需要使用Jinja2提供的super（）函数进行声明，这会向父块添加内容。比如，下面的示例向基模板中的styles块追加了一行<style>样式定义
+    #+BEGIN_SRC python
+    {% block styles %}
+    {{ super() }}
+    <style>
+        .foo {
+            color: red;
+        }
+    </style>
+    {% endblock %}
+    #+END_SRC
+*** 其他工具
+**** 空白控制(不太需要)
++ 在实际输出的HTML文件中，模板中的Jinja2语句、表达式和注释会保留移除后的空行，前面为了节省篇幅手动删掉了这些空行。以示例程序中的这段代码为例
+  #+BEGIN_SRC python
+  {% if user.bio %}
+      <i>{{ user.bio }}</i>
+  {% else %}
+      <i>This user has not provided a bio.</i>
+  {% endif %}
+  #+END_SRC
++ Jinja2语句中的HTML代码缩进并不是必须的，只是为了增加可读性，在编写大量Jinja2代码时可读性尤其重要。实际输出的HTML代码如下所示
+  #+BEGIN_SRC html
+  <i>{{ user.bio }}</i>
+  <i>This user has not provided a bio.</i>
+  #+END_SRC
++ 在渲染时自动去掉这些空行，可以在定界符内侧添加减号。比如，{%-endfor%}会移除该语句前的空白，同理，在右边的定界符内侧添加减号将移除该语句后的空白
+  #+BEGIN_SRC python
+  {% if user.bio -%}
+      <i>{{ user.bio }}</i>
+  {% else -%}
+      <i>This user has not provided a bio.</i>
+  {%- endif %}
+  #+END_SRC
+  输出的HTML代码如下
+  #+BEGIN_SRC html
+  <i>{{ user.bio }}</i>
+  <i>This user has not provided a bio.</i>
+  #+END_SRC
++ 除了在模板中使用减号来控制空白外，我们也可以使用模板环境对象提供的trim_blocks和lstrip_blocks属性设置，前者用来删除Jinja2语句后的第一个空行，后者则用来删除Jinja2语句所在行之前的空格和制表符（tabs）
+  #+BEGIN_SRC python
+  app.jinja_env.trim_blocks = True
+  app.jinja_env.lstrip_blocks = True
+  #+END_SRC
++ 宏内的空白控制行为不受trim_blocks和lstrip_blocks属性控制，我们需要手动设置
+  #+BEGIN_SRC python
+  {% macro qux(amount=1) %}
+      {% if amount == 1 -%}
+          I am qux.
+      {% elif amount > 1 -%}
+          We are quxs.
+      {%- endif %}
+  {% endmacro %}
+  #+END_SRC
++ 我们没有必要严格控制HTML输出，因为多余的空白并不影响浏览器的解析。在部署时，我们甚至可以使用工具来去除HTML响应中所有的空白、空行和换行，这样可以减小文件体积，提高数据传输速度
+**** 加载静态文件
++ 一个Web项目不仅需要HTML模板，还需要许多静态文件，比如CSS、JavaScript文件、图片以及音频等。在Flask程序中，默认我们需要将静态文件存储在与主脚本（包含程序实例的脚本）同级目录的static文件夹中
++ 为了在HTML文件中引用静态文件，我们需要使用url_for（）函数获取静态文件的URL。Flask内置了用于获取静态文件的视图函数，端点值为static，它的默认URL规则为/static/<path：filename>，URL变量filename是相对于static文件夹根目录的文件路径
++ 如果你想使用其他文件夹来存储静态文件，可以在实例化Flask类时使用static_folder参数指定，静态文件的URL路径中的static也会自动跟随文件夹名称变化。在实例化Flask类时使用static_url_path参数则可以自定义静态文件的URL路径
++ 在示例程序的static目录下保存了一个头像图片avatar.jpg，我们可以通过url_for（'static'，filename='avatar.jpg'）获取这个文件的URL，这个函数调用生成的URL为/static/avatar.jpg，在浏览器中输入http://localhost:5000/static/avatar.jpg即可访问这个图片
+  #+BEGIN_SRC html
+  <img src="{{ url_for('static', filename='avatar.jpg') }}" width="50">
+  #+END_SRC
++ 存储CSS规则的styles.css文件，我们使用下面的方式在模板中加载这个文件
+  #+BEGIN_SRC html
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css' ) }}">
+  #+END_SRC
+***** 添加Favicon
++ 是一个在浏览器标签页、地址栏和书签收藏夹等处显示的小图标，作为网站的特殊标记。浏览器在发起请求时，会自动向根目录请求这个文件
++ 要想为Web项目添加Favicon，你要先有一个Favicon文件，并放置到static目录下。它通常是一个宽高相同的ICO格式文件，命名为favicon.ico,除了ICO格式，PNG和（无动画的）GIF格式也被所有主流浏览器支持
++ Flask中静态文件的默认路径为/static/filename，为了正确返回Favicon，我们可以显式地在HTML页面中声明Favicon的路径。首先可以在<head>部分添加一个<link>元素，然后将rel属性设置为icon，如下所示：
+  #+BEGIN_SRC html
+  <link rel="icon" type="image/x-icon" href="{{ url_for('static',filename='favicon.ico') }}">
+  #+END_SRC
+***** 使用CSS框架
++ 以Bootstrap（http://getbootstrap.com/）为例，我们需要访问Bootstrap的下载页面（http://getbootstrap.com/docs/4.0/getting-started/download/）下载相应的资源文件，然后分类别放到static目录下
++ 通常情况下，CSS和JavaScript的资源引用会在基模板中定义，具体方式和加载我们自定义的styles.css文件相同
+  #+BEGIN_SRC python
+  ...
+  {% block styles %}
+      <link rel="stylesheet" href="{{ url_for('static',filename='css/bootstrap.min.css') }}">
+  {% endblock %}
+  ...
+  {% block scripts %}
+      <script src="{{ url_for('static', filename='js/jquery.min.js') }}">
+      </script>
+      <script src="{{ url_for('static', filename='js/popper.min.js') }}">
+      </script>
+      <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}">
+      </script>
+  {% endblock %}
+  ...
+  #+END_SRC
++ 如果不使用Bootstrap提供的JavaScript功能，那么也可以不加载。另外，Bootstrap所依赖的jQuery（https://jquery.com/）和Popper.js（https://popper.js.org/）需要单独下载，这三个JavaScript文件在引入时要按照jQuery→Popper.js→Boostrap的顺序引入
+***** 使用宏加载静态资源
++ 为了方便加载静态资源，我们可以创建一个专门用于加载静态资源的宏
+  #+BEGIN_SRC python
+  {% macro static_file(type, filename_or_url, local=True) %}
+      {% if local %}
+          {% set filename_or_url = url_for('static', filename=filename_or_url)%}
+      {% endif %}
+      {% if type == 'css' %}
+          <link rel="stylesheet" href="{{ filename_or_url }}" type="text/css">
+      {% elif type == 'js' %}
+          <script type="text/javascript" src="{{ filename_or_url }}"></script>
+      {% elif type == 'icon' %}
+          <link rel="icon" href="{{ filename_or_url }}">
+      {% endif %}
+  {% endmacro %}
+  #+END_SRC
++ 在模板中导入宏后，只需在调用时传入静态资源的类别和文件路径就会获得完整的资源加载语句。使用它加载CSS文件的示例如下
+  #+BEGIN_SRC python
+  static_file('css', 'css/bootstrap.min.css')
+  #+END_SRC
+**** 消息闪现
++ Flask提供了一个非常有用的flash（）函数，它可以用来“闪现”需要显示给用户的消息，比如当用户登录成功后显示“欢迎回来！”。在视图函数调用flash（）函数，传入消息内容即可“闪现”一条消息
++ 它并不是我们想象的，能够立刻在用户的浏览器弹出一条消息。实际上，使用功能flash（）函数发送的消息会存储在session中，我们需要在模板中使用全局函数get_flashed_messages（）获取消息并将其显示出来
++ 可以在任意视图函数中调用flash（）函数发送消息。为了测试消息闪现，我们添加了一个just_flash视图，在函数中发送了一条消息，最后重定向到index视图
+  #+BEGIN_SRC python
+  from flask import Flask, render_template, flash
+  app = Flask(__name__)
+  app.secret_key = 'secret string'
+  @app.route('/flash')
+  def just_flash():
+      flash('I am flash, who is looking for me?')
+      return redirect(url_for('index'))
+  #+END_SRC
++ Jinja2内部使用Unicode，所以你需要向模板传递Unicode对象或只包含ASCII字符的字符串。在Python 2.x中，如果字符串包含中文（或任何非ASCII字符），那么需要在字符串前添加u前缀，这会告诉Python把这个字符串编码成Unicode字符串，另外还需要在Python文件的首行添加编码声明，这会让Python使用UTF-8来解码字符串，后面不再提示。发送中文消息的示例如下所示
+  #+BEGIN_SRC python
+  # -*- coding: utf-8 -*-
+  ...
+  @app.route('/flash')
+  def just_flash():
+      flash(u'你好，我是闪电。')
+      return redirect(url_for('index'))
+  #+END_SRC
++ Flask、Jinja2和Werkzeug等相关依赖均将文本的类型设为Unicode，所以你在编写程序和它们交互时应该遵循同样的约定。比如，在Python脚本中添加编码声明；在Python2中为非ASCII字符添加u前缀；将编辑器的默认编码设为UTF-8；在HTML文件的head标签中添加编码声明，即<meta charset="utf-8">；当你需要读取文件传入模板时，手动使用decode（）函数解码
++ 在Python 3.x中，字符串默认类型为Unicode。如果你使用Python3，那么包含中文的字符串前的u前缀可以省略掉，同时也不用在脚本开头添加编码声明。尽管如此，还是建议保留这个声明以便让某些编辑器自动切换设置的编码类型
++ Flask提供了get_flashed_message（）函数用来在模板里获取消息，因为程序的每一个页面都有可能需要显示消息，我们把获取并显示消息的代码放在基模板中content块的上面，这样就可以在页面主体内容的上面显示消息
+  #+BEGIN_SRC python
+  <main>
+      {% for message in get_flashed_messages() %}
+          <div class="alert">{{ message }}</div>
+      {% endfor %}
+      {% block content %}{% endblock %}
+  </main>
+  #+END_SRC
++ 当get_flashed_message（）函数被调用时，session中存储的所有消息都会被移除。如果你这时刷新页面，会发现重载后的页面不再出现这条消息
+**** 自定义错误页面
++ 错误处理函数和视图函数很相似，返回值将会作为响应的主体，因此我们首先要创建错误页面的模板文件。为了和普通模板区分开来，我们在模板文件夹templates里为错误页面创建了一个errors子文件夹，并在其中为最常见的404和500错误创建了模板文件
+  #+BEGIN_SRC python
+  {% extends 'base.html' %}
+  {% block title %}404 - Page Not Found{% endblock %}
+  {% block content %}
+      <h1>Page Not Found</h1>
+      <p>You are lost...</p>
+  {% endblock %}
+  #+END_SRC
++ 错误处理函数需要附加app.errorhandler（）装饰器，并传入错误状态码作为参数。错误处理函数本身则需要接收异常类作为参数，并在返回值中注明对应的HTTP状态码。当发生错误时，对应的错误处理函数会被调用，它的返回值会作为错误响应的主体
+  #+BEGIN_SRC python
+  from flask import Flask, render_template
+  ...
+  @app.errorhandler(404)
+  def page_not_found(e):
+      return render_template('errors/404.html'), 404
+  #+END_SRC
++ Flask通过抛出Werkzeug中定义的HTTP异常类来表示HTTP错误，错误处理函数接收的参数就是对应的异常类。基于这个原理，你也可以使用app.errorhandler（）装饰器为其他异常注册处理函数，并返回自定义响应，只需要在app.errorhandler（）装饰器中传入对应的异常类即可。比如，使用app.errorhandler（NameError）可以注册处理NameError异常的函数
+**** JavaScript和CSS中的Jinja2
++ 当程序逐渐变大时，很多时候我们会需要在JavaScript和CSS代码中使用Jinja2提供的变量值，甚至是控制语句。比如，通过传入模板的theme_color变量来为页面设置主题色彩，或是根据用户是否登录来决定是否执行某个JavaScript函数
++ 首先要明白的是，只有使用render_template（）传入的模板文件才会被渲染，如果你把Jinja2代码写在单独的JavaScript或是CSS文件中，尽管你在HTML中引入了它们，但它们包含的Jinja2代码永远也不会被执行。对于这类情况，下面有一些Tips
+***** 行内/嵌入式JavaScript/CSS(不推荐使用)
++ 如果要在JavaScript和CSS文件中使用Jinja2代码，那么就在HTML中使用<style>和<script>标签定义这部分CSS和JavaScript代码
++ 在这部分CSS和JavaScript代码中加入Jinja2时，不用考虑编写时的语法错误，比如引号错误，因为Jinja2会在渲染后被替换掉，所以只需要确保渲染后的代码正确即可
++ 不推荐使用这种方式，尤其是行内JavaScript/CSS会让维护变得困难。避免把大量JavaScript代码留在HTML中的办法就是尽量将要使用的Jinja2变量值在HTML模板中定义为JavaScript变量
+***** 定义为JavaScript/CSS变量
++ 对于想要在JavaScript中获取的数据，如果是元素特定的数据，比如某个文章条目对应的id值，可以通过HTML元素的data-*属性存储。你可以自定义横线后的名称，作为元素上的自定义数据变量，比如data-id，data-username等
+  #+BEGIN_SRC python
+  <span data-id="{{ user.id }}" data-username="{{ user.username }}">{{user.username }}</span>
+  #+END_SRC
++ 在JavaScript中，我们可以使用DOM元素的dataset属性获取data-*属性值，比如element.dataset.username，或是使用getAttribute（）方法，比如element.getAttribute（'data-username'）；使用jQuery时，可以直接对jQuery对象调用data方法获取，比如$element.data（'username'）
++ 在HTML中，“data-*”被称为自定义数据属性（custom dataattribute），我们可以用它来存储自定义的数据供JavaScript获取。在后面的其他程序中，我们也会频繁使用这种方式来传递数据
++ 对于需要全局使用的数据，则可以在页面中使用嵌入式JavaScript定义变量，如果没法定义为JavaScript变量，那就考虑定义为函数
+  #+BEGIN_SRC html
+  <script type="text/javascript">
+      var foo = '{{ foo_variable }}';
+  </script>
+  #+END_SRC
++ 当你在JavaScript中插入了太多Jinja2语法时，或许这时你该考虑将程序转变为Web API，然后专心使用JavaScript来编写客户端
++ CSS同理，有些时候你会需要将Jinja2变量值传入CSS文件，比如我们希望将用户设置的主题颜色设置到对应的CSS规则中，或是需要将static目录下某个图片的URL传入CSS来设置为背景图片，除了将这部分CSS定义直接写到HTML中外，我们可以将这些值定义为CSS变量
+  #+BEGIN_SRC css
+  <style>
+  :root {
+      --theme-color: {{ theme_color }};
+      --background-url: {{ url_for('static', filename='background.jpg') }}
+  }
+  </style>
+  #+END_SRC
++ 在CSS文件中，使用var（）函数并传入变量名即可获取对应的变量值
+  #+BEGIN_SRC css
+  #foo {
+      color: var(--theme-color);
+  }
+  #bar {
+      background: var(--background-url);
+  }
+  #+END_SRC
+* 表单
++ 在Web程序中，表单是和用户交互最常见的方式之一。用户注册、登录、撰写文章、编辑设置，无一不用到表单。不过，表单的处理却并不简单。你不仅要创建表单，验证用户输入的内容，向用户显示错误提示，还要获取并保存数据
++ WTForms是一个使用Python编写的表单库，它使得表单的定义、验证（服务器端）和处理变得非常轻松
+** HTML表单
++ 在HTML中，表单通过<form>标签创建，表单中的字段使用<input>标签定义。下面是一个非常简单的HTML表单
+  #+BEGIN_SRC html
+  <form method="post">
+      <label for="username">Username</label><br>
+      <input type="text" name="username" placeholder="Héctor Rivera"><br>
+      <label for="password">Password</label><br>
+      <input type="password" name="password" placeholder="19001130"><br>
+      <input id="remember" name="remember" type="checkbox" checked>
+      <label for="remember"><small>Remember me</small></label><br>
+      <input type="submit" name="submit" value="Log in">
+  </form>
+  #+END_SRC
++ WTForms支持在Python中使用类定义表单，然后直接通过类定义生成对应的HTML代码，这种方式更加方便，而且使表单更易于重用。因此，除非是非常简单的程序，或者是你想让表单的定义更加灵活，否则我们一般不会在模板中直接使用HTML编写表单
+** 使用Flask-WTF处理表单
++ 扩展Flask-WTF集成了WTForms，使用它可以在Flask中更方便地使用WTForms。Flask-WTF将表单数据解析、CSRF保护、文件上传等功能与Flask集成，另外还附加了reCAPTCHA支持
++ 安装Flask-WTF及其依赖
+  #+BEGIN_SRC shell
+  pipenv install flask-wtf
+  #+END_SRC
++ Flask-WTF默认为每个表单启用CSRF保护，它会为我们自动生成和验证CSRF令牌。默认情况下，Flask-WTF使用程序密钥来对CSRF令牌进行签名，所以我们需要为程序设置密钥
+  #+BEGIN_SRC python
+  app.secret_key = 'secret string'
+  #+END_SRC
+*** 定义WTForms表单类
++ 当使用WTForms创建表单时，表单由Python类表示，这个类继承从WTForms导入的Form基类。一个表单由若干个输入字段组成，这些字段分别用表单类的类属性来表示（字段即Field，你可以简单理解为表单内的输入框、按钮等部件）。下面定义了一个LoginForm类，最终会生成我们在前面定义的HTML表单
+  #+BEGIN_SRC python
+  >>> from wtforms import Form, StringField, PasswordField, BooleanField,
+  SubmitField
+  >>> from wtforms.validators import DataRequired, Length
+  >>> class LoginForm(Form):
+      ... username = StringField('Username', validators=[DataRequired()])
+      ... password = PasswordField('Password', validators=[DataRequired(),
+  Length(8, 128)])
+      ... remember = BooleanField('Remember me')
+      ... submit = SubmitField('Log in')
+  #+END_SRC
+  每个字段属性通过实例化WTForms提供的字段类表示。字段属性的名称将作为对应HTML<input>元素的name属性及id属性值
++ 有些字段最终生成的HTML代码相同，不过WTForms会在表单提交后根据表单类中字段的类型对数据进行处理，转换成对应的Python类型，以便在Python脚本中对数据进行处理
++ 常用的WTForms字段
+  - BooleanField
+    复选框，值会被处理为True或False
+    <input type="checkbox">
+  - DateField
+    文本字段，值会被处理为datetime.date对象
+    <input type="text">
+  - DateTimeField
+    文本字段，值会被处理为datetime.datetime对象
+    <input type="text">
+  - FileField
+    文件上传字段
+    <input type="file">
+  - FloatField
+    浮点数字段，值会被处理为浮点型
+    <input type="text">
+  - IntegerField
+    整数字段，值会被处理为整型
+    <input type="text">
+  - RadioField
+    一组单选按钮
+    <input type="radio">
+  - SelectField
+    下拉列表
+    <select><option></option></select>
+  - SelectMultipleField
+    多选下拉列表
+    <selectmultiple><option></option></select>
+  - SubmitField
+    提交按钮
+    <input type="submit">
+  - StringField
+    文本字段
+    <input type="text">
+  - HiddenField
+    隐藏文本字段
+    <input type="hidden">
+  - PasswordField
+    密码文本字段
+    <input type="password">
+  - TextAreaField
+    多行文本字段
+    <textarea></textarea>
++ 通过实例化字段类时传入的参数，我们可以对字段进行设置，字段类构造方法接收的常用参数
+  - label 
+    字段标签<label>的值，也就是渲染后显示在输入字段前的文字
+  - render_kw
+    一个字典，用来设置对应的HTML<input>标签的属性
+  - validators
+    一个列表，包含一系列验证器，会在表单提交后被逐一调用验证表单数据
+  - default
+    字符串或可调用对象，用来为表单字段设置默认值
++ 常用的WTForms验证器
+  - DataRequired(message-None)
+    验证数据是否有效
+  - Email(message-None)
+    验证Email地址
+  - EqualTo(fieldname,message-None)
+    验证两个字段字段值是否相同
+  - InputRequired(message-None)
+    验证是否有数据
+  - Length(min |,max |,message-None)
+    验证输入值长度是否在给定范围内
+  - NumberRange(min-None,max-None,message-None)
+    验证输入数字是否在给定范围内
+  - Optional(strip_whitespace-True)
+    允许输入为空，并跳过其他验证
+  - Regexp(regex,flags-0,message-None)
+    使用正则表达式验证输入值
+  - URL(require_tld-True,message-None)
+    验证URL
+  - AnyOf(values,message-None,values_formatter-None)
+    确保输入值在可选值列表中
+  - NoneOf(values,message-None,values_formatter-None)
+    确保输入值不在可选列表中
++ validators参数接收一个传入可调用对象组成的列表。内置的验证器通过实现了__call__（）方法的类表示，所以我们需要在验证器后添加括号。在name和password字段里，我们都使用了DataRequired验证器，用来验证输入的数据是否有效。另外，password字段里还添加了一个Length验证器，用来验证输入的数据长度是否在给定的范围内。验证器的第一个参数一般为错误提示消息，我们可以使用message关键字传递参数，通过传入自定义错误信息来覆盖内置消息，比如
+#+BEGIN_SRC python
+name = StringField('Your Name', validators=[DataRequired(message=u'名字不能为空！')])
+#+END_SRC
++ 当使用Flask-WTF定义表单时，我们仍然使用WTForms提供的字段类和验证器，创建的方式也完全相同，只不过表单类要继承Flask-WTF提供的FlaskForm类。FlaskForm类继承自Form类，进行了一些设置，并附加了一些辅助方法，以便与Flask集成。因为本章的示例程序中包含多个表单类，为了便于组织，我们创建了一个forms.py脚本，用来存储所有的表单类
+  #+BEGIN_SRC python
+  from flask_wtf import FlaskForm
+  from wtforms import StringField, PasswordField, BooleanField, SubmitField
+  from wtforms.validators import DataRequired, Length
+  class LoginForm(FlaskForm):
+      username = StringField('Username', validators=[DataRequired()])
+      password = PasswordField('Password', validators=[DataRequired(),
+  Length(8, 128)])
+      remember = BooleanField('Remember me')
+      submit = SubmitField('Log in')
+  #+END_SRC
++ 配置键WTF_CSRF_ENABLED用来设置是否开启CSRF保护，默认为True。Flask-WTF会自动在实例化表单类时添加一个包含CSRF令牌值的隐藏字段，字段名为csrf_token
+*** 输出HTML代码
++ 使用WTForms创建的LoginForm为例，实例化表单类，然后将实例属性转换成字符串或直接调用就可以获取表单字段对应的HTML代码：
+  #+BEGIN_SRC python
+  >>> form = LoginForm()
+  >>> form.username()
+  u'<input id="username" name="username" type="text" value="">'
+  >>> form.submit()
+  u'<input id="submit" name="submit" type="submit" value="Submit">'
+  #+END_SRC
++ 字段的<label>元素的HTML代码则可以通过“form.字段名.label”的形式获取：
+  #+BEGIN_SRC python
+  >>> form.username.label()
+  u'<label for="username">Username</label>'
+  >>> form.submit.label()
+  u'<label for="submit">Submit</label>'
+  #+END_SRC
++ 在创建HTML表单时，我们经常会需要使用HTML<input>元素的其他属性来对字段进行设置。比如，添加class属性设置对应的CSS类为字段添加样式；添加placeholder属性设置占位文本。默认情况下，WTForms输出的字段HTML代码只会包含id和name属性，属性值均为表单类中对应的字段属性名称。如果要添加额外的属性，通常有两种方法。
+**** 使用render_kw属性
++ 下面为username字段使用render_kw设置了placeholder HTML属性：
+  #+BEGIN_SRC python
+  username = StringField('Username', render_kw={'placeholder': 'YourUsername'})
+  #+END_SRC
++ 这个字段被调用后输出的HTML代码如下所示
+  #+BEGIN_SRC html
+  <input type="text" id="username" name="username" placeholder="YourUsername">
+  #+END_SRC
+**** 在调用字段时传入
++ 在调用字段属性时，通过添加括号使用关键字参数的形式也可以传入字段额外的HTML属性：
+  #+BEGIN_SRC python
+  >>> form.username(style='width: 200px;', class_='bar')
+  u'<i nput class="bar" id="username" name="username" style="width: 200px;"type="text">'
+  #+END_SRC
++ class是Python的保留关键字，在这里我们使用class_来代替class，渲染后的<input>会获得正确的class属性，在模板中调用时则可以直接使用class
++ 通过上面的方法也可以修改id和name属性，但表单被提交后，WTForms需要通过name属性来获取对应的数据，所以不能修改name属性值
+*** 在模板中渲染表单
++ 为了能够在模板中渲染表单，我们需要把表单类实例传入模板。首先在视图函数里实例化表单类LoginForm，然后在render_template（）函数中使用关键字参数form将表单实例传入模板
+  #+BEGIN_SRC python
+  from forms import LoginForm
+  @app.route('/basic')
+  def basic():
+      form = LoginForm()
+      return render_template('login.html', form=form)
+  #+END_SRC
++ 在模板中，只需要调用表单类的属性即可获取字段对应的HTML代码，如果需要传入参数，也可以添加括号
+  #+BEGIN_SRC html
+  <form method="post">
+      {{ form.csrf_token }} <!-- 渲染CSRF令牌隐藏字段 -->
+      {{ form.username.label }}{{ form.username }}<br>
+      {{ form.password.label }}{{ form.password }}<br>
+      {{ form.remember }}{{ form.remember.label }}<br>
+      {{ form.submit }}<br>
+  </form>
+  #+END_SRC
++ 需要注意的是，在上面的代码中，除了渲染各个字段的标签和字段本身，我们还调用了form.csrf_token属性渲染Flask-WTF为表单类自动创建的CSRF令牌字段。form.csrf_token字段包含了自动生成的CSRF令牌值，在提交表单后会自动被验证，为了确保表单通过验证，我们必须在表单中手动渲染这个字段
++ Flask-WTF为表单类实例提供了一个form.hidden_tag（）方法，这个方法会依次渲染表单中所有的隐藏字段。因为csrf_token字段也是隐藏字段，所以当这个方法被调用时也会渲染csrf_token字段
++ 用render_kw字典或是在调用字段时传入参数来定义字段的额外HTML属性，通过这种方式添加CSS类，我们可以编写一个Bootstrap风格的表单
+  #+BEGIN_SRC python
+  ...
+  <form method="post">
+      {{ form.csrf_token }}
+      <div class="form-group">
+          {{ form.username.label }}
+          {{ form.username(class='form-control') }}
+      </div>
+      <div class="form-group">
+          {{ form.password.label }}
+          {{ form.password(class='form-control') }}
+      </div>
+      <div class="form-check">
+          {{ form.remember(class='form-check-input') }}
+          {{ form.remember.label }}
+      </div>
+      {{ form.submit(class='btn btn-primary') }}
+     </form>
+  ...
+  #+END_SRC
++ 如果你想手动编写HTML表单的代码，要注意表单字段的name属性值必须和表单类的字段名称相同，这样在提交表单时WTForms才能正确地获取数据并进行验证
+*** 处理表单数据
++ 表单数据的处理涉及很多内容，除去表单提交不说，从获取数据到保存数据大致会经历以下步骤
+  1. 解析请求，获取表单数据
+  2. 对数据进行必要的转换，比如将勾选框的值转换成Python的布尔值
+  3. 验证数据是否符合要求，同时验证CSRF令牌
+  4. 果验证未通过则需要生成错误消息，并在模板中显示错误消息
+  5. 如果通过验证，就把数据保存到数据库或做进一步处理
+**** 提交表单
++ 在HTML中，当<form>标签声明的表单中类型为submit的提交字段被单击时，就会创建一个提交表单的HTTP请求，请求中包含表单各个字段的数据。表单的提交行为主要由三个属性控制
+  - action 
+    默认值：当前URL，即页面对应的URL
+    表单提交时发送请求的目标URL
+  - method
+    默认值：get
+    提交表单的HTTP请求方法，目前仅支持使用GET和POST方法
+    GET方式仅适用于长度不超过3000个字符，且不包含敏感信息的表单。因为这种方式会直接将用户提交的表单数据暴露在URL中，容易被攻击者截获，示例中的情况明显是危险的。因此，出于安全的考虑，我们一般使用POST方法提交表单。使用POST方法时，按照默认的编码类型，表单数据会被存储在请求主体中
+  - enctype
+    默认值：表单数据会编码为 "application/x-www-form-urlencoded"。就是说，在发送到服务器之前，所有字符都会进行编码（空格转换为 "+" 加号，特殊符号转换为 ASCII HEX 值）
+    enctype 属性规定在发送到服务器之前应该如何对表单数据进行编码
++ Flask为路由设置默认监听的HTTP方法为GET。为了支持接收表单提交发送的POST请求，我们必须在app.route（）装饰器里使用methods关键字为路由指定HTTP方法
+  #+BEGIN_SRC python
+  @app.route('/', methods=['GET', 'POST'])
+  def basic():
+      form = LoginForm()
+      return render_template('basic.html', form=form)
+  #+END_SRC
+**** 验证表单数据
+***** 客户端验证和服务器端验证
++ 客户端验证
+  - 在客户端（比如Web浏览器）对用户的输入值进行验证。比如，使用HTML5内置的验证属性即可实现基本的客户端验证（type、required、min、max、accept等）。比如，下面的username字段添加了required标志
+    #+BEGIN_SRC html
+    <input type="text" name="username" required>
+    #+END_SRC
+    如果用户没有输入内容而按下提交按钮，会弹出浏览器内置的错误提示
+  - 和其他附加HTML属性相同，我们可以在定义表单时通过render_kw传入这些属性，或是在渲染表单时传入。像required这类布尔值属性，值可以为空或是任意ASCII字符，比如：
+    #+BEGIN_SRC python
+    {{ form.username(required='') }}
+    #+END_SRC
+  - 除了使用HTML5提供的属性实现基本的客户端验证，我们通常会使用JavaScript实现完善的验证机制。如果你不想手动编写JavaScript代码实现客户端验证，可以考虑使用各种JavaScript表单验证库，比如jQuery Validation Plugin（https://jqueryvalidation.org/）、Parsley.js（http://parsleyjs.org/）以及可与Bootstrap集成的BootstrapValidator（http://1000hz.github.io/bootstrap-validator/，目前仅支持Bootstrap3版本）等
+  - 客户端方式可以实时动态提示用户输入是否正确，只有用户输入正确后才会将表单数据发送到服务器。客户端验证可以增强用户体验，降低服务器负载
++ 服务器端验证
+  - 是指用户把输入的数据提交到服务器端，在服务器端对数据进行验证。如果验证出错，就在返回的响应中加入错误信息。用户修改后再次提交表单，直到通过验证。我们在Flask程序中使用WTForms实现的就是服务器端验证
+***** WTForms验证机制
++ WTForms验证表单字段的方式是在实例化表单类时传入表单数据，然后对表单实例调用validate（）方法。这会逐个对字段调用字段实例化时定义的验证器，返回表示验证结果的布尔值。如果验证失败，就把错误消息存储到表单实例的errors属性对应的字典中，验证的过程如下所示：
+  #+BEGIN_SRC python
+  >>> from wtforms import Form, StringField, PasswordField, BooleanField
+  >>> from wtforms.validators import DataRequired, Length
+  >>> class LoginForm(Form):
+  ... username = StringField('Username', validators=[DataRequired()])
+  ... password = PasswordField('Password', validators=[DataRequired()
+  , Length(8, 128)])
+  >>> form = LoginForm(username='', password='123')
+  >>> form.data # 表单数据字典
+  {'username': '', 'password': '123'}
+  >>> form.validate()
+  False
+  >>> form.errors # 错误消息字典
+  {'username': [u'This field is required.'], 'password': [u'Field must be
+  at least 6 characters long.']}
+  >>> form2 = LoginForm(username='greyli', password='123456')
+  >>> form2.data
+  {'username': 'greyli', 'password': '123456'}
+  >>> form2.validate()
+  True
+  >>> form2.errors
+  {}
+  #+END_SRC
+  表单使用POST方法提交，如果单纯使用WTForms，我们在实例化表单类时需要首先把request.form传入表单类，而使用Flask-WTF时，表单类继承的FlaskForm基类默认会从request.form获取表单数据，所以不需要手动传入
++ 使用POST方法提交的表单，其数据会被Flask解析为一个字典，可以通过请求对象的form属性获取（request.form）；使用GET方法提交的表单的数据同样会被解析为字典，不过要通过请求对象的args属性获取（request.args）
+***** 在视图函数中验证表单
++ 因为现在的basic_form视图同时接收两种类型的请求：GET请求和POST请求。所以我们要根据请求方法的不同执行不同的代码。具体来说：首先是实例化表单，如果是GET请求，那么就渲染模板；如果是POST请求，就调用validate（）方法验证表单数据
++ 请求的HTTP方法可以通过request.method属性获取，我们可以使用下面的方式来组织视图函数：
+  #+BEGIN_SRC python
+  from flask import request
+  ...
+  @app.route('/basic', methods=['GET', 'POST'])
+  def basic():
+      form = LoginForm() # GET + POST
+      if request.method == 'POST' and form.validate():
+          ... # 处理POST请求
+      return rendper_template('forms/basic.html', form=form) # 处理GET请求
+  #+END_SRC
++ 因为WTForms会自动对CSRF令牌字段进行验证，如果没有渲染该字段会导致验证出错，错误消息为“CSRF token is missing”
++ Flask-WTF提供的validate_on_submit（）方法合并了这两个操作，因此上面的代码可以简化为：
+  #+BEGIN_SRC python
+  @app.route('/basic', methods=['GET', 'POST'])
+  def basic():
+  form = LoginForm()
+      if form.validate_on_submit():
+          ...
+      return render_template('basic.html', form=form)
+  #+END_SRC
++ 除了POST方法，如果请求的方法是PUT、PATCH和DELETE方法，form.validate_on_submit（）也会验证表单数据
++ 如果form.validate_on_submit（）返回True，则表示用户提交了表单，且表单通过验证，那么我们就可以在这个if语句内获取表单数据
+  #+BEGIN_SRC python
+  from flask import Flask, render_template, redirect, url_for, flash
+  ...
+  @app.route('/basic', methods=['GET', 'POST'])
+  def basic():
+      form = LoginForm()
+      if form.validate_on_submit():
+          username = form.username.data
+          flash('Welcome home, %s!' % username)
+          return redirect(url_for('index'))
+      return render_template('basic.html', form=form)
+  #+END_SRC
++ 表单类的data属性是一个匹配所有字段与对应数据的字典，我们一般直接通过“form.字段属性名.data”的形式来获取对应字段的数据。例如，form.username.data返回username字段的值
++ 表单的数据一般会存储到数据库中，这是我们下一章要学习的内容。这里仅仅将数据填充到flash（）函数里
++ 在这个if语句内，如果不使用重定向的话，当if语句执行完毕后会继续执行最后的render_template（）函数渲染模板，最后像往常一样返回一个常规的200响应，但这会造成一个问题：在浏览器中，当单击F5刷新/重载时的默认行为是发送上一个请求。如果上一个请求是POST请求，那么就会弹出一个确认窗口，询问用户是否再次提交表单。为了避免出现这个容易让人产生困惑的提示，我们尽量不要让提交表单的POST请求作为最后一个请求。这就是为什么我们在处理表单后返回一个重定向响应，这会让浏览器重新发送一个新的GET请求到重定向的目标URL。最终，最后一个请求就变成了GET请求。这种用来防止重复提交表单的技术称为PRG（Post/Redirect/Get）模式，即通过对提交表单的POST请求返回重定向响应将最后一个请求转换为GET请求
+***** 在模板中渲染错误消息
++ 如果form.validate_on_submit（）返回False，那么说明验证没有通过。对于验证未通过的字段，WTForms会把错误消息添加到表单类的errors属性中，这是一个匹配作为表单字段的类属性到对应的错误消息列表的字典。我们一般会直接通过字段名来获取对应字段的错误消息列表，即“form.字段名.errors”。比如，form.name.errors返回name字段的错误消息列表
++ 可以在模板里使用for循环迭代错误消息列表
+  #+BEGIN_SRC python
+  <form method="post">
+      {{ form.csrf_token }}
+      {{ form.username.label }}<br>
+      {{ form.username() }}<br>
+      {% for message in form.username.errors %}
+          <small class="error">{{ message }}</small><br>
+      {% endfor %}
+      {{ form.password.label }}<br>
+      {{ form.password }}<br>
+      {% for message in form.password.errors %}
+          <small class="error">{{ message }}<n/small><br>
+      {% endfor %}
+      {{ form.remember }}{{ form.remember.label }}<br>
+      {{ form.submit }}<br>
+  </form>
+  #+END_SRC
++ 为了让错误消息更加醒目，我们为错误消息元素添加了error类，这个样式类在style.css文件中定义，它会将文字颜色设为红色
++ 使用DataRequired和InputRequired验证器时，WTForms会在字段输出的HTML代码中添加required属性，所以会弹出浏览器内置的错误提示。同时，WTForms也会在表单字段的flags属性添加required标志（比如form.username.flags.required），所以我们可以在模板中通过这个标志值来判断是否在字段文本中添加一个*号或文字标注，以表示必填项
++ InputRequired验证器和DataRequired很相似，但InputRequired仅验证用户是否有输入，而不管输入的值是否有效。例如，由空格组成的数据也会通过验证。当使用DataRequired时，如果用户输入的数据不符合字段要求，比如在IntegerField输入非数字时会视为未输入，而不是类型错误
+**** 表单使用技巧
+***** 设置错误消息语言
++ WTForms内置了多种语言的错误消息，如果你想改变内置错误消息的默认语言，可以通过自定义表单基类实现
+***** 使用宏渲染表单
++ 在模板中渲染表单时，我们有大量的工作要做
+  - 调用字段属性，获取<input>定义
+  - 调用对应的label属性，获取<label>定义
+  - 渲染错误消息
++ 为了避免为每一个字段重复这些代码，我们可以创建一个宏来渲染表单字段
+  #+BEGIN_SRC python
+  {% macro form_field(field) %}
+      {{ field.label }}<br>
+      {{ field(**kwargs) }}<br>
+      {% if field.errors %}
+          {% for error in field.errors %}
+              <small class="error">{{ error }}</small><br>
+          {% endfor %}
+      {% endif %}
+  {% endmacro %}
+  #+END_SRC
++ 这个form_field（）宏接收表单类实例的字段属性和附加的关键字参数作为输入，返回包含<label>标签、表单字段、错误消息列表的HTML表单字段代码。使用这个宏渲染表单的示例如下所示：
+  #+BEGIN_SRC python
+  {% from 'macros.html' import form_field %}
+  ...
+  <form method="post">
+      {{ form.csrf_token }}
+      {{ form_field(form.username)}}<br>
+      {{ form_field(form.password) }}<br>
+      ...
+  </form>
+  #+END_SRC
+  在上面的代码中，我们调用form_field（）宏逐个渲染表单中的字段，只要把每一个类属性传入form_field（）宏，即可完成渲染
+***** 自定义验证器
++ 在WTForms中，验证器是指在定义字段时传入validators参数列表的可调用对象
+****** 行内验证器
++ 除了使用WTForms提供的验证器来验证表单字段，我们还可以在表单类中定义方法来验证特定字段,form/forms.py：针对特定字段的验证器
+  #+BEGIN_SRC python
+  from wtforms import IntegerField, SubmitField
+  from wtforms.validators import ValidationError
+  class FortyTwoForm(FlaskForm):
+      answer = IntegerField('The Number')
+      submit = SubmitField()
+      def validate_answer(form, field):
+          if field.data != 42:
+          raise ValidationError('Must be 42.')
+  #+END_SRC
++ 当表单类中包含以“validate_字段属性名”形式命名的方法时，在验证字段数据时会同时调用这个方法来验证对应的字段，这也是为什么表单类的字段属性名不能以validate开头。验证方法接收两个位置参数，依次为form和field，前者为表单类实例，后者是字段对象，我们可以通过field.data获取字段数据，这两个参数将在验证表单时被调用传入。验证出错时抛出从wtforms.validators模块导入的ValidationError异常，传入错误消息作为参数。因为这种方法仅用来验证特定的表单类字段，所以又称为行内验证器（in-line validator）
+****** 全局验证器
++ 要创建一个可重用的通用验证器，可以通过定义一个函数实现。如果不需要传入参数定义验证器，那么一个和表单类中定义的验证方法完全相同的函数就足够了
+  #+BEGIN_SRC python
+  from wtforms.validators import ValidationError
+  def is_42(form, field):
+      if field.data != 42:
+          raise ValidationError('Must be 42')
+  class FortyTwoForm(FlaskForm):
+      answer = IntegerField('The Number', validators=[is_42])
+      submit = SubmitField()
+  #+END_SRC
++ 当使用函数定义全局的验证器时，我们需要在定义字段时在validators列表里传入这个验证器。因为在validators列表中传入的验证器必须是可调用对象，所以这里传入了函数对象，而不是函数调用
++ 在现实中，我们通常需要让验证器支持传入参数来对验证过程进行设置。至少，我们应该支持message参数来设置自定义错误消息。这时验证函数应该实现成工厂函数，即返回一个可调用对象的函数,工厂函数形式的全局验证器示例,在更复杂的验证场景下，你可以使用实现了__call__（）方法的类（可调用类）来编写验证器
+  #+BEGIN_SRC python
+  from wtforms.validators import ValidationError
+  def is_42(message=None):
+      if message is None:
+          message = 'Must be 42.'
+      def _is_42(form, field):
+          if field.data != 42:
+              raise ValidationError(message)
+      return _is_42
+  class FortyTwoForm(FlaskForm):
+      answer = IntegerField('The Number', validators=[is_42()])
+      submit = SubmitField()
+  #+END_SRC
+***** 文件上传
++ 在服务器端，可以和普通数据一样获取上传文件数据并保存。不过我们需要考虑安全问题，文件上传漏洞也是比较流行的攻击方式。除了常规的CSRF防范，我们还需要重点注意下面的问题
+  - 验证文件类型
+  - 验证文件大小
+  - 过滤文件名
+****** 定义上传表单
++ 在Python表单类中创建文件上传字段时，我们使用扩展Flask-WTF提供的FileField类，它继承WTForms提供的上传字段FileField，添加了对Flask的集成,form/forms.py：创建上传表单
+  #+BEGIN_SRC python
+  from flask wtf.file import FileField, FileRequired, FileAllowed
+  class UploadForm(FlaskForm):
+      photo = FileField('Upload Image', validators=[FileRequired(),
+  FileAllowed(['jpg', 'jpeg', 'png', 'gif'])])
+      submit = SubmitField()
+  #+END_SRC
++ 和其他字段类似，我们也需要对文件上传字段进行验证。Flask-WTF在flask_wtf.file模块下提供了两个文件相关的验证器
+  - FileRequired(message-None)
+    验证是否包含文件对象
+  - FileAllowed(upload_set,message-None)
+    用来验证文件类型，upload_set参数用来传入包含允许的文件后缀名列表
++ lask-WTF提供的FileAllowed是在服务器端验证上传文件，使用HTML5中的accept属性也可以在客户端实现简单的类型过滤。这个属性接收MIME类型字符串或文件格式后缀，多个值之间使用逗号分隔，比如
+  #+BEGIN_SRC python
+  <input type="file" id="profile_pic" name="profile_pic"accept=".jpg, .jpeg, .png, .gif">
+  #+END_SRC
+  当用户单击文件选择按钮后，打开的文件选择窗口会默认将accept属性值之外的文件过滤掉。尽管如此，用户还是可以选择设定之外的文件，所以我们仍然需要进行服务器端验证
++ 扩展Flask-Uploads（https://github.com/maxcountryman/flask-uploads）内置了在Flask中实现文件上传的便利功能。Flask-WTF提供的FileAllowed（）也支持传入Flask-Uploads中的上传集对象（UploadSet）作为upload_set参数的值。另外，同类的扩展还有Flask-Transfer（https://github.com/justanr/Flask-Transfer）
++ 除了验证文件的类型，我们通常还需要对文件大小进行验证，你肯定不想让用户上传超大的文件来拖垮你的服务器。通过设置Flask内置的配置变量MAX_CONTENT_LENGTH，我们可以限制请求报文的最大长度，单位为字节（byte）。比如，下面将最大长度限制为3M：
+  #+BEGIN_SRC python
+  app.config['MAX_CONTENT_LENGTH'] = 3 * 1024 * 1024
+  #+END_SRC
+  当请求数据（上传文件大小）超过这个限制后，会返回413错误响应（Request Entity Too Large）
+****** 渲染上传表单
++ 在新创建的upload视图里，我们实例化表单类UploadForm，然后传入模板：
+  #+BEGIN_SRC python
+  @app.route('/upload', methods=['GET', 'POST'])
+  def upload():
+      form = UploadForm()
+      ...
+      return render_template('upload.html', form=form)
+  #+END_SRC
++ 在模板中渲染了这个表单，渲染方式和其他字段相同
+  #+BEGIN_SRC python
+  <form method="post" enctype="multipart/form-data">
+      {{ form.csrf_token }}
+      {{ form_field(form.photo) }}
+      {{ form.submit }}
+  </form>
+  #+END_SRC
++ 唯一需要注意的是，当表单中包含文件上传字段时（即type属性为file的input标签），需要将表单的enctype属性设为"multipart/form-data"，这会告诉浏览器将上传数据发送到服务器，否则仅会把文件名作为表单数据提交
+****** 处理上传文件
++ 和普通的表单数据不同，当包含上传文件字段的表单提交后，上传的文件需要在请求对象的files属性（request.files）中获取。我们在第2章介绍过，这个属性是Werkzeug提供的ImmutableMultiDict字典对象，存储字段的name键值和文件对象的映射，比如：
+  #+BEGIN_SRC python
+  ImmutableMultiDict([('photo', <FileStorage: u'0f913b0ff95.JPG'('image/jpeg')>)])
+  #+END_SRC
++ 上传的文件会被Flask解析为Werkzeug中的FileStorage对象（werkzeug.datastructures.FileStorage）。当手动处理时，我们需要使用文件上传字段的name属性值作为键获取对应的文件对象。比如：
+  #+BEGIN_SRC python
+  request.files.get('photo')
+  #+END_SRC
++ 当使用Flask-WTF时，它会自动帮我们获取对应的文件对象，这里我们仍然使用表单类属性的data属性获取上传文件。处理上传表单提交请求的upload视图
+  #+BEGIN_SRC python
+  import os
+  app.config['UPLOAD_PATH'] = os.path.join(app.root_path, 'uploads')
+  @app.route('/upload', methods=['GET', 'POST'])
+  def upload():
+      form = UploadForm()
+      if form.validate_on_submit():
+          f = form.photo.data
+          filename = random_filename(f.filename)
+          f.save(os.path.join(app.config['UPLOAD_PATH'], filename))
+          flash('Upload success.')
+          session['filenames'] = [filename]
+          return redirect(url_for('show_images'))
+      return render_template('upload.html', form=form)
+  #+END_SRC
++ 当表单通过验证后，我们通过form.photo.data获取存储上传文件的FileStorage对象。接下来，我们需要处理文件名，通常有三种处理方式：
+  - 使用原文件名
+    如果能够确定文件的来源安全，可以直接使用原文件名，通过FileStorage对象的filename属性获取：
+    #+BEGIN_SRC python
+    filename = f.filename
+    #+END_SRC
+  - 使用过滤后的文件名
+    如果要支持用户上传文件，我们必须对文件名进行处理，因为攻击者可能会在文件名中加入恶意路径。比如，如果恶意用户在文件名中加入表示上级目录的..（比如../../../../home/username/.bashrc或../../../etc/passwd），那么当我们保存文件时，如果这里表示上级目录的..数量正确，就会导致服务器上的系统文件被覆盖或篡改，还有可能执行恶意脚本。我们可以使用Werkzeug提供的secure_filename（）函数对文件名进行过滤，传递文件名作为参数，它会过滤掉所有危险字符，返回“安全的文件名”，如下所示：
+    #+BEGIN_SRC python
+    >>> from werkzeug import secure_filename
+    >>> secure_filename('avatar!@#//#\\%$^&.jpg')
+    'avatar.jpg'
+    >>> secure_filename('avatar头像.jpg')
+    'avatar.jpg'
+    #+END_SRC
+  - 统一重命名
+    secure_filename（）函数非常方便，它会过滤掉文件名中的非ASCII字符。但如果文件名完全由非ASCII字符组成，那么会得到一个空文件名：
+    #+BEGIN_SRC python
+    >>> secure_filename('头像.jpg')
+    'jpg'
+    #+END_SRC
+    为了避免出现这种情况，更好的做法是使用统一的处理方式对所有上传的文件重新命名。随机文件名有很多种方式可以生成，下面是一个使用Python内置的uuid模块生成随机文件名的random_filename（）函数：
+    #+BEGIN_SRC python
+    def random_filename(filename):
+        ext = os.path.splitext(filename)[1]
+        new_filename = uuid.uuid4().hex + ext
+        return new_filename
+    #+END_SRC
+    这个函数接收原文件名作为参数，使用内置的uuid模块中的uuid4（）方法生成新的文件名，并使用hex属性获取十六进制字符串，最后返回包含后缀的新文件名
+    UUID（Universally Unique Identifier，通用唯一识别码）是用来标识信息的128位数字，比如用作数据库表的主键。使用标准方法生成的UUID出现重复的可能性接近0。在UUID的标准中，UUID分为5个版本，每个版本使用不同的生成方法并且适用于不同的场景。我们使用的uuid4（）方法对应的是第4个版本：不接收参数而生成随机UUID
+    在upload视图中，我们调用这个函数来获取随机文件名，传入原文件名作为参数：
+    #+BEGIN_SRC python
+    filename = random_filename(f.filename)
+    #+END_SRC
+    处理完文件名后，是时候将文件保存到文件系统中了。我们在form目录下创建了一个uploads文件夹，用于保存上传后的文件。指向这个文件夹的绝对路径存储在自定义配置变量UPLOAD_PATH中：
+    #+BEGIN_SRC python
+    app.config['UPLOAD_PATH'] = os.path.join(app.root_path, 'uploads')
+    #+END_SRC
+    这里的路径通过app.root_path属性构造，它存储了程序实例所在脚本的绝对路径，相当于os.path.abspath（os.path.dirname（__file__））。为了保存文件，你需要提前手动创建这个文件夹
+    对FileStorage对象调用save（）方法即可保存，传入包含目标文件夹绝对路径和文件名在内的完整保存路径：
+    #+BEGIN_SRC python
+    f.save(os.path.join(app.config['UPLOAD_PATH'], filename))
+    #+END_SRC
+    文件保存后，我们希望能够显示上传后的图片。为了让上传后的文件能够通过URL获取，我们还需要创建一个视图函数来返回上传后的文件，如下所示：
+    #+BEGIN_SRC python
+    @app.route('/uploads/<path:filename>')
+    def get_file(filename):
+        return send_from_directory(app.config['UPLOAD_PATH'], filename)
+    #+END_SRC
+    这个视图的作用与Flask内置的static视图类似，通过传入的文件路径返回对应的静态文件。在这个uploads视图中，我们使用Flask提供的send_from_directory（）函数来获取文件，传入文件的路径和文件名作为参数
+    在get_file视图的URL规则中，filename变量使用了path转换器以支持传入包含斜线的路径字符串。在upload视图里保存文件后，我们使用flash（）发送一个提示，将文件名保存到session中，最后重定向到show_images视图。show_images视图返回的uploaded.html模板中将从session获取文件名，渲染出上传后的图片
+    #+BEGIN_SRC python
+    flash('Upload success.')
+    session['filenames'] = [filename]
+    return redirect(url_for('show_images'))
+    #+END_SRC
+    这里将filename作为列表传入session只是为了兼容下面的多文件上传示例，这两个视图使用同一个模板，使用session可以在模板中统一从session获取文件名列表。在uploaded.html模板里，我们将传入的文件名作为URL变量，通过上面的get_file视图获取文件URL，作为<img>标签的src属性值
+    #+BEGIN_SRC python
+    <img src="{{ url_for('get_file', filename=filename) }}">
+    #+END_SRC
+****** 多文件上传
++ 因为Flask-WTF当前版本（0.14.2）中并未添加对多文件上传的渲染和验证支持，因此我们需要在视图函数中手动获取文件并进行验证。这种手动处理方式和我们在上一节介绍的方式效果基本相同
++ 在客户端，通过在文件上传字段（type=file）加入multiple属性，就可以开启多选：
+  #+BEGIN_SRC html
+  <input type="file" id="file" name="file" multiple>
+  #+END_SRC
++ 创建表单类时，可以直接使用WTForms提供的MultipleFileField字段实现，添加一个DataRequired验证器来确保包含文件：
+  #+BEGIN_SRC python
+  from wtforms import MultipleFileField
+  class MultiUploadForm(FlaskForm):
+      photo = MultipleFileField('Upload Image', validators={DataRequired()})
+      submit = SubmitField()
+  #+END_SRC
++ 表单提交时，在服务器端的程序中，对request.files属性调用getlist（）方法并传入字段的name属性值会返回包含所有上传文件对象的列表。在multi_upload视图中，我们迭代这个列表，然后逐一对文件进行处理
+  #+BEGIN_SRC python
+  from flask import request, session, flash, redirect, url_for
+  from flask_wtf.csrf import validate_csrf
+  from wtforms import ValidationError
+  @app.route('/multi-upload', methods=['GET', 'POST'])
+  def multi_upload():
+      form = MultiUploadForm()
+      if request.method == 'POST':
+          filenames = []
+          # 验证CSRF令牌
+          try:
+              validate_csrf(form.csrf_token.data)
+          except ValidationError:
+              flash('CSRF token error.')
+              return redirect(url_for('multi_upload'))
+          # 检查文件是否存在
+          if 'photo' not in request.files:
+              flash('This field is required.')
+              return redirect(url_for('multi_upload'))
+  for f in request.files.getlist('photo'):
+      # 检查文件类型
+      if f and allowed_file(f.filename):
+          filename = random_filename(f.filename)
+          f.save(os.path.join(
+              app.config['UPLOAD_PATH'], filename
+          ))
+          filenames.append(filename)
+      else:
+          flash('Invalid file type.')
+          return redirect(url_for('multi_upload'))
+      flash('Upload success.')
+      session['filenames'] = filenames
+      return redirect(url_for('show_images'))
+  return render_template('upload.html', form=form)
+  #+END_SRC
++ 在请求方法为POST时，我们对上传数据进行手动验证，主要包含下面几步：
+  - 手动调用flask_wtf.csrf.validate_csrf验证CSRF令牌，传入表单中csrf_token隐藏字段的值。如果抛出wtforms.ValidationError异常则表明验证未通过
+  - 其中if'photo'not in request.files用来确保字段中包含文件数据（相当于FileRequired验证器），如果用户没有选择文件就提交表单则request.files将为空
+  - if f用来确保文件对象存在，这里也可以检查f是否是FileStorage实例
+  - allowed_file（f.filename）调用了allowed_file（）函数，传入文件名。这个函数相当于FileAllowed验证器，用来验证文件类型，返回布尔值
+    #+BEGIN_SRC python
+    app.config['ALLOWED_EXTENSIONS'] = ['png', 'jpg', 'jpeg', 'gif']
+    ...
+    def allowed_file(filename):
+        return '.' in filename and \
+            filename.rsplit('.', 1)[1].lower() in
+    app.config['ALLOWED_EXTENSIONS']
+    #+END_SRC
+    在上面的几个验证语句里，如果没有通过验证，我们使用flash（）函数显示错误消息，然后重定向到multi_upload视图
+  - 在新版本的Flask-WTF发布后，你就可以使用和单文件上传相同的方式处理表单。比如，我们可以使用Flask-WTF提供的MultipleFileField来创建提供Flask支持的多文件上传字段，使用相应的验证器对文件进行验证。在视图函数中，我们则可以继续使用form.validate_on_submit（）来验证表单，并通过form.photo.data来获取字段的数据——包含所有上传文件对象（werkzeug.datastructures.FileStorage）的列表,多文件上传处理通常会使用JavaScript库在客户端进行预验证，并添加进度条来优化用户体验
+***** 使用Flask-CKEditor集成富文本编辑器
++ 安装
+  #+BEGIN_SRC shell
+  pipenv install flask-ckeditor
+  #+END_SRC
++ 实例化Flask-CKEditor提供的CKEditor类，传入程序实例
+  #+BEGIN_SRC python
+  from flask_ckeditor import CKEditor
+  ckeditor = CKEditor(app)
+  #+END_SRC
+****** 配置富文本编辑器
++ Flask-CKEditor提供了许多配置变量来对编辑器进行设置
+****** 渲染富文本编辑器
++ 富文本编辑器在HTML中通过文本区域字段表示，即<textarea></textarea>。Flask-CKEditor通过包装WTForms提供的TextAreaField字段类型实现了一个CKEditorField字段类，我们使用它来构建富文本编辑框字段
+  #+BEGIN_SRC python
+  from flask_wtf import FlaskForm
+  from wtforms import StringField, SubmitField
+  from wtforms.validators import DataRequired, Length
+  from flask_ckeditor import CKEditorField # 从flask_ckeditor包导入
+  class RichTextForm(FlaskForm):
+      title = StringField('Title', validators=[DataRequired(), Length(1, 50)])
+      body = CKEditorField('Body', validators=[DataRequired()])
+      submit = SubmitField('Publish')
+  #+END_SRC
++ 文章正文字段（body）使用的CKEditorField字段类型从Flask-CKEditor导入。我们可以像其他字段一样定义标签、验证器和默认值,在模板中，渲染这个body字段的方式和其他字段也完全相同，在示例程序中，我们在模板ckeditor.html渲染了这个表单，如代码清单4-19所示,form/templates/ckeditor.html：渲染包含CKEditor编辑器的表单
+  #+BEGIN_SRC html
+  {% extends 'base.html' %}
+  {% from 'macros.html' import form_field %}
+  {% block content %}
+  <h1>Integrate CKEditor with Flask-CKEditor</h1>
+  <form method="post">
+      {{ form.csrf_token }}
+      {{ form_field(form.title) }}
+      {{ form_field(form.body) }}
+      {{ form.submit }}
+  </form>
+  {% endblock %}
+  {% block scripts %}
+  {{ super() }}
+  {{ ckeditor.load() }}
+  {% endblock %}
+  #+END_SRC
++ 渲染CKEditor编辑器需要加载相应的JavaScript脚本。在开发时，为了方便开发，可以使用Flask-CKEditor在模板中提供的ckeditor.load（）方法加载资源，它默认从CDN加载资源，将CKEDITOR_SERVE_LOCAL设为Ture会使用扩展内置的本地资源，内置的本地资源包含了几个常用的插件和语言包。ckeditor.load（）方法支持通过pkg_type参数传入包类型，这会覆盖配置CKEDITOR_PKG_TYPE的值，额外的version参数可以设置从CDN加载的CKEditor版本。作为替代，你可以访问CKEditor官网提供的构建工具（https://ckeditor.com/cke4/builder）构建自己的CKEditor包，下载后放到static目录下，然后在需要显示文本编辑器的模板中加载包目录下的ckeditor.js文件，替换掉ckeditor.load（）调用
++ 使用配置变量设置了编辑器的高度、宽度和语言或是其他插件配置，需要使用ckeditor.config（）方法加载配置，传入对应表单字段的name属性值，即对应表单类属性名。这个方法需要在加载CKEditor资源后调用：
+  #+BEGIN_SRC python
+  {{ ckeditor.config(name='body') }}
+  #+END_SRC
++ 为了支持为不同页面上的编辑器字段或单个页面上的多个编辑器字段使用不同的配置，大多数配置键都可以通过相应的关键字在ckeditor.config（）方法中传入，比如language、height、width等，这些参数会覆盖对应的全局配置。另外，Flask-CKEditor也允许你传入自定义配置字符串，更多详情可访问Flask-CKEditor文档的配置部分
++ 不使用Flask-WTF/WTForms，Flask-CKEditor还提供了一个在模板中直接创建文本编辑器字段的ckeditor.create（）方法，具体用法参考相关文档
+***** 单个表单多个提交按钮
++ 在某些情况下，我们可能需要为一个表单添加多个提交按钮。比如在创建文章的表单中添加发布新文章和保存草稿的按钮。当用户提交表单时，我们需要在视图函数中根据按下的按钮来做出不同的处理。代码清单4-20创建了一个这样的表单，其中save表示保存草稿按钮，publish表示发布按钮，正文字段使用TextAreaField字段。
+  #+BEGIN_SRC python
+  class NewPostForm(FlaskForm):
+      title = StringField('Title', validators=[DataRequired(), Length(1, 50)])
+      body = TextAreaField('Body', validators=[DataRequired()])
+      save = SubmitField('Save') # 保存按钮
+      publish = SubmitField('Publish') # 发布按钮
+  #+END_SRC
++ 当表单数据通过POST请求提交时，Flask会把表单数据解析到request.form字典。如果表单中有两个提交字段，那么只有被单击的提交字段才会出现在这个字典中。当我们对表单类实例或特定的字段属性调用data属性时，WTForms会对数据做进一步处理。对于提交字段的值，它会将其转换为布尔值：被单击的提交字段的值将是True，未被单击的值则是False
++ 基于这个机制，我们可以通过提交按钮字段的值来判断当前被单击的按钮
+  #+BEGIN_SRC python
+  @app.route('/two-submits', methods=['GET', 'POST'])
+  def two_submits():
+      form = NewPostForm()
+      if form.validate_on_submit():
+          if form.save.data: # 保存按钮被单击
+              # save it...
+              flash('You click the "Save" button.')
+          elif form.publish.data: # 发布按钮被单击
+              # publish it...
+              flash('You click the "Publish" button.')
+          return redirect(url_for('index'))
+      return render_template('2submit.html', form=form)
+  #+END_SRC
++ 有些时候，你还想在表单添加非提交按钮。比如，添加一个返回主页的取消按钮。因为这类按钮和表单处理过程无关，最简单的方式是直接在HTML模板中手动添加
+***** 单个页面多个表单
++ 除了在单个表单上实现多个提交按钮，有时我们还需要在单个页面上创建多个表单。比如，在程序的主页上同时添加登录和注册表单。当在同一个页面上添加多个表单时，我们要解决的一个问题就是在视图函数中判断当前被提交的是哪个表单
+****** 单视图处理
++ 创建两个表单，并在模板中分别渲染并不是难事，但是当提交某个表单时，我们就会遇到问题。Flask-WTF根据请求方法判断表单是否提交，但并不判断是哪个表单被提交，所以我们需要手动判断。基于上一节介绍的内容，我们知道被单击的提交字段最终的data属性值是布尔值，即True或False。而解析后的表单数据使用input字段的name属性值作为键匹配字段数据，也就是说，如果两个表单的提交字段名称都是submit，那么我们也无法判断是哪个表单的提交字段被单击。解决问题的第一步就是为两个表单的提交字段设置不同的名称
+  #+BEGIN_SRC python
+  class SigninForm(FlaskForm):
+      username = StringField('Username', validators=[DataRequired(), Length(1,20)])
+      password = PasswordField('Password', validators=[DataRequired(),Length(8, 128)])
+      submit1 = SubmitField('Sign in')
+  class RegisterForm(FlaskForm):
+      username = StringField('Username', validators=[DataRequired(), Length(1,20)])
+      email = StringField('Email', validators=[DataRequired(), Email(),Length(1, 254)])
+      password = PasswordField('Password', validators=[DataRequired(),Length(8, 128)])
+      submit2 = SubmitField('Register')
+  #+END_SRC
++ 在视图函数中，我们分别实例化这两个表单，根据提交字段的值来区分被提交的表单
+  #+BEGIN_SRC python
+  @app.route('/multi-form', methods=['GET', 'POST'])
+  def multi_form():
+      signin_form = SigninForm()
+      register_form = RegisterForm()
+      if signin_form.submit1.data and signin_form.validate():
+          username = signin_form.username.data
+          flash('%s, you just submit the Signin Form.' % username)
+          return redirect(url_for('index'))
+      if register_form.submit2.data and register_form.validate():
+          username = register_form.username.data
+          flash('%s, you just submit the Register Form.' % username)
+          return redirect(url_for('index'))
+      return render_template('2form.html', signin_form=signin_form,
+  register_form=register_form)
+  #+END_SRC
++ 在视图函数中，我们为两个表单添加了各自的if判断，在这两个if语句的内部，我们分别执行各自的代码逻辑。以登录表单（SigninForm）的if判断为例，如果signin_form.submit1.data的值为True，那就说明用户提交了登录表单，这时我们手动调用signin_form.validate（）对这个表单进行验证。这两个表单类实例通过不同的变量名称传入模板，以便在模板中相应渲染对应的表单字段
+  #+BEGIN_SRC python
+  ...
+  <form method="post">
+      {{ signin_form.csrf_token }}
+      {{ form_field(signin_form.username) }}
+      {{ form_field(signin_form.password) }}
+      {{ signin_form.submit1 }}
+  </form>
+  <h2>Register Form</h2>
+  <form method="post">
+      {{ register_form.csrf_token }}
+      {{ form_field(register_form.username) }}
+      {{ form_field(register_form.email) }}
+      {{ form_field(register_form.password) }}
+      {{ register_form.submit2 }}
+  </form>
+  ...
+  #+END_SRC
+****** 多视图处理
++ 除了通过提交按钮判断，更简洁的方法是通过分离表单的渲染和验证实现。这时表单的提交字段可以使用同一个名称，在视图函数中处理表单时也只需使用我们熟悉的form.validate_on_submit（）方法
++ 在介绍表单处理时，我们在同一个视图函数内处理两类工作：渲染包含表单的模板（GET请求）、处理表单请求（POST请求）。如果你想解耦这部分功能，那么也可以分离成两个视图函数处理。当处理多个表单时，我们可以把表单的渲染在单独的视图函数中处理，如下所示
+  #+BEGIN_SRC python
+  @app.route('/multi-form-multi-view')
+  def multi_form_multi_view():
+      signin_form = SigninForm2()
+      register_form = RegisterForm2()
+      return render_template('2form2view.html', signin_form=signin_form,
+  register_form=register_form)
+  #+END_SRC
++ 这个视图只负责处理GET请求，实例化两个表单类并渲染模板。另外我们再为每一个表单单独创建一个视图函数来处理验证工作。处理表单提交请求的视图仅监听POST请求
+  #+BEGIN_SRC python
+  @app.route('/handle-signin', methods=['POST']) # 仅传入POST到methods中
+  def handle_signin():
+      signin_form = SigninForm2()
+      register_form = RegisterForm2()
+      if signin_form.validate_on_submit():
+          username = signin_form.username.data
+          flash('%s, you just submit the Signin Form.' % username)
+          return redirect(url_for('index'))
+      return render_template('2form2view.html', signin_form=signin_form,
+  register_form=register_form)
+  @app.route('/handle-register', methods=['POST'])
+  def handle_register():
+      signin_form = SigninForm2()
+      register_form = RegisterForm2()
+      if register_form.validate_on_submit():
+          username = register_form.username.data
+          flash('%s, you just submit the Register Form.' % username)
+          return redirect(url_for('index'))
+      return render_template('2form2view.html', signin_form=signin_form,
+  register_form=register_form)
+  #+END_SRC
++ 在HTML中，表单提交请求的目标URL通过action属性设置。为了让表单提交时将请求发送到对应的URL，我们需要设置action属性，如下所示
+  #+BEGIN_SRC html
+  ...
+  <h2>Login Form</h2>
+  <form method="post" action="{{ url_for('handle_signin') }}">
+      ...
+  </form>
+  <h2>Register Form</h2>
+  <form method="post" action="{{ url_for('handle_register') }}">
+      ...
+  </form>
+  ...
+  #+END_SRC
++ 虽然现在可以正常工作，但是这种方法有一个显著的缺点。如果验证未通过，你需要将错误消息的form.errors字典传入模板中。在处理表单的视图中传入表单错误信息，就意味着需要再次渲染模板，但是如果视图函数中还涉及大量要传入模板的变量操作，那么这种方式会带来大量的重复。对于这个问题，一般的解决方式是通过其他方式传递错误消息，然后统一重定向到渲染表单页面的视图。比如，使用flash（）函数迭代form.errors字典发送错误消息（这个字典包含字段名称与错误消息列表的映射），然后重定向到用来渲染表单的multi_form_multi_view视图。下面是一个使用flash（）函数来发送表单错误消息的便利函数：
+  #+BEGIN_SRC python
+  def flash_errors(form):
+      for field, errors in form.errors.items():
+          for error in errors:
+              flash(u"Error in the %s field - %s" % (getattr(form, field).label.text,error))
+  #+END_SRC
++ 如果你希望像往常一样在表单字段下渲染错误消息，可以直接将错误消息字典form.errors存储到session中，然后重定向到用来渲染表单的multi_form_multi_view视图。在模板中渲染表单字段错误时添加一个额外的判断，从session中获取并迭代错误消息
+* 数据库
+** 概述
++ 使用ORM可以会自动帮你处理查询参数的转义，尽可能地避免SQL注入的发生。另外，它为不同的DBMS提供统一的接口，让切换工作变得非常简单。ORM扮演翻译的角色，能够将我们的Python语言转换为DBMS能够读懂的SQL指令，让我们能够使用Python来操控数据库
++ 尽管ORM非常方便，但如果你对SQL相当熟悉，那么自己编写SQL代码可以获得更大的灵活性和性能优势。就像是使用IDE一样，ORM对初学者来说非常方便，但进阶以后你也许会想要自己掌控一切
++ 尽管使用ORM可以避免SQL注入问题，但你仍然需要对传入的查询参数进行验证。另外，在执行原生SQL语句时也要注意避免使用字符串拼接或字符串格式化的方式传入参数
++ ORM把底层的SQL数据实体转化成高层的Python对象，这样一来，你甚至不需要了解SQL，只需要通过Python代码即可完成数据库操作，ORM主要实现了三层映射关系：
+  - 表→Python类
+  - 字段（列）→类属性
+  - 记录（行）→类实例
++ 示例(创建表)
+  SQL
+  #+BEGIN_SRC sql
+  CREATE TABLE contacts(
+      name varchar(100) NOT NULL,
+      phone_number varchar(32),
+  );
+  #+END_SRC
+  对应ORM
+  #+BEGIN_SRC python
+  from foo_orm import Model, Column, String
+  class Contact(Model):
+      __tablename__ = 'contacts'
+      name = Column(String(100), nullable=False)
+      phone_number = Column(String(32))
+  #+END_SRC
++ 示例(插入记录)
+  SQL
+  #+BEGIN_SRC sql
+  INSERT INTO contacts(name, phone_number) VALUES('Grey Li', '12345678');
+  #+END_SRC
+  ORM
+  #+BEGIN_SRC python
+  contact = Contact(name='Grey Li', phone_number='12345678')
+  #+END_SRC
+** Flask-SQLAlchemy
+*** 概述
++ 扩展Flask-SQLAlchemy集成了SQLAlchemy，它简化了连接数据库服务器、管理数据库操作会话等各类工作，让Flask中的数据处理体验变得更加轻松。首先使用Pipenv安装Flask-SQLAlchemy及其依赖（主要是SQLAlchemy）
+  #+BEGIN_SRC shell
+  pipenv install flask-sqlalchemy
+  #+END_SRC
++ SQLAlchemy提供的入门教程
+（http://docs.sqlalchemy.org/en/latest/orm/tutorial.html）
+*** 实例化
++ 实例化Flask-SQLAlchemy提供的SQLAlchemy类，传入程序实例app，以完成扩展的初始化：
+  #+BEGIN_SRC python
+  from flask import Flask
+  from flask_sqlalchemy import SQLAlchemy
+  app = Flask(__name__)
+  db = SQLAlchemy(app)
+  #+END_SRC
++ 实例化扩展类的对象命名为db。这个db对象代表我们的数据库，它可以使用Flask-SQLAlchemy提供的所有功能
++ 要使用的大部分类和函数都由SQLAlchemy提供，但在Flask-SQLAlchemy中，大多数情况下，我们不需要手动从SQLAlchemy导入类或函数。在sqlalchemy和sqlalchemy.orm模块中实现的类和函数，以及其他几个常用的模块和对象都可以作为db对象的属性调用。当我们创建这样的调用时，Flask-SQLAlchemy会自动把这些调用转发到对应的类、函数或模块
+*** 连接数据库服务器
+**** URL
++ 为程序指定数据库URI（Uniform ResourceIdentifier，统一资源标识符）。数据库URI是一串包含各种属性的字符串，其中包含了各种用于连接数据库的信息
++ URI代表统一资源标识符，是用来标示资源的一组字符串。URL是它的子集。在大多数情况下，这两者可以交替使用
++ 常用的DBMS及其数据库URI格式示例
+  PostgreSQL         postgresql://username:password@host/databasename
+  MySQL              mysql://username:password@host/databasename
+  Oracle             oracle://username:password@host:port/sidname
+  SQLLite(UNIX)      sqlite:////absolute/path/to/foo.db
+  SQLite(windows)    sqlite:///C:\\absolute\\path\\to\\foo.db
+  SQLite(内存)        sqlite:///:memory
+**** Flask-SQLAlchemy连接数据库
++ 在Flask-SQLAlchemy中，数据库的URI通过配置变量SQLALCHEMY_DATABASE_URI设置，默认为SQLite内存型数据库（sqlite：///：memory：）
++ SQLite是基于文件的DBMS，不需要设置数据库服务器，只需要指定数据库文件的绝对路径。我们使用app.root_path来定位数据库文件的路径，并将数据库文件命名为data.db
+  #+BEGIN_SRC python
+  import os
+  ...
+  app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URI','sqlite:///' + os.path.join(app.root_path, 'data.db'))
+  #+END_SRC
+  在生产环境下更换到其他类型的DBMS时，数据库URL会包含敏感信息，所以这里优先从环境变量DATABASE_URL获取（注意这里为了便于理解使用了URL，而不是URI）
++ SQLite
+  - SQLite的数据库URI在Linux或macOS系统下的斜线数量是4个；在Windows系统下的URI中的斜线数量为3个。内存型数据库的斜线固定为3个
+  - SQLite数据库文件名不限定后缀，常用的命名方式有foo.sqlite，foo.db，或是注明SQLite版本的foo.sqlite3
+  - 设置好数据库URI后，在Python Shell中导入并查看db对象会获得下面的输出：
+    #+BEGIN_SRC python
+    >>> from app import db
+    >>> db
+    <SQLAlchemy engine=sqlite:///Path/to/your/data.db>
+    #+END_SRC
++ Flask-SQLAlchemy建议你设置SQLALCHEMY_TRACK_MODIFICATIONS配置变量，这个配置变量决定是否追踪对象的修改，这用于Flask-SQLAlchemy的事件通知系统。这个配置键的默认值为None，如果没有特殊需要，我们可以把它设为False来关闭警告信息
+  #+BEGIN_SRC python
+  app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+  #+END_SRC
+*** 定义数据库模型
++ 用来映射到数据库表的Python类通常被称为数据库模型（model），一个数据库模型类对应数据库中的一个表。定义模型即使用Python类定义表模式，并声明映射关系
++ 所有的模型类都需要继承Flask-SQLAlchemy提供的db.Model基类
++ 示例部分
+  app.py：定义Note模型
+  #+BEGIN_SRC python
+  class Note(db.Model):
+      id = db.Column(db.Integer, primary_key=True)
+      body = db.Column(db.Text)
+  #+END_SRC
+  字段类型一般直接声明即可，如果需要传入参数，你也可以添加括号。对于类似String的字符串列，有些数据库会要求限定长度，因此最好为其指定长度。虽然使用Text类型可以存储相对灵活的变长文本，但从性能上考虑，我们仅在必须的情况下使用Text类型，比如用户发表的文章和评论等不限长度的内容
++ 默认情况下，Flask-SQLAlchemy会根据模型类的名称生成一个表名称，生成规则如下：
+  Message --> message # 单个单词转换为小写
+  FooBar --> foo_bar # 多个单词转换为小写并使用下划线分隔
++ Note类对应的表名称即note。如果你想自己指定表名称，可以通过定义__tablename__属性来实现。字段名默认为类属性名，你也可以通过字段类构造方法的第一个参数指定，或使用关键字name
+*** 创建数据库和表
++ 创建模型类后，我们需要手动创建数据库和对应的表，也就是我们常说的建库和建表。这通过对我们的db对象调用create_all（）方法实现
+  #+BEGIN_SRC python
+  $ flask shell
+  >>> from app import db
+  >>> db.create_all()
+  #+END_SRC
++ 如果你将模型类定义在单独的模块中，那么必须在调用db.create_all（）方法前导入相应模块，以便让SQLAlchemy获取模型类被创建时生成的表信息，进而正确生成数据表
++ 通过下面的方式可以查看模型对应的SQL模式（建表语句）
+  #+BEGIN_SRC python
+  >>> from sqlalchemy.schema import CreateTable
+  >>> print(CreateTable(Note.__table__))
+  CREATE TABLE note (
+      id INTEGER NOT NULL,
+      body TEXT,
+      PRIMARY KEY (id)
+  )
+  #+END_SRC
++ 数据库和表一旦创建后，之后对模型的改动不会自动作用到实际的表中。比如，在模型类中添加或删除字段，修改字段的名称和类型，这时再次调用create_all（）也不会更新表结构。如果要使改动生效，最简单的方式是调用db.drop_all（）方法删除数据库和表，然后再调用db.create_all（）方法创建
++ 可以自己实现一个自定义flask命令完成这个工作,demos/database/app.py：用于创建数据库和表的flask命令
+  #+BEGIN_SRC python
+  import click
+  ...
+  @app.cli.command()
+  def initdb():
+  　　db.create_all()
+  　　click.echo('Initialized database.')
+  #+END_SRC
+  在命令行下输入flask inintdb即可创建数据库和表：
+  #+BEGIN_SRC shell
+  $ flask initdb
+  Initialized database.
+  #+END_SRC
++ 在开发程序或是部署后，我们经常需要在Python Shell中手动操作数据库（生产环境需注意备份），对于一次性操作，直接处理即可。对于需要重用的操作，我们可以编写成Flask命令、函数或是模型类的类方法
+*** 数据库操作
+**** 概述
++ SQLAlchemy使用数据库会话来管理数据库操作，这里的数据库会话也称为事务（transaction）。Flask-SQLAlchemy自动帮我们创建会话，可以通过db.session属性获取
++ 数据库中的会话代表一个临时存储区，你对数据库做出的改动都会存放在这里。你可以调用add（）方法将新创建的对象添加到数据库会话中，或是对会话中的对象进行更新。只有当你对数据库会话对象调用commit（）方法时，改动才被提交到数据库，这确保了数据提交的一致性。另外，数据库会话也支持回滚操作。当你对会话调用rollback（）方法时，添加到会话中且未提交的改动都将被撤销
+**** CRUD(增删改查)
++ 默认情况下，Flask-SQLAlchemy（>=2.3.0版本）会自动为模型类生成一个__repr__（）方法。当在Python Shell中调用模型的对象时，__repr__（）方法会返回一条类似“<模型类名主键值>”的字符串，比如<Note 2>。为了便于实际操作测试，示例程序中，所有的模型类都重新定义了__repr__（）方法，返回一些更有用的信息，比如
+  #+BEGIN_SRC python
+  class Note(db.Model):
+      ...
+      def __repr__(self):
+          return '<Note %r>' % self.body
+  #+END_SRC
+***** Create(增)
++ 添加一条新记录到数据库主要分为三步：
+  - 创建Python对象（实例化模型类）作为一条记录
+  - 添加新创建的记录到数据库会话
+  - 提交数据库会话,除了依次调用add（）方法添加多个记录，也可以使用add_all（）一次添加包含所有记录对象的列表
+  #+BEGIN_SRC shell
+  >>> from app import db, Note
+  >>> note1 = Note(body='remember Sammy Jankis')
+  >>> note2 = Note(body='SHAVE')
+  >>> note3 = Note(body='DON\'T BELIEVE HIS LIES, HE IS THE ONE, KILL HIM')
+  >>> db.session.add(note1)
+  >>> db.session.add(note2)
+  >>> db.session.add(note3)
+  >>> db.session.commit()
+  #+END_SRC
++ 主键由SQLAlchemy管理。模型类对象创建后作为临时对象（transient），当你提交数据库会话后，模型类对象才会转换为数据库记录写入数据库中，这时模型类对象会自动获得id值
+***** Read(查)
++ 一般来说，一个完整的查询遵循下面的模式：
+  <模型类>.query.<过滤方法>.<查询方法>
++ 从某个模型类出发，通过在query属性对应的Query对象上附加的过滤方法和查询函数对模型类对应的表中的记录进行各种筛选和调整，最终返回包含对应数据库记录数据的模型类实例，对返回的实例调用属性即可获取对应的字段数据
+****** 常用查询方法
++ all()  返回包含所有查询记录的列表
++ first() 返回查询的第一条记录，如果未找到，返回None
++ one()  返回第一条记录，且仅允许有一条记录，如果记录数量大于1或小于1，则报错
++ get(ident)  传入主键作为参数，返回指定主键值的记录，如果未找到，返回None
++ count()  返回查询结果的数量
++ one or none()  类似one()，如果结果数量不为1，返回None
++ first_or_404()  返回查询的第一条记录，如果未找到，返回404错误响应
++ get_or_404(ident) 传入主键值作为参数，返回指定主键的记录，如果未找到，返回404错误响应
++ paginato() 返回一个pagination对象，可以对记录进行分页处理
++ with_parent(instance) 传入模型类实例作为参数，返回和这个实例相关联的对象
+#+BEGIN_SRC python
+Note.query.all() # 输出 [<Note 1>, <Note 2>, <Note 3>]
+Note.query.get(3) # 输出 "DON'T BELIEVE HIS LIES, HE IS THE ONE, KILL HIM"
+#+END_SRC
+****** 常用过滤方法
++ filter() 使用指定的规则过滤记录，返回新产生的查询对象
+  - 传入参数的写法，要用：类名.列名两个等号去判断
+  - 且更复杂的查询的语法，比如_and()，or_()等多个条件的查询，只支持filter
+  #+BEGIN_SRC python
+  Note.query.filter(Note.body=='SHAVE').first().id
+  Note.query.filter(Note.body=='SHAVE').all()[0].id
+  LIKE： filter(Note.body.like('%foo%'))
+  IN: filter(Note.body.in_(['foo', 'bar', 'baz']))
+  NOT IN：filter(~Note.body.in_(['foo', 'bar', 'baz']))
+  AND：# 使用and_()
+       from sqlalchemy import and_
+       filter(and_(Note.body == 'foo', Note.title == 'FooBar'))
+       # 或在filter()中加入多个表达式，使用逗号分隔
+       filter(Note.body == 'foo', Note.title == 'FooBar')
+       # 或叠加调用多个filter()/filter_by()方法
+       filter(Note.body == 'foo').filter(Note.title == 'FooBar')
+  OR： from sqlalchemy import or_
+       filter(or_(Note.body == 'foo', Note.body == 'bar'))
+  #+END_SRC
++ filter_by() 使用指定规则过滤记录(以关键字表达式的形式),返回新产生的查询对象
+  - 和filter（）方法相比，filter_by（）方法更易于使用。在filter_by（）方法中，你可以使用关键字表达式来指定过滤规则。更方便的是，你可以在这个过滤器中直接使用字段名称。下面的示例使用filter_by（）过滤器完成了同样的任务：
+    #+BEGIN_SRC python
+    Note.query.filter_by(body='SHAVE').first()
+    #+END_SRC
+  - 传入参数的写法（不带类名的）列名单个等号就可以判断
++ order_by() 根据指定条件对记录进行排序，返回新产生的查询对象
++ limit(limit) 使用指定的值限制原查询返回的记录数量，返回新产生的查询对象
++ group_by() 根据指定条件对记录进行分组，返回新产生的查询对象
++ offset(offset) 使用指定的值偏移原查询结果，返回新产生的查询对象
+***** Update(改)
++ 更新一条记录非常简单，直接赋值给模型类的字段属性就可以改变字段值，然后调用commit（）方法提交会话即可
+  #+BEGIN_SRC python
+  >>> note = Note.query.get(2)
+  >>> note.body
+  u'SHAVE'
+  >>> note.body = 'SHAVE LEFT THIGH'
+  >>> db.session.commit()
+  #+END_SRC
++ 只有要插入新的记录或要将现有的记录添加到会话中时才需要使用add（）方法，单纯要更新现有的记录时只需要直接为属性赋新值，然后提交会话
+***** Delete(删)
++ 删除记录和添加记录很相似，不过要把add（）方法换成delete（）方法，最后都需要调用commit（）方法提交修改
+  #+BEGIN_SRC python
+  >>> note = Note.query.get(2)
+  >>> db.session.delete(note)
+  >>> db.session.commit()
+  #+END_SRC
+**** 在视图函数里操作数据库
+***** Create
++ 示例
+  - 先创建一个用于填写新笔记的表单
+    #+BEGIN_SRC python
+    from flask_wtf import FlaskForm
+    from wtforms import TextAreaField, SubmitField
+    from wtforms.validators import DataRequired
+    app.config["SECRET_KEY"] = "12345678"
+    class NewNoteForm(FlaskForm):
+        body = TextAreaField('Body', validators=[DataRequired()])
+        submit = SubmitField('Save')
+    #+END_SRC
+  - 创建一个new_note视图，这个视图负责渲染创建笔记的模板，并处理表单的提交
+    #+BEGIN_SRC python
+    @app.route('/new', methods=['GET', 'POST'])
+    def new_note():
+        form = NewNoteForm()
+        if form.validate_on_submit():
+            body = form.body.data
+            note = Note(body=body)
+            db.session.add(note)
+            db.session.commit()
+            flash('Your note is saved.')
+            return redirect(url_for('index'))
+        return render_template('new_note.html', form=form)
+    #+END_SRC
+  - 在new_note.html模板中渲染，这里使用我们在第4章介绍的form_field宏渲染表单字段，传入rows和cols参数来定制<textarea>输入框的大小
+    #+BEGIN_SRC html
+    # 定义form_field宏
+    {% macro form_field(field) %}
+        {{ field.label }}<br>
+        {{ field(**kwargs) }}<br>
+        {% if field.errors %}
+            {% for error in field.errors %}
+                <small class="error">{{ error }}</small><br>
+            {% endfor %}
+        {% endif %}
+    {% endmacro %}
+    # 宏可以存放在其他html文件中，然后引入
+    {% from 'macros.html' import form_field %}
+
+    
+    {% block content %}
+    <h2>New Note</h2>
+    <form method="post">
+        {{ form.csrf_token }}
+        {{ form_field(form.body, rows=5, cols=50) }}
+        {{ form.submit }}
+    </form>
+    {% endblock %}
+    #+END_SRC
+  - index视图用来显示主页，目前它的所有作用就是渲染主页对应的模板：
+    #+BEGIN_SRC python
+    @app.route('/')
+    def index():
+        return render_template('index.html')
+    #+END_SRC
+  - 在对应的index.html模板中，我们添加一个指向创建新笔记页面的链接：
+    #+BEGIN_SRC html
+    <h1>Notebook</h1>
+    <a href="{{ url_for('new_note') }}">New Note</a>
+    #+END_SRC
+***** Read
++ 在视图函数中查询数据库记录并传入模板
+  #+BEGIN_SRC python
+  class DeleteForm(FlaskForm):
+      body = TextAreaField('Body', validators=[DataRequired()])
+  @app.route('/')
+  def index():
+      form = DeleteForm()
+      notes = Note.query.all()
+      return render_template('index.html', notes=notes, form=form)
+  #+END_SRC
++ demos/database/templates/index.html：在模板中渲染数据库记录
+  #+BEGIN_SRC html
+  <h1>Notebook</h1>
+  <a href="{{ url_for('new_note') }}">New Note</a>
+  <h4>{{ notes|length }} notes:</h4>
+  {% for note in notes %}
+        <div class="note">
+           <p>{{ note.body }}</p>
+        </div>
+  {% endfor %}
+  #+END_SRC
+***** Update
++ 创建编辑类
+  #+BEGIN_SRC python
+  class EditNoteForm(FlaskForm):
+      body = TextAreaField('Body', validators=[DataRequired()])
+      submit = SubmitField('Update')
+  #+END_SRC
++ 用来渲染更新笔记页面和处理更新表单提交的edit_note视图如代码
+  #+BEGIN_SRC python
+  @app.route('/edit/<int:note_id>', methods=['GET', 'POST'])
+  def edit_note(note_id):
+      form = EditNoteForm()
+      note = Note.query.get(note_id)
+      if form.validate_on_submit():
+          note.body = form.body.data
+          db.session.commit()
+          flash('Your note is updated.')
+          return redirect(url_for('index'))
+      form.body.data = note.body
+      return render_template('edit_note.html', form=form)
+  #+END_SRC
+  这个视图通过URL变量note_id获取要被修改的笔记的主键值（id字段），然后我们就可以使用get（）方法获取对应的Note实例。当表单被提交且通过验证时，我们将表单中body字段的值赋给note对象的body属性，然后提交数据库会话，这样就完成了更新操作
++ 编辑edit_note.html模板
+  #+BEGIN_SRC html
+  {% for note in notes %}
+  <div class="note">
+      <p>{{ note.body }}</p>
+      <a class="btn" href="{{ url_for('edit_note', note_id=note.id)}}">Edit</a>
+  </div>
+  {% endfor %}
+  #+END_SRC
++ 此部分不完整，未全部实现(265页)
+***** Delete
++ 像删除这类修改数据的操作绝对不能通过GET请求实现，正确的做法是为删除操作创建一个表单
+  #+BEGIN_SRC python
+  class DeleteNoteForm(FlaskForm):
+      submit = SubmitField('Delete')
+  #+END_SRC
++ 这个表单类只有一个提交字段，因为我们只需要在页面上显示一个删除按钮来提交表单。删除表单的提交请求由delete_note视图处理
+  #+BEGIN_SRC python
+  @app.route('/delete/<int:note_id>', methods=['POST'])
+  def delete_note(note_id):
+      form = DeleteForm()
+      if form.validate_on_submit():
+          note = Note.query.get(note_id) # 获取对应记录
+          db.session.delete(note) # 删除记录
+          db.session.commit() # 提交修改
+          flash('Your note is deleted.')
+      else:
+          abort(400)
+      return redirect(url_for('index'))
+  #+END_SRC
++ 在index视图中实例化DeleteNote-Form类，然后传入模板。在index.html模板中，我们渲染这个表单：
+  #+BEGIN_SRC html
+  {% for note in notes %}
+  <div class="note">
+      <p>{{ note.body }}</p>
+      <a class='btn' href="{{ url_for('edit_note', note_id=note.id)}}">Edit</a>
+  <form method="post" action="{{ url_for('delete_note', note_id=note.id)}}">
+      {{ form.csrf_token }}
+      {{ form.submit(class='btn') }}
+  </form>
+  </div>
+  {% endfor %}
+  #+END_SRC
++ 此部分不完整，未实现(268页)
+**** 定义关系
+***** 概述
++ 在关系型数据库中，我们可以通过关系让不同表之间的字段建立联系。一般来说，定义关系需要两步，分别是创建外键和定义关系属性。在更复杂的多对多关系中，我们还需要定义关联表来管理关系
++ 每一次使用flask shell命令启动Python Shell后都要从app模块里导入db对象和相应的模型类。为什么不把它们自动集成到Python Shell上下文里呢？就像Flask内置的app对象一样。这当然可以实现！我们可以使用app.shell_context_processor装饰器注册一个shell上下文处理函数。它和模板上下文处理函数一样，也需要返回包含变量和变量值的字典
++ app.py：注册shell上下文处理函数
+  #+BEGIN_SRC python
+  # ...
+  @app.shell_context_processor
+  def make_shell_context():
+      return dict(db=db, Note=Note) # 等同于{'db': db, 'Note': Note}
+  #+END_SRC
+***** 一对多
++ database/app.py：一对多关系示例
+  #+BEGIN_SRC python
+  class Author(db.Model):
+      id = db.Column(db.Integer, primary_key=True)
+      name = db.Column(db.String(70), unique=True)
+      phone = db.Column(db.String(20))
+  class Article(db.Model):
+      id = db.Column(db.Integer, primary_key=True)
+      title = db.Column(db.String(50), index=True)
+      body = db.Column(db.Text)
+  #+END_SRC
+****** 定义外键
++ 定义关系的第一步是创建外键。外键是（foreign key）用来在A表存储B表的主键值以便和B表建立联系的关系字段。因为外键只能存储单一数据（标量），所以外键总是在“多”这一侧定义
+  #+BEGIN_SRC python
+  class Article(db.Model):
+      ...
+      author_id = db.Column(db.Integer, db.ForeignKey('author.id'))
+  #+END_SRC
++ 这个字段使用db.ForeignKey类定义为外键，传入关系另一侧的表名和主键字段名，即author.id。实际的效果是将article表的author_id的值限制为author表的id列的值。它将用来存储author表中记录的主键值
++ 传入ForeignKey类的参数author.id，其中author指的是Author模型对应的表名称，而id指的是字段名，即“表名.字段名”。模型类对应的表名由Flask-SQLlchemy生成，默认为类名称的小写形式，多个单词通过下划线分隔，你也可以显式地通过__tablename__属性自己指定
+****** 定义关系属性
++ 定义关系的第二步是使用关系函数定义关系属性。关系属性在关系的出发侧定义，即一对多关系的“一”这一侧。一个作者拥有多篇文章，在Author模型中，我们定义了一个articles属性来表示对应的多篇文章
+  #+BEGIN_SRC python
+  class Author(db.Model):
+      ...
+      articles = db.relationship('Article')
+  #+END_SRC
++ 关系属性的名称没有限制，你可以自由修改。它相当于一个快捷查询，不会作为字段写入数据库中
++ 这个属性并没有使用Column类声明为列，而是使用了db.relationship（）关系函数定义为关系属性，因为这个关系属性返回多个记录，我们称之为集合关系属性
++ relationship（）函数的第一个参数为关系另一侧的模型名称，它会告诉SQLAlchemy将Author类与Article类建立关系。当这个关系属性被调用时，SQLAlchemy会找到关系另一侧（即article表）的外键字段（即author_id），然后反向查询article表中所有author_id值为当前表主键值（即author.id）的记录，返回包含这些记录的列表
+****** 建立关系
++ 建立关系有两种方式，第一种方式是为外键字段赋值
+  #+BEGIN_SRC python
+  >>> spam.author_id = 1
+  >>> db.session.commit()
+  #+END_SRC
++ 将spam对象的author_id字段的值设为1，这会和id值为1的Author对象建立关系
++ 另一种方式是通过操作关系属性，将关系属性赋给实际的对象即可建立关系。集合关系属性可以像列表一样操作，调用append（）方法来与一个Article对象建立关系
+  #+BEGIN_SRC python
+  >>> foo.articles.append(spam)
+  >>> foo.articles.append(ham)
+  >>> db.session.commit()
+  #+END_SRC
++ 也可以直接将关系属性赋值给一个包含Article对象的列表
++ 和前面的第一种方式类似，为了让改动生效，我们需要调用db.session.commit（）方法提交数据库会话。建立关系后，存储外键的author_id字段会自动获得正确的值，而调用Author实例的关系属性articles时，会获得所有建立关系的Article对象
+  #+BEGIN_SRC python
+  >>> spam.author_id
+  1
+  >>> foo.articles
+  [<Article u'Spam'>, <Article u'Ham'>]
+  #+END_SRC
++ 和主键类似，外键字段由SQLAlchemy管理，我们不需要手动设置。当通过关系属性建立关系后，外键字段会自动获得正确的值
++ 在后面的示例程序中，我们会统一使用第二种方式，即通过关系属性来建立关系
++ 和append（）相对，对关系属性调用remove（）方法可以与对应的Aritcle对象解除关系
+  #+BEGIN_SRC python
+  >>> foo.articles.remove(spam)
+  >>> db.session.commit()
+  >>> foo.articles
+  [<Article u'Ham'>]
+  #+END_SRC
++ 你也可以使用pop（）方法操作关系属性，它会与关系属性对应的列表的最后一个Aritcle对象解除关系并返回该对象
++ 不要忘记在操作结束后需要调用commit（）方法提交数据库会话，这样才可以把改动写入数据库
++ 使用关系函数定义的属性不是数据库字段，而是类似于特定的查询函数。当某个Aritcle对象被删除时，在对应Author对象的aritcles属性调用时返回的列表也不会包含该对象
++ 在关系函数中，有很多参数可以用来设置调用关系属性进行查询时的具体行为
+  - back_populates 定义方向引用
+  - backref 添加反向引用
+  - lazy 指定如何加载相关记录
+  - .....
++ 常用的SQLAlchemy关系记录加载方式（lazy参数可选值）
+  - select 在必要时一次性加载记录
+  - joined 和父查询一样加载记录
+  - ...
+  - dynamic 选项仅用于集合关系属性，不可用于多对一、一对一或是在关系函数中将uselist参数设为False的情况，使用dynamic来动态加载所有集合关系属性对应的记录，这是应该避免的行为。使用dynamic加载方式意味着每次操作关系都会执行一次SQL查询，这会造成潜在的性能问题。大多数情况下我们只需要使用默认值（select），只有在调用关系属性会返回大量记录，并且总是需要对关系属性返回的结果附加额外的查询时才需要使用动态加载（lazy='dynamic'）
+****** 建立双向关系
++ 我们在Author类中定义了集合关系属性articles，用来获取某个作者拥有的多篇文章记录。在某些情况下，你也许希望能在Article类中定义一个类似的author关系属性，当被调用时返回对应的作者记录，这类返回单个值的关系属性被称为标量关系属性。而这种两侧都添加关系属性获取对方记录的关系我们称之为双向关系（bidirectional relationship）
++ 双向关系并不是必须的，但在某些情况下会非常方便。双向关系的建立很简单，通过在关系的另一侧也创建一个relationship（）函数，我们就可以在两个表之间建立双向关系。我们使用作家（Writer）和书（Book）的一对多关系来进行演示，建立双向关系后的Writer和Book类如代码清单
+  #+BEGIN_SRC python
+  class Writer(db.Model):
+      id = db.Column(db.Integer, primary_key=True)
+      name = db.Column(db.String(70), unique=True)
+      books = db.relationship('Book', back_populates='writer')
+  class Book(db.Model):
+      id = db.Column(db.Integer, primary_key=True)
+      title = db.Column(db.String(50), index=True)
+      writer_id = db.Column(db.Integer, db.ForeignKey('writer.id'))
+      writer = db.relationship('Writer', back_populates='books')
+  #+END_SRC
++ 需要注意的是，我们只需要在关系的一侧操作关系。当为Book对象的writer属性赋值后，对应Writer对象的books属性的返回值也会自动包含这个Book对象。反之，当某个Writer对象被删除时，对应的Book对象的writer属性被调用时的返回值也会被置为空（即NULL，会返回None）
+****** 使用backref简化关系定义
++ 使用关系函数中的backref参数可以简化双向关系的定义。以一对多关系为例，backref参数用来自动为关系另一侧添加关系属性，作为反向引用（backreference），赋予的值会作为关系另一侧的关系属性名称。比如，我们在Author一侧的关系函数中将backref参数设为author，SQLAlchemy会自动为Article类添加一个author属性。为了避免和前面的示例命名冲突，我们使用歌手（Singer）和歌曲（Song）的一对多关系作为演示，分别创建Singer和Song类
+  #+BEGIN_SRC python
+  class Singer(db.Model):
+      id = db.Column(db.Integer, primary_key=True)
+      name = db.Column(db.String(70), unique=True)
+      songs = db.relationship('Song', backref='singer')
+  class Song(db.Model):
+      id = db.Column(db.Integer, primary_key=True)
+      name = db.Column(db.String(50), index=True)
+      singer_id = db.Column(db.Integer, db.ForeignKey('singer.id'))
+  #+END_SRC
++ 在定义集合属性songs的关系函数中，我们将backref参数设为singer，这会同时在Song类中添加了一个singer标量属性。这时我们仅需要定义一个关系函数，虽然singer是一个“看不见的关系属性”，但在使用上和定义两个关系函数并使用back_populates参数的效果完全相同
++ 需要注意的是，使用backref允许我们仅在关系一侧定义另一侧的关系属性，但是在某些情况下，我们希望可以对在关系另一侧的关系属性进行设置，这时就需要使用backref（）函数。backref（）函数接收第一个参数作为在关系另一侧添加的关系属性名，其他关键字参数会作为关系另一侧关系函数的参数传入。比如，我们要在关系另一侧“看不见的relationship（）函数”中将uselist参数设为False，可以这样实现
+  #+BEGIN_SRC python
+  class Singer(db.Model):
+      ...
+      songs = relationship('Song', backref=backref('singer', uselist=False))
+  #+END_SRC
++ 尽管使用backref非常方便，但通常来说“显式好过隐式”，所以我们应该尽量使用back_populates定义双向关系。为了便于理解，在本书的示例程序中都将使用back_populates来建立双向关系
+***** 多对一
++ 一对多关系反过来就是多对一关系，这两种关系模式分别从不同的视角出发
+***** 一对一
++ 一对一关系实际上是通过建立双向关系的一对多关系的基础上转化而来。我们要确保关系两侧的关系属性都是标量属性，都只返回单个值，所以要在定义集合属性的关系函数中将uselist参数设为False，这时一对多关系将被转换为一对一关系。代码清单5-14基于建立双向关系的一对多关系实现了一对一关系
+  #+BEGIN_SRC python
+  class Country(db.Model):
+      id = db.Column(db.Integer, primary_key=True)
+      name = db.Column(db.String(30), unique=True)
+      capital = db.relationship('Capital', uselist=False)
+  class Capital(db.Model):
+      id = db.Column(db.Integer, primary_key=True)
+      name = db.Column(db.String(30), unique=True)
+      country_id = db.Column(db.Integer, db.ForeignKey('country.id'))
+      country = db.relationship('Country')
+  #+END_SRC
+***** 多对多
++ 学生和老师是典型的多对多关系：每个学生有多个老师，而每个老师有多个学生
++ 在多对多关系中，每一个记录都可以与关系另一侧的多个记录建立关系，关系两侧的模型都需要存储一组外键。在SQLAlchemy中，要想表示多对多关系，除了关系两侧的模型外，我们还需要创建一个关联表（association table）。关联表不存储数据，只用来存储关系两侧模型的外键对应关系
+  #+BEGIN_SRC python
+  association_table = db.Table('association',db.Column('student_id',db.Integer, db.ForeignKey('student.id')),db.Column('teacher_id', db.Integer,db.ForeignKey('teacher.id')))
+  class Student(db.Model):
+      id = db.Column(db.Integer, primary_key=True)
+      name = db.Column(db.String(70), unique=True)
+      grade = db.Column(db.String(20))
+      teachers = db.relationship('Teacher',secondary=association_table,back_populates='students')
+  class Teacher(db.Model):
+      id = db.Column(db.Integer, primary_key=True)
+      name = db.Column(db.String(70), unique=True)
+      office = db.Column(db.String(20))
+  #+END_SRC
++ 关联表使用db.Table类定义，传入的第一个参数是关联表的名称。我们在关联表中定义了两个外键字段：teacher_id字段存储Teacher类的主键，student_id存储Student类的主键。借助关联表这个中间人存储的外键对，我们可以把多对多关系分化成两个一对多关系，
++ 为了便于实现真正的多对多关系，我们需要建立双向关系。建立双向关系后，多对多关系会变得更加直观。在Student类上的teachers集合属性会返回所有关联的老师记录，而在Teacher类上的students集合属性会返回所有相关的学生记录：
+  #+BEGIN_SRC python
+  class Student(db.Model):
+     ...
+     teachers = db.relationship('Teacher',secondary=association_table,back_populates='students')
+  class Teacher(db.Model):
+      ...
+      students = db.relationship('Student',
+      secondary=association_table,
+      back_populates='teachers')
+  #+END_SRC
++ 除了在声明关系时有所不同，多对多关系模式在操作关系时和其他关系模式基本相同。调用关系属性student.teachers时，SQLAlchemy会直接返回关系另一侧的Teacher对象，而不是关联表记录，反之亦同。和其他关系模式中的集合关系属性一样，我们可以将关系属性teachers和students像列表一样操作。比如，当你需要为某一个学生添加老师时，对关系属性使用append（）方法即可。如果你想要解除关系，那么可以使用remove（）方法
++ 关联表由SQLAlchemy接管，它会帮我们管理这个表：我们只需要像往常一样通过操作关系属性来建立或解除关系，SQLAlchemy会自动在关联表中创建或删除对应的关联表记录，而不用手动操作关联表。同样的，在多对多关系中我们也只需要在关系的一侧操作关系。当为学生A的teachers添加了老师B后，调用老师B的students属性时返回的学生记录也会包含学生A，反之亦同
+**** 更新数据库表
++ 模型类（表）不是一成不变的，当你添加了新的模型类，或是在模型类中添加了新的字段，甚至是修改了字段的名称或类型，都需要更新表。在前面我们把数据库表类比成盛放货物的货架，这些货架是固定生成的。当我们在操控程序（DBMS/ORM）上变更了货架的结构时，仓库的货架也要根据变化相应进行调整。而且，当货架的结构产生变动时，我们还需要考虑如何处理货架上的货物（数据）
++ 当你在数据库的模型中添加了一个新的字段后，比如在Note模型里添加了一个存储笔记创建时间的timestamp字段。这时你可能想要立刻启动程序看看效果，遗憾的是，你看到了下面的报错信息
+  #+BEGIN_SRC python
+  OperationalError: (sqlite3.OperationalError) no such column: note.timestamp[...]
+  #+END_SRC
+***** 重新生成表
++ 重新调用create_all（）方法并不会起到更新表或重新创建表的作用。如果你并不在意表中的数据，最简单的方法是使用drop_all（）方法删除表以及其中的数据，然后再使用create_all（）方法重新创建
+  #+BEGIN_SRC python
+  >>> db.drop_all()
+  >>> db.create_all()
+  #+END_SRC
++ 为了方便开发，我们修改initdb命令函数的内容，为其增加一个--drop选项来支持删除表和数据库后进行重建
+  #+BEGIN_SRC python
+  @app.cli.command()
+  @click.option('--drop', is_flag=True, help='Create after drop.')
+  def initdb(drop):
+      """Initialize the database."""
+      if drop:
+          click.confirm('This operation will delete the database, do you wantto continue?', abort=True)
+          db.drop_all()
+          click.echo('Drop tables.')
+      db.create_all()
+      click.echo('Initialized database.')
+  #+END_SRC
++ 在这个命令函数前，我们使用click提供的option装饰器为命令添加了一个--drop选项，将is_flag参数设为True可以将这个选项声明为布尔值标志（boolean flag）。--drop选项的值作为drop参数传入命令函数，如果提供了这个选项，那么drop的值将是True，否则为False。因为添加--drop选项会直接清空数据库内容，如果需要，也可以通过click.confirm（）函数添加一个确认提示，这样只有输入y或yes才会继续执行操作
+  #+BEGIN_SRC python
+  $ flask initdb --drop
+  #+END_SRC
+***** 使用Flask-Migrate迁移数据库
++ 开发时，以删除表再重建的方式更新数据库简单直接，但明显的缺陷是会丢掉数据库中的所有数据。在生产环境下，你绝对不会想让数据库里的数据都被删除掉，这时你需要使用数据库迁移工具来完成这个工作。SQLAlchemy的开发者Michael Bayer写了一个数据库迁移工具——Alembic来帮助我们实现数据库的迁移，数据库迁移工具可以在不破坏数据的情况下更新数据库表的结构。蒸馏器（Alembic）是炼金术士最重要的工具
++ 扩展Flask-Migrate集成了Alembic，提供了一些flask命令来简化迁移工作，我们将使用它来迁移数据库。Flask-Migrate及其依赖（主要是Alembic）可以使用Pipenv安装
+  #+BEGIN_SRC shell
+  $ pipenv install flask-migrate
+  #+END_SRC
++ 在程序中，我们实例化Flask-Migrate提供的Migrate类，进行初始化操作：
+  #+BEGIN_SRC python
+  from flask import Flask
+  from flask_sqlalchemy import SQLAlchemy
+  from flask_migrate import Migrate
+  app = Flask(__name__)
+  ...
+  db = SQLAlchemy(app)
+  migrate = Migrate(app, db) # 在db对象创建后调用
+  #+END_SRC
+***** 创建迁移环境
++ 在开始迁移数据之前，需要先使用下面的命令创建一个迁移环境
+  #+BEGIN_SRC shell
+  $ flask db init
+  #+END_SRC
++ Flask-Migrate提供了一个命令集，使用db作为命名集名称，它提供的命令都以flask db开头。你可以在命令行中输入flask--help查看所有可用的命令和说明
++ 迁移环境只需要创建一次。这会在你的项目根目录下创建一个migrations文件夹，其中包含了自动生成的配置文件和迁移版本文件夹
+***** 生成迁移脚本
++ 使用migrate子命令可以自动生成迁移脚本
+  #+BEGIN_SRC shell
+  $ flask db migrate -m "add note timestamp"
+  ...
+  INFO [alembic.autogenerate.compare] Detected added column 'message.timestamp
+  Generating /Path/to/your/database/migrations/versions/c52a02014635_add
+  note_timestamp.py ... done
+  #+END_SRC
++ 这条命令可以简单理解为在flask里对数据库（db）进行迁移（migrate）。-m选项用来添加迁移备注信息。从上面的输出信息我们可以看到，Alembic检测出了模型的变化：表note新添加了一个timestamp列，并且相应生成了一个迁移脚本c52a02014635_add_note_timestamp.py
+  #+BEGIN_SRC python
+  """add note timastamp
+  Revision ID: c52a02014635
+  """
+  from alembic import op
+  import sqlalchemy as sa
+  # ...
+  def upgrade():
+      # ### commands auto generated by Alembic - please adjust! ###
+      op.add_column('note', sa.Column('timestamp', sa.DateTime(),nullable=True))
+      # ### end Alembic commands ###
+  def downgrade():
+      # ### commands auto generated by Alembic - please adjust! ###
+      op.drop_column('note', 'timestamp')
+      # ### end Alembic commands ###
+  #+END_SRC
++ 有些复杂的操作无法实现自动迁移，这时可以使用revision命令手动创建迁移脚本。这同样会生成一个迁移脚本，不过脚本中的upgrade（）和downgrade（）函数都是空的。你需要使用Alembic提供的Operations对象指令在这两个函数中实现具体操作，具体可以访问Alembic官方文档查看
+***** 更新数据库
++ 生成了迁移脚本后，使用upgrade子命令即可更新数据库
+  #+BEGIN_SRC python
+  >>> $ flask db upgrade
+  ...
+  INFO [alembic.runtime.migration] Running upgrade -> c52a02014635, add note
+  timestamp
+  #+END_SRC
++ 如果还没有创建数据库和表，这个命令会自动创建；如果已经创建，则会在不损坏数据的前提下执行更新
++ 如果你想回滚迁移，那么可以使用downgrade命令（降级），它会撤销最后一次迁移在数据库中的改动，这在开发时非常有用。比如，当你执行upgrade命令后发现某些地方出错了，这时就可以执行flask dbdowngrade命令进行回滚，删除对应的迁移脚本，重新生成迁移脚本后再进行更新（upgrade）
++ 在本地开发时通常使用SQLite作为数据库引擎。SQLite不支持ALTER语句，而这正是迁移工具依赖的工作机制。也就是说，当SQLite数据库表的字段删除或修改后，我们没法直接使用迁移工具进行更新，你需要手动添加迁移代码来进行迁移。在开发中，修改和删除列是很常见的行为，手动操作迁移会花费太多的时间
++ 这些仅仅是从方便的角度考虑，如果你希望让生产环境的部署更加高效，则应该尽可能让开发环境和生产环境保持一致。这时你应该考虑直接在本地使用MySQL或PostgreSQL等性能更高的DBMS，然后设置迁移环境
+*** 数据库进阶实践
+**** 级联操作
++ Cascade意为“级联操作”，就是在操作一个对象的同时，对相关的对象也执行某些操作。我们通过一个Post模型和Comment模型来演示级联操作，分别表示文章（帖子）和评论，两者为一对多关系
+  #+BEGIN_SRC python
+  class Post(db.Model):
+      id = db.Column(db.Integer, primary_key=True)
+      title = db.Column(db.String(50), unique=True)
+      body = db.Column(db.Text)
+      comments = db.relationship('Comment', back_populates='post')
+  class Comment(db.Model):
+      id = db.Column(db.Integer, primary_key=True)
+      body = db.Column(db.Text)
+      post_id = db.Column(db.Integer, db.ForeignKey('post.id'))
+      post = db.relationship('Post', back_populates='comments')
+  #+END_SRC
++ 级联行为通过关系函数relationship（）的cascade参数设置。我们希望在操作Post对象时，处于附属地位的Comment对象也被相应执行某些操作，这时应该在Post类的关系函数中定义级联参数。设置了cascade参数的一侧将被视为父对象，相关的对象则被视为子对象
++ cascade通常使用多个组合值，级联值之间使用逗号分隔
+  #+BEGIN_SRC python
+  class Post(db.Model):
+      ...
+      comments = relationship('Comment', cascade='save-update, merge, delete')
+  #+END_SRC
++ 常用的配置组合如下所示
+  - save-update、merge（默认值）
+  - save-update、merge、delete
+  - all
+  - all、delete-orphan
++ 当没有设置cascade参数时，会使用默认值save-update、merge。上面的all等同于除了delete-orphan以外所有可用值的组合，即save-update、merge、refresh-expire、expunge、delete
+***** save-update
++ save-update是默认的级联行为，当cascade参数设为save-update时，如果使用db.session.add（）方法将Post对象添加到数据库会话时，那么与Post相关联的Comment对象也将被添加到数据库会话。我们首先创建一个Post对象和两个Comment对象
+  #+BEGIN_SRC python
+  >>> post1 = Post()
+  >>> comment1 =Comment()
+  >>> comment2 =Comment()
+  #+END_SRC
++ 将post1添加到数据库会话后，只有post1在数据库会话中
+  #+BEGIN_SRC python
+  >>> db.session.add(post1)
+  >>> pnost1 in db.session
+  True
+  >>> comment1 in db.session
+  False
+  >>> comment2 in db.session
+  False
+  #+END_SRC
++ 如果我们让post1与这两个Comment对象建立关系，那么这两个Comment对象也会自动被添加到数据库会话中
+  #+BEGIN_SRC python
+  >>> post1.comments.append(comment1)
+  >>> post1.comments.append(comment2)
+  >>> comment1 in db.session
+  True
+  >>> comment2 in db.session
+  True
+  #+END_SRC
+  当调用db.session.commit（）提交数据库会话时，这三个对象都会被提交到数据库中
+***** delete
++ 如果某个Post对象被删除，那么按照默认的行为，该Post对象相关联的所有Comment对象都将与这个Post对象取消关联，外键字段的值会被清空。如果Post类的关系函数中cascade参数设为delete时，这些相关的Comment会在关联的Post对象删除时被一并删除。当需要设置delete级联时，我们会将级联值设为all或save-update、merge、delete
+  #+BEGIN_SRC python
+  class Post(db.Model):
+      ...
+      comments = relationship('Comment', cascade='all')
+  #+END_SRC
++ 先创建一个文章对象post2和两个评论对象comment3和comment4，并将这两个评论对象与文章对象建立关系，将它们添加到数据库会话并提交
+  #+BEGIN_SRC python
+  >>> post2 = Post()
+  >>> comment3 = Comment()
+  >>> comment4 = Comment()
+  >>> post2.comments.append(comment3)
+  >>> post2.comments.append(comment4)
+  >>> db.session.add(post2)
+  >>> db.session.commit()
+  #+END_SRC
++ 现在共有两条Post记录和四条Comment记录
+  #+BEGIN_SRC python
+  >>> Post.query.all()
+  [<Post 1>, <Post 2>]
+  >>> Comment.query.all()
+  [<Comment 1>, <Comment 2>, <Comment 3>, <Comment 4>]
+  #+END_SRC
++ 如果删除文章对象post2，那么对应的两个评论对象也会一并被删除
+  #+BEGIN_SRC python
+  >>> post2 = Post.quer2y.get(2)
+  >>> db.session.delete(post2)
+  >>> db.session.commit()
+  >>> Post.query.all()
+  [<Post 1>]
+  >>> Comment.query.all()
+  [<Comment 1>, <Comment 2>]
+  #+END_SRC
+***** delete-orphan
++ 这个模式是基于delete级联的，必须和delete级联一起使用，通常会设为all、delete-orphan，因为all包含delete。因此当cascade参数设为delete-orphan时，它首先包含delete级联的行为：当某个Post对象被删除时，所有相关的Comment对象都将被删除（delete级联）。除此之外，当某个Post对象（父对象）与某个Comment对象（子对象）解除关系时，也会删除该Comment对象，这个解除关系的对象被称为孤立对象（orphan object）。现在comments属性中的级联值为all、delete-orphan
+  #+BEGIN_SRC python
+  class Post(db.Model):
+      ...
+      comments = relationship('Comment', cascade='all, delete-orphan')
+  #+END_SRC
++ 创建一个文章对象post3和两个评论对象comment5和comment6，并将这两个评论对象与文章对象建立关系，将它们添加到数据库会话并提交
+  #+BEGIN_SRC python
+  >>> post3 = Post()
+  >>> comment5 = Comment()
+  >>> comment6 = Comment()
+  >>> post3.comments.append(comment5)
+  >>> post3.comments.append(comment6)
+  >>> db.session.add(post3)
+  >>> db.session.commit()
+  #+END_SRC
++ 现在数据库中共有两条文章记录和四条评论记录
+  #+BEGIN_SRC python
+  >>> Post.query.all()
+  [<Post 1>, <Post 3>]
+  >>> Comment.query.all()
+  [<Comment 1>, <Comment 2>, <Comment 5>, <Comment 6>]
+  #+END_SRC
++ 将comment5和comment6与post3解除关系并提交数据库会话
+  #+BEGIN_SRC python
+  >>> post3.comments.remove(comment5)
+  >>> post3.comments.remove(comment6)
+  >>> db.session.commit()
+  #+END_SRC
++ 默认情况下，相关评论对象的外键会被设为空值。因为我们设置了delete-orphan级联，所以现在你会发现解除关系的两条评论记录都被删除了
+  #+BEGIN_SRC python
+  >>> Comment.query.all()
+  [<Comment 1>, <Comment 2>]
+  #+END_SRC
++ delete和delete-orphan通常会在一对多关系模式中，而且“多”这一侧的对象附属于“一”这一侧的对象时使用。尤其是如果“一”这一侧的“父”对象不存在了，那么“多”这一侧的“子”对象不再有意义的情况。比如，文章和评论的关系就是一个典型的示例。当文章被删除了，那么评论也就没必要再留存。在这种情况下，如果不使用级联操作，那么我们就需要手动迭代关系另一侧的所有评论对象，然后一一进行删除操作
++ 对于这两个级联选项，如果你不会通过列表语义对集合关系属性调用remove（）方法等方式来操作关系，那么使用delete级联即可
++ 虽然级联操作方便，但是容易带来安全隐患，因此要谨慎使用。默认值能够满足大部分情况，所以最好仅在需要的时候才修改它
+**** 事件监听
++ 在Flask中，我们可以使用Flask提供的多个装饰器注册请求回调函数，它们会在特定的请求处理环节被执行。类似的，SQLAlchemy也提供了一个listen_for（）装饰器，它可以用来注册事件回调函数
++ listen_for（）装饰器主要接收两个参数，target表示监听的对象，这个对象可以是模型类、类实例或类属性等。identifier参数表示被监听事件的标识符，比如，用于监听属性的事件标识符有set、append、remove、init_scalar、init_collection等
++ 为了演示事件监听，我们创建了一个Draft模型类表示草稿，其中包含body字段和edit_time字段，分别存储草稿正文和被修改的次数，其中edit_time字段的默认值为0
+  #+BEGIN_SRC python
+  class Draft(db.Model):
+      id = db.Column(db.Integer, primary_key=True)
+      body = db.Column(db.Text)
+      edit_time = db.Column(db.Integer, default=0)
+  #+END_SRC
++ 通过注册事件监听函数，我们可以实现在body列修改时，自动叠加表示被修改次数的edit_time字段。在SQLAlchemy中，每个事件都会有一个对应的事件方法，不同的事件方法支持不同的参数。被注册的监听函数需要接收对应事件方法的所有参数，所以具体的监听函数用法因使用的事件而异。设置某个字段值将触发set事件
+  #+BEGIN_SRC python
+  @db.event.listens_for(Draft.body, 'set')
+  def increment_edit_time(target, value, oldvalue, initiator):
+      if target.edit_time is not None:
+          target.edit_time += 1
+  #+END_SRC
++ 在listen_for（）装饰器中分别传入Draft.body和set作为targe和identifier参数的值。监听函数接收所有set（）事件方法接收的参数，其中的target参数表示触发事件的模型类实例，使用target.edit_time即可获取我们需要叠加的字段。其他的参数也需要照常写出，虽然这里没有用到。value表示被设置的值，oldvalue表示被取代的旧值
++ 当set事件发生在目标对象Draft.body上时，这个监听函数就会被执行，从而自动叠加Draft.edit_time列的值
+  #+BEGIN_SRC python
+  >>> draft = Draft(body='init')
+  >>> db.session.add(draft)
+  >>> db.session.commit()
+  >>> draft.edit_time
+  0
+  >>> draft.body = 'edited'
+  >>> draft.edit_time
+  1
+  >>> draft.body = 'edited again'
+  >>> draft.edit_time
+  2
+  >>> draft.body = 'edited again again'
+  >>> draft.edit_time
+  3
+  >>> db.session.commit()
+  #+END_SRC
++ 除了这种传统的参数接收方式，即接收所有事件方法接收的参数，还有一种更简单的方法。通过在listen_for（）装饰器中将关键字参数name设为True，可以在监听函数中接收**kwargs作为参数（可变长关键字参数），即“named argument”。然后在函数中可以使用参数名作为键来从**kwargs字典获取对应的参数值
+  #+BEGIN_SRC python
+  @db.event.listens_for(Draft.body, 'set', named=True)
+  def increment_edit_time(**kwargs):
+      if kwargs['target'].edit_time is not None:
+          kwargs['target'].edit_time += 1
+  #+END_SRC
++ SQLAlchemy作为SQL工具集本身包含两大主要组件：SQLAlchemyORM和SQLAlchemy Core。前者实现了我们前面介绍的ORM功能，后者实现了数据库接口等核心功能，这两类组件都提供了大量的监听事件，几乎覆盖整个SQLAlchemy使用的生命周期
++ 除了使用listen_for装饰器，我们还可以直接使用它内部调用的listen（）函数注册事件监听函数时，第三个参数传入被注册的函数对象，比如db.event.listen（SomeClass，'load'，my_load_listener）
+* 项目要点
+** 使用包(Package)组织代码
++ Flask对项目的组织方式没有要求。对于小型项目，你完全可以把代码都放在一个主模块里，这也是第一部分的示例程序的组织方式。随着项目越来越大，更好的处理方式是将单一的模块升级为包（Package），把不同部分的代码分模块存放
++ 在Python中，每一个有效的Python文件（.py）都是模块。每一个包含__init__.py文件的文件夹都被视作包，包让你可以使用文件夹来组织模块
++ __init__.py文件通常被称作构造文件，文件可以为空，也可以用来放置包的初始化代码。当包或包内的模块被导入时，构造文件将被自动执行
++ SayHello程序的核心组件都放到一个包中，这个包称为程序包，包的名称通常使用程序名称，即sayhello，有时为了方便管理也会使用app作为包名称。除了程序代码，一个基本的Flask项目还包括其他必要的组件
+  - sayhello/ 程序包
+  - sayhello/__init__.py 构造文件，包含程序实例
+  - sayhello/templates/ 模板
+  - sayhello/static/ 静态文件，包含js和css文件夹
+  - sayhello/views.py 视图函数
+  - sayhello/forms.py 表单
+  - sayhello/errors.py 错误处理
+  - sayhello/models.py 数据库模型
+  - sayhello/commands.py 自定义flask命令
+  - sayhello/settings.py 配置文件
++ 在后面的开发中，各类代码都会按照类别存储在对应的模块中。这里的模块并不是固定的，如果你需要组织其他代码，那么可以自己创建对应的模块。比如，你可以创建一个callbacks.py脚本来存储各种注册在程序实例上的处理函数。相对的，如果你不需要创建自定义命令，那么也可以不创建commands.py脚本
+** 配置文件
++ 在Flask中，配置不仅可以通过config对象直接写入，还可以从文件中读取,把配置移动到一个单独的文件中，将其命名为settings.py（也常被命名为config.py）。当在单独的文件中定义配置时，不再使用config对象添加配置，而是直接以键值对的方式写出，和保存环境变量的.flaskenv文件非常相似
++ sayhello/settings.py：配置文件
+  #+BEGIN_SRC python
+  import os
+  from sayhello import app
+  dev_db = 'sqlite:///' + os.path.join(os.path.dirname(app.root_path),'data.db')
+  SECRET_KEY = os.getenv('SECRET_KEY', 'secret string')
+  SQLALCHEMY_TRACK_MODIFICATIONS = False
+  SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URI', dev_db)
+  #+END_SRC
++ 除了从Python脚本导入配置，Flask还提供了其他方式，比如使用from_json（）方法从JSON文件中导入，或是使用from_object（）方法从Python对象导入
++ 在创建程序实例后，使用config对象的from_pyfile（）方法即可加载配置，传入配置模块的文件名作为参数
+  #+BEGIN_SRC python
+  ...
+  app = Flask(__name__)
+  app.config.from_pyfile('settings.py')
+  #+END_SRC
+** 创建程序实例
++ 使用包组织程序代码后，创建程序实例、初始化扩展等操作可以在程序包的构造文件（__init__.py）中实现
+  #+BEGIN_SRC python
+  from flask import Flask
+  from flask_sqlalchemy import SQLAlchemy
+  app = Flask('sayhello')
+  app.config.from_pyfile('settings.py')
+  app.jinja_env.trim_blocks = True
+  app.jinja_env.lstrip_blocks = True
+  db = SQLAlchemy(app)
+  from sayhello import views, errors, commands
+  #+END_SRC
++ 在单脚本中创建程序实例时，我们传入__name__变量作为Flask类构造方法的import_name参数值。因为Flask通过这个值来确认程序路径，当使用包组织代码时，为了确保其他扩展或测试框架获得正确的路径值，我们最好以硬编码的形式写出包名称作为程序名称，即sayhello
++ 除了直接写出包名称，你也可以从__name__变量获取包名称，即app=Flask（__name__.split（'.'）[0]）
++ 启动程序时，首先被执行的是包含程序实例的脚本，即构造文件。但注册在程序实例上的各种处理程序均存放在其他脚本中，比如视图函数存放在views.py中、错误处理函数则存放在errors.py中。如果不被执行，那么这些视图函数和错误处理函数就不会注册到程序上，那么程序也无法正常运行。为了让使用程序实例app注册的视图函数，错误处理函数，自定义命令函数等和程序实例关联起来，我们需要在构造文件中导入这些模块。因为这些模块也需要从构造文件中导入程序实例，所以为了避免循环依赖，这些导入语句在构造文件的末尾定义
++ 从构造文件中导入变量时不需要注明构造文件的路径，只需要从包名称导入，比如导入在构造文件中定义的程序实例app可以使用fromsayhello import app
++ Flask在通过FLASK_APP环境变量定义的模块中寻找程序实例。所以在启动程序前，我们需要给.flaskenv中的环境变量FLASK_APP重新赋值，这里仅写出包名称即可
+  #+BEGIN_SRC python
+  FLASK_APP=sayhello
+  #+END_SRC
+** Web程序开发流程
+*** 概述
++ 前端开发的主要流程如下：
+  1. 根据功能规格书画页面草图（sketching）
+  2. 根据草图做交互式原型图（prototyping）
+  3. 根据原型图开发前端页面（HTML、CSS、JavaScript）
++ 后端开发的主要流程如下：
+  1. 数据库建模
+  2. 编写表单类
+  3. 编写视图函数和相关的处理函数
+  4. 在页面中使用Jinja2替换虚拟数据

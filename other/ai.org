@@ -1,0 +1,50 @@
+* 快捷键
+ + F5 画笔
+ + F6 颜色
+ + F7 图层
+ + F8 信息
+ + F9 渐变
+ + CTRL F10 描边
+ + CTRL F11 属性
+ + V 移动
+ + A 移动点
+ + R 旋转
+ + S 缩放
+ + M 矩形
+ + L 椭圆
+ + O 镜像
+ + P 钢笔
+ + T 文字
+ + CTRL SHIFT > 字体变大 
+ + CTRL SHIFT < 字体变小
+ + ALT 上下、左右 字体行距、间距大小
+ + CTRL + - 放大缩小视图
+ + CTRL 0 满画布显示
+ + CTRL 1 100%显示
+ + CTRL 2 锁定
+ + CTRL ALT 2 解除锁定
+ + CTRL 3 隐藏
+ + CTRL ALT 3 显示所有
+ + CTRL 7 裁切蒙版
+   要保证裁切路径在最上面
+ + CTRL ALT 7 解除蒙版
+ + , . / 颜色、渐变、无色
+ + CTRL ALT P 文档设置，调整页面大小
+ + CTRL G 群组
+ + CTRL SHIFT G 解散群组
+ + CTRL ] 前移一层
+ + CTRL [ 后移一层
+ + CTRL SHIFT ] 移到顶层
+ + CTRL SHIFT [ 移到底层
+
+* 技巧
+** 原位复制
+CTRL C
+CTRL F
+** 阵列
++ CTRL D 
+
+
+* 注意事项
++ 颜色值 CMYK设置为5的倍数
++ 后添加的图形会位于上面

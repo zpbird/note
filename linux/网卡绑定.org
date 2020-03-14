@@ -1,0 +1,44 @@
+* 新建bond0虚拟设备
+vi /etc/sysconfig/network-scripts/ifcfg-bond0
+输入
+DEVICE=bond0 BOOTPROTO=none ONBOOT=yes NETWORK=192.168.1.0 #网段 NETMASK=255.255.255.0 # 掩码 IPADDR=192.168.1.2 # 指定IP USERCTL=no GATEWAY=192.168.1.1 # 网关 TYPE=Ethernet
+
+* 修改所有真实网卡的配置
+vi /etc/sysconfig/network-scripts/ifcfg-eth0 vi /etc/sysconfig/network-scripts/ifcfg-eth1 ....
+内容修改为：
+DEVICE=eth0 # 这里填写对应的设备名称 BOOTPROTO=none ONBOOT=yes MASTER=bond0 SLAVE=yes USERCTL=yes
+
+* 将bond0加入modprobe
+vi /etc/modprobe.conf
+加入
+alias bond0 bonding options bond0 miimon=100 mode=0
+
+* 加入启动命令
+vi /etc/rc.d/rc.local
+加入
+ifenslave bond0 eth0 eth1
+其中eth0、eth1为真实网卡名称，按照实际情况填写
+
+* 重启系统后即可启动负载均衡式的bond
+
+第三步选项说明：
+miimon=100
+每100毫秒 (即0.1秒) 检查一次网络
+
+mode=0
+共有七种模式，常用的模式是0和1
+mode=0 : 负载均衡模式，所有网卡一起使用，峰值=所有网卡带宽的总和，当某个网卡故障，仅降低带宽，不影响其他网卡
+mode=1 : 热备模式，即一块网卡运行，其他待命，当运行的网卡故障，其他网卡顶上
+
+查看bond0状态：
+cat /proc/net/bonding/bond0
+
+若某个网卡的MII Status=down，表示该网卡无法连接网络
+此时应检查:
+1、网线是否插好
+2、网线是否损坏
+3、网卡配置是否正确
+4、网卡是否没插好
+5、网卡是否损坏
+
+注: 使用bond时，所有网卡接口都需用网线接上交换机和路由器

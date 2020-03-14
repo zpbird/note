@@ -1,0 +1,30 @@
+# 
+
+# deb cdrom:[Debian GNU/Linux 10.2.0 _Buster_ - Official amd64 DVD Binary-1 20191116-09:57]/ buster contrib main
+
+#deb cdrom:[Debian GNU/Linux 10.2.0 _Buster_ - Official amd64 DVD Binary-1 20191116-09:57]/ buster contrib main
+
+#deb http://security.debian.org/debian-security buster/updates main contrib
+#deb-src http://security.debian.org/debian-security buster/updates main contrib
+
+# buster-updates, previously known as 'volatile'
+# A network mirror was not selected during install.  The following entries
+# are provided as examples, but you should amend them as appropriate
+# for your mirror of choice.
+#
+# deb http://deb.debian.org/debian/ buster-updates main contrib
+# deb-src http://deb.debian.org/debian/ buster-updates main contrib
+
+deb https://mirrors.aliyun.com/debian/ buster main non-free contrib
+deb https://mirrors.aliyun.com/debian/ buster-updates main non-free contrib
+deb https://mirrors.aliyun.com/debian-security buster/updates main
+deb https://mirrors.aliyun.com/debian buster-backports main non-free contrib
+
+deb http://dl.google.com/linux/chrome/deb/ stable main
+
+
+mv /etc/apt/sources.list /etc/apt/sources.list.bak && \
+    echo "deb https://mirrors.aliyun.com/debian/ buster main non-free contrib" >/etc/apt/sources.list && \
+    echo "deb https://mirrors.aliyun.com/debian/ buster-updates main non-free contrib" >>/etc/apt/sources.list && \
+    echo "deb https://mirrors.aliyun.com/debian-security buster/updates main" >>/etc/apt/sources.list && \
+    echo "deb https://mirrors.aliyun.com/debian buster-backports main non-free contrib" >>/etc/apt/sources.list && \

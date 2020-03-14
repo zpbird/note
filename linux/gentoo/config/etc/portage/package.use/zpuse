@@ -1,0 +1,24 @@
+app-editors/emacs X dbus gif png svg tiff
+
+dev-vcs/git emacs
+
+net-misc/openssh -bindist
+# nodejs need this use
+
+
+
+media-libs/phonon qt4
+# required by app-office/libreoffice-bin-5.4.2.2-r1::gentoo
+# required by app-office/libreoffice-bin (argument)
+>=dev-libs/xmlsec-1.2.24-r1 nss
+# required by app-office/libreoffice-bin-5.4.2.2-r1::gentoo
+# required by app-office/libreoffice-bin (argument)
+>=media-libs/harfbuzz-1.7.2 icu
+# required by x11-misc/xdg-utils-1.1.1-r1::gentoo
+# required by app-office/libreoffice-bin-5.4.2.2-r1::gentoo
+# required by app-office/libreoffice-bin (argument)
+>=app-text/xmlto-0.0.26-r1 text
+# required by dev-util/itstool-2.0.2::gentoo
+# required by app-arch/file-roller-3.22.3::gentoo
+# required by app-arch/file-roller (argument)
+>=dev-libs/libxml2-2.9.6 python

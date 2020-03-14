@@ -1,0 +1,569 @@
+* 常用命令
++ 查看系统版本
+  cat /etc/issue
+  lsb_release -a
++ 查看内核版本
+  uname -r
++ 查看当前所有服务
+  service --status-all
++ 查看系统已有软件
+  dpkg -l
+  dpkg -l | grep ftp
++ 查看软件安装路径
+  dpkg -L | grep ftp
+  whereis ftp
++ 查看软件版本
+  apt list --installed | grep ftp
+  aptitude show softwarename(需要安装aptitude)
++ 卸载软件
+  sudo apt-get remove 软件名(+版本号)
+  sudo apt autoremove
++ 更新源
+  sudo  apt   update
++ 软件升级
+  sudo  apt  upgrade
++ 重启系统
+  /sbin/reboot
++ 切换到root
+  su
+* 安装
++ 准备non-free固件驱动
+  http://cdimage.debian.org/cdimage/unofficial/non-free/firmware/下载对应版本的固件文件
+  复制到一个U盘(fat32)根目录下的firmware文件夹（需要自己新建），安装的时候会自动检测到
++ 设置ip地址
+  - 查看网卡名称
+    ip addr
+  - 编辑网卡配置文件 /etc/network/interfaces 
+    auto ens32  #开机自动连接网络
+    iface ens32 inet static #static表示使用固定ip，dhcp表述使用动态ip
+    address 192.168.21.166 #设置ip地址
+    netmask 255.255.255.0 #设置子网掩码
+    gateway 192.168.21.2 #设置网关
+  - 重启网卡
+    /etc/init.d/networking restart
+  - 配置DNS
+    编辑配置文件 vim /etc/resolv.conf，如果此文件不存在，手动创建
+    nameserver 222.222.222.222
+  - 重启网络
+    service networking restart # 重启网络
+  - 验证
+    ip addr
++ 设置时区
+  "tzselect",来进行修改时区,提示我们把TZ='Asia/Shanghai'加入到系统环境变量内
+  根据提示修改/etc/profile文件
+  
++ 设置装源
+  更换apt源
+  deb https://mirrors.aliyun.com/debian/ buster main non-free contrib
+  deb https://mirrors.aliyun.com/debian/ buster-updates main non-free contrib
+  deb https://mirrors.aliyun.com/debian-security buster/updates main
+  deb https://mirrors.aliyun.com/debian/ buster-backports main non-free contrib
+
+  nano /etc/apt/sources.list
+  apt-get update 进行更新
+
+** 设置Locale(本地化)
++ 本地化的程序与库若要本地化文本，都依赖 Locale, 后者明确规定地域、货币、时区日期的格式、字符排列方式和其他本地化标准等等。在下面两个文件设置：locale.gen 与 locale.conf
++ /etc/locale.gen是一个仅包含注释文档的文本文件。指定您需要的本地化类型，只需移除对应行前面的注释符号（＃）即可，建议选择帶UTF-8的項
+  #+BEGIN_SRC shell
+  # nano /etc/locale.gen
+  en_US.UTF-8 UTF-8
+  zh_CN.UTF-8 UTF-8
+  #+END_SRC
++ 接着执行locale-gen以生成locale本地化文件
+  #+BEGIN_SRC shell
+  # locale-gen
+  #+END_SRC
+  每次glibc 更新之后也会运行 locale-gen
++ 创建 locale.conf 并提交您的本地化选项
+  - 将系统locale设置为en_US.UTF-8,系统的 Log 就会用英文显示,这样更容易问题的判断和处理,用户可以设置自己的 locale
+    #+BEGIN_SRC shell
+    # echo LANG=en_US.UTF-8 > /etc/locale.conf
+    #+END_SRC
+  - 不推荐在此设置任何中文locale，或导致tty乱码
++ 如果你需要修改键盘布局,并想让这个设置持续生效,编辑vconsole.conf
+  #+BEGIN_SRC shell
+  # vi /etc/vconsole.conf
+  KEYMAP=de-latin1
+  #+END_SRC
+** 安装sudo
++ 安装
+  apt install sudo
++ 配置
+  修改 /etc/sudoers 文件
+  其内容设置如下：
+  "user" ALL=(ALL) ALL
+** 安装xinit
++ 安装(否则/usr/share中没有fonts目录)
+  sudo apt install xinit
+** 字体
+*** 手动安装字体
++ inux系统的字体文件放在/usr/share/fonts/目录以及用户的~/.fonts和~/.local/share/fonts目录下，第一个位置为系统所用用户共享，将字体安装到这个目录需要管理员权限；后面两个位置则为当前登陆用户所有,安装字体到这个目录不需要管理员权限
++ 安装到 /usr/share/fonts/ 
+  #+BEGIN_SRC shell
+  wget https://github.com/fangwentong/dotfiles/raw/master/ubuntu-gui/fonts/Monaco.ttf
+  sudo mkdir -p /usr/share/fonts/custom
+  sudo mv Monaco.ttf /usr/share/fonts/custom
+  sudo chmod 777 /usr/share/fonts/custom/Monaco.ttf
+  
+  # 进入字体目录
+  可能需要安装fontconfig工具 sudo apt install fontconfig
+  sudo mkfontscale  #生成核心字体信息
+  sudo mkfontdir
+  sudo fc-cache -fv
+  #+END_SRC
++ 查看系统字体
+  fc-list            # 查看系统中安装的字体
+  fc-list :lang=zh   # 查看系统中安装的中文字体
+  fc-match --sort    # 显示用于设置时到字体名称
+  fc-match           # 查看系统当前默认字体
+*** 设置linux系统默认字体
++ 常用字体的设置名称
+  "WenQuanYi Micro Hei"
+  "WenQuanYi Micro Hei Mono"
+  "Source Code Pro"
++ 手动设置
+    #+BEGIN_SRC conf
+    # 修改/etc/fonts/conf.d/51-local.conf文件或~/.config/fontconfig/font.conf文件
+    <?xml version="1.0"?>
+    <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+    <fontconfig>
+    <!-- created by WenQuanYi FcDesigner v0.5 -->
+    <match>
+        <test name="family"><string>sans-serif</string></test>
+        <edit name="family" mode="prepend" binding="strong">
+            <string>WenQuanYi Micro Hei</string>
+        </edit>
+    </match>
+    <match>
+        <test name="family"><string>serif</string></test>
+        <edit name="family" mode="prepend" binding="strong">
+            <string>Source Code Pro</string>
+        </edit>
+    </match>
+    <match>
+        <test name="family"><string>monospace</string></test>
+        <edit name="family" mode="prepend" binding="strong">
+            <string>WenQuanYi Micro Hei Mono</string>
+        </edit>
+    </match>
+    </fontconfig>
+    #+END_SRC
++ 辅助工具
+  - [[http://wenq.org/cloud/fcdesigner_local.html][网站生成fonts.conf文件]]
+      在网页中拖动已有字体顺序，越靠上，优先级越高，第一个为默认字体
+      如果需要对所有用户生效，则把内容放到/etc/fonts/conf.d/51-local.conf中，重启生效
++ 刷新字体缓存
+  #+BEGIN_SRC shell
+  # fc-cache -fv
+  #+END_SRC
+** 安装窗口管理器
+*** awesome 
+**** 安装
++ sudo apt install awesome
+**** 启动
+***** 不使用登陆管理器
++ 添加exec awesome到你的启动脚本（比如 ~/.xinitrc）
+***** 使用登陆管理器 
+**** 配置
+***** 目录
++ /etc/xdg/awesome存放默认的配置文件,当用户家目录中存在.config/awesome/rc.lua文件优先级最高
++ /usr/share/awesome存放默认库文件、图标文件、主题文件，如果使用其他位置的附加资源需要在配置文件中指定目录
++ 附加库可以存放在~/.config/awesome下
+  |---------------------------------------+--------------------------------------------------------+----------|
+  | libs                                  | link                                                   | describe |
+  |---------------------------------------+--------------------------------------------------------+----------|
+  | Lain                                  | https://github.com/lcpz/lain                           |          |
+  | Vicious                               | https://github.com/Mic92/vicious                       |          |
+  | Countdown                             | https://awesomewm.org/recipes/countdown/               |          |
+  | MPD current song                      | https://awesomewm.org/recipes/mpc/                     |          |
+  | Awesome "Watch" widget usage examples | https://awesomewm.org/recipes/watch/                   |          |
+  | PulseAudio                            | https://github.com/stefano-m/awesome-pulseaudio_widget |          |
+  | Connman (network manager)             | https://github.com/stefano-m/awesome-connman_widget    |          |
+  | Battery Indicator (UPower)            | https://github.com/stefano-m/awesome-power_widget      |          |
+  | Google Play Music Desktop Player      | https://awesomewm.org/recipes/gpmdp/                   |          |
+  | Set of simple widgets                 | https://github.com/streetturtle/awesome-wm-widgets     |          |
+  |---------------------------------------+--------------------------------------------------------+----------|
+    
+***** 创建配置文件
++ awesome会在下面几个地方查找配置文件
+  #+BEGIN_SRC shell
+  $HOME/.config/awesome/rc.lua
+  $XDG_CONFIG_HOME/awesome/rc.lua
+  $XDG_CONFIG_DIRS/awesome/rc.lua
+  #+END_SRC
++ 创建配置文件所在的文件夹 
+  #+BEGIN_SRC shell
+  # mkdir -p ~/.config/awesome/
+  #+END_SRC
++ 配置文件
+  Awesome会自动使用~/.config/awesome/rc.lua里的所有配置。这个文件并不会自动创建，所以我们先要从模板复制一个过来
+  #+BEGIN_SRC shell
+  # cp /etc/xdg/awesome/rc.lua ~/.config/awesome
+  #+END_SRC
+  配置文件的语法会随着Awesome的版本升级而变化,所以当升级了之后遇到问题时,重复上面的步骤,或者你得手动修改配置文件
+***** 库文件
++ awesome使用的默认库文件存放中/usr/share/awesome/lib中
++ 自己附加到库文件夹可以存放中~/.config/awesome/下
+***** 调试rc.lua
+****** 使用Xephyr
++ 用这种方式可以在不破坏现有桌面的情况下对rc.lua进行测试,首先把rc.lua复制到一个新文件rc.lua.new,接着进行修改,然后在Xephyr中运行新的rc.lua,Xephyr允许你在XWindow中植入一个新的XWindow,可以测试新的rc.lua 
+  #+BEGIN_SRC shell
+  # Xephyr -ac -br -noreset -screen 1152x720 :1 &
+  # DISPLAY=:1.0 awesome -c ~/.config/awesome/rc.lua.new
+  #+END_SRC
++ 这种方式的巨大优势在于如果你弄坏了rc.lua.new,你不至于把现有的Awesome桌面弄得一团糟,一旦你觉得新的配置文件不错,就用rc.lua.new代替rc.lua,然后重启Awesome
+****** 使用awmtt(AUR)
++ awmtt(Awesome WM Testing Tool)是一个基于Xephyr的易于使用的脚本,默认情况下,它会测试~/.config/awesome/rc.lua.test,如果该文件不存在,它会测试当前使用的rc.lua,也可以指定要测试的配置文件所在路径
+  #+BEGIN_SRC shell
+  # awmtt start -C ~/.config/awesome/rc.lua.new
+  当测试完成后，使用以下命令关闭窗口:
+  # awmtt stop
+  通过以下命令立即查看变化:
+  # awmtt restart
+  #+END_SRC
+***** 改变键盘布局
++ 如果需要使用不同的键盘布局[qwerty -> dvorak]有两种方法
+  - 按照Awesome Wiki更改Awesome的配置
+  - 在xorg settings改变键盘布局
+***** 自动运行程序
++ Awesome不会运行那些被Freedesktop如GNOME或KDE设置为自动运行的程序,不过Awesome提供了一些运行程序的函数(除了Lua标准库里的函数os.execute),要运行跟GNOME或KDE里一样自动运行的程序,你可以从AUR安装dex-gitAUR,然后在你的rc.lua里加入
+  #+BEGIN_SRC conf
+  os.execute"dex -a -e Awesome"
+  #+END_SRC
++ 如果你只想列出一些程序来在让Awesome启动时运行,你可以创建一个你需要启动命令的列表然后循环启动
+  #+BEGIN_SRC conf
+  do
+    local cmds = 
+    { 
+      "swiftfox",
+      "mutt",
+      "consonance",
+      "linux-fetion",
+      "weechat-curses",
+      --and so on...
+    }
+
+    for _,i in pairs(cmds) do
+      awful.util.spawn(i)
+    end
+  end
+  #+END_SRC
++ 如要程序仅在当前没有运行情况下运行,你可以只在pgrep找不到跟它一样名字的进程的时候运行它
+  #+BEGIN_SRC conf
+  function run_once(prg)
+    awful.util.spawn_with_shell("pgrep -u $USER -x " .. prg .. " || (" .. prg .. ")")
+  end
+  #+END_SRC
+  例如：要在当前 parcellite 没有运行的情况下运行 parcellite
+  #+BEGIN_SRC conf
+  run_once("parcellite")
+  #+END_SRC
+***** 使用其他任务栏
++ 不喜欢默认那个任务栏的外观,可以安装其他的.比如xfce4-panel
+  #+BEGIN_SRC shell
+  # sudo pacman -S xfce4-panel
+  #+END_SRC
++ 要把它添加到配置文件rc.lua的自动启动部分(该如何写请看wiki吧).你可以注释掉配置文件中给每个桌面创建wiboxes的那部分(开头是"mywibox[s] = awful.wibox({ position = "top", screen = s })"),因为已经不需要了,检查配置文件没有错误之后就可以执行命令生效
+  #+BEGIN_SRC shell
+  # awesome -k rc.lua
+  #+END_SRC
++ 需要改变"modkey+R"的快捷键绑定,比如用Xfrun4, bashrun等,来替代awesome自带的启动器
+  #+BEGIN_SRC conf
+  properties = { floating = true } },
+  { rule = { instance = "$yourapplicationlauncher" },
+  #+END_SRC
+***** menubar(modkey+p)
++ 它仅搜索位于/usr/share/applications及/usr/local/share/applications目录下的.desktop文件（后者很可能在大多数 Arch 用户的系统中都不存在）为了改变这一情况,可以把下面这行代码加入到你的rc.lua（最好能把它加到"Menubar configuration" 那一部分中）
+  #+BEGIN_SRC conf
+  app_folders = { "/usr/share/applications/", "~/.local/share/applications/" }
+  #+END_SRC
++ 注意:每次Awesime启动都会重新读取.desktop文件,因此文件过多会拖慢Awesome的启动速度,如果你更喜欢使用其他方式来运行程序,可以通过在rc.lua移除local menubar = require("menubar")及其它涉及到menubar的变量来禁用菜单栏
+***** 标题栏
++ 你可以很容易地在配置文件中把titlebars_enabled设置为true来启用标题栏,如果想要切换标题栏的显示与否,可以把以下代码加入配置文件,然后通过按modkey+Ctrl+t来切换
+  #+BEGIN_SRC conf
+  awful.key({ modkey, "Control" }, "t",
+   function (c)
+       -- toggle titlebar
+       awful.titlebar.toggle(c)
+   end)
+  #+END_SRC
++ 默认隐藏标题栏，仅需要在配置文件中标题栏创建后加入以下代码
+  #+BEGIN_SRC conf
+  awful.titlebar.hide(c)
+  #+END_SRC
+***** 主题
+******* Beautiful
++ 可以让你动态地改变背景图片和颜色主题，而不需要改变 rc.lua
++ 默认的主题文件在/usr/share/awesome/themes/default,把它复制到~/.config/awesome/themes/default然后修改一下rc.lua中的theme_path
+  #+BEGIN_SRC conf
+  beautiful.init(awful.util.getdir("config") .. "/themes/default/theme.lua")
+  #+END_SRC
+***** 问题处理
+****** Fix Java(GUI appears gray only)
+***** rc.lua范例
+**** 快捷键 
+快捷键可以在rc.lua中搜索Key bindings修改
++ Mod4 默认为Win键
++ Mod4+s awesome快捷键帮助菜单 
++ Mod4+Enter 打开终端
++ Mod4+r 执行命令或程序
++ Mod4+1~9 切换到指定tag
++ Mod4+Space 切换桌面布局
++ Mod4+Shift+Space 当前布局切换为前一个布局
++ mod4+ctrl+1~9 把当前桌面和1～9桌面同时显示
++ Mod4+Ctrl+r 重启awesome
++ Mod4+w 打开awesome主菜单
++ Mod4+Shift+C 关闭当前窗口/程序
++ Mod4+Left/Right 左右切换tag
++ Mod4+h/l 调整主区域宽度
++ Mod4+j/k 切换窗口
++ Mod4+t 标记窗口
++ Mod4+m/n 最大化/最小化窗口
++ Mod4+Esc 切换到上一个桌面
++ Mod4+Control+space 切换当前窗口是否浮动
++ Mod4+Shift+j 当前窗口和前一个/后一个窗口切换位置
++ Mod4+Shift+1~9 把标记的窗口移动到 tag 1~9
++ Mod4+Shift+q 注销用户(logout),退出awesome
+**** 使用theme
+***** awesome-copycats
++ 安装
+  #+BEGIN_SRC shell
+  # git clone --recursive https://github.com/lcpz/awesome-copycats.git
+  # mv -bv awesome-copycats/* ~/.config/awesome; rm -rf awesome-copycats
+  #+END_SRC
++ 启用
+  #+BEGIN_SRC shell
+  # cd ~/.config/awesome
+  # cp rc.lua.template rc.lua
+  #+END_SRC
++ 配置
+  - 选择其他theme
+    在rc.lua文件中查找chosen_theme变量，设置不同主题
+  - 修改主题
+    修改theme目录下对应主题的theme.lua文件
+** Terminal(终端工具)
+*** urxvt
+**** 安装
+sudo apt install rxvt-unicode 
+**** 配置
+***** 配置文件
++ ~/.Xresources 如果没有则创建此文件，填入范例中的内容
+***** 范例 
+#+BEGIN_SRC conf
+Xft.dpi:                        109
+URxvt*termName:                 rxvt-256color
+URxvt*font:                     xft:Menlo:pixelsize=12,xft:Inconsolata\ for\ Powerline:pixelsize=12
+URxvt.depth:                    0
+URxvt*lineSpace:                1
+URxvt.letterSpace:              -1
+URxvt.iso14755:                 false
+URxvt.iso14755_52:              false
+URxvt*geometry:                 65x17
+URxvt.scrollBar:                false
+URxvt*loginShell:               true
+URxvt.internalBorder:           35
+URxvt.perl-ext-common:          default,clipboard
+URxvt.keysym.Shift-Control-C:   perl:clipboard:copy
+URxvt.keysym.Shift-Control-V:   perl:clipboard:paste
+URxvt.clipboard.autocopy: true
+
+! Dracula Xresources palette
+*.foreground: #F8F8F2
+*.background: #282A36
+*.color0:     #000000
+*.color8:     #4D4D4D
+*.color1:     #FF5555
+*.color9:     #FF6E67
+*.color2:     #50FA7B
+*.color10:    #5AF78E
+*.color3:     #F1FA8C
+*.color11:    #F4F99D
+*.color4:     #BD93F9
+*.color12:    #CAA9FA
+*.color5:     #FF79C6
+*.color13:    #FF92D0
+*.color6:     #8BE9FD
+*.color14:    #9AEDFE
+*.color7:     #BFBFBF
+*.color15: #E6E6E6
+#+END_SRC
+***** 主题
++ https://github.com/logico-dev/Xresources-themes
+  - 安装
+    #+BEGIN_SRC shell
+    # git clone https://github.com/logico-dev/Xresources-themes.git
+    #+END_SRC
+  - 配置
+    put this line in ~/.Xresources
+    #include "/path-to/Xresources-theme/theme.Xresources" 需要使用绝对路径
+** 安装chrome
+wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+apt install ./google-chrome-stable_current_amd64.deb
+** File Manager(文件管理器)
+*** pcmanfm
++ 安装
+  sudo apt install pcmanfm
+** 压缩软件(GUI)
+*** File Roller(压缩工具)
++ 安装
+  sudo apt install file-roller
+** Launch(启动器)
+*** rofi(应用程序启动器)
++ 安装
+  sudo apt install rofi
++ 配置
+  - 添加awesome快捷键rc.lua
+    #+BEGIN_SRC lua
+     -- Customize Keybind zpbird
+    awful.key({ "Mod1" }, "l", function() awful.spawn("rofi -show run") end,
+       {description = "the launcher rofi", group = "launcher"}),
+    awful.key({ modkey, "Shift" }, "s", function() awful.spawn("shutdown -h now") end,
+       {description = "shutdown", group = "system"}),
+    awful.key({ modkey, "Shift" }, "r", function() awful.spawn("reboot") end,
+       {description = "reboot", group = "system"}),
+    #+END_SRC
++ 命令
+  #+BEGIN_SRC shell
+  # rofi -show run  # 显示系统支持的命令或程序
+  # rofi -show window  # 显示已经打开的程序
+  #+END_SRC
+** 中文输入法
+*** Fcitx输入框架
+**** 安装
+sudo apt install fcitx fcitx-rime (fcitx-configtool)
+**** 配置rime
++ 有时候需要在fcitx的图标中设置添加rime输入法
++ 默认配置文件 /usr/share/rime-data/default.yaml，但用户目录中的配置文件优先级更高~/.config/fcitx/rime/default.yaml
++ 或者在 ~/.config/fcitx/rime/ 目录下新建 default.custom.yaml 文件， 将你需要更改的配置由default.yaml 复制到其中的 patch: 下。
+  注意 ：rime会优先考虑patch里的设置，如：
+  patch:
+
+    schema_list:
+      - schema: luna_pinyin
+      - schema: luna_pinyin_fluency
+  #    - schema: bopomofo
+  #    - schema: bopomofo_tw 
+  #    - schema: cangjie5
+  #    - schema: stroke
+  #    - schema: terra_pinyin
+
+  menu/page_size: 8
+  具体某个输入法的设置可以依葫芦画瓢，比如新建 luna_pinyin.custom.yaml
+  patch:
+
+    switches:
+      - name: ascii_mode
+        reset: 0
+      states: [ 中文, 西文 ]
+      - name: full_shape
+        states: [ 半角, 全角 ]
+      - name: simplification
+        reset: 1
+        states: [ 漢字, 汉字 ]
+      - name: ascii_punct
+        states: [ 。，, ．， ] 
+  这种做法可以让我们在轻松的保存自己的配置，以便进行同步
+**** 配置系统
++ 设置输入法
+  - DE环境(KDM、GDM、LightDM)下,向~/.xprofile添加
+    #+BEGIN_SRC conf
+    export GTK_IM_MODULE=fcitx
+    export QT_IM_MODULE=fcitx
+    export XMODIFIERS="@im=fcitx"
+    
+    # export LANG=zh_CN.UTF-8
+    # export LANGUAGE=zh_CN:en_US
+    export LC_CTYPE=zh_CN.UTF-8   # 不设置此局emacs在GUI下无法输入中文 
+    # export LC_CTYPE=en_US.UTF-8
+    #+END_SRC
+  - xinit方式下,向~/.xinitrc添加，并要求在exec语句之前
+    #+BEGIN_SRC conf
+    # 不设置此局emacs在GUI下无法输入中文 
+    export LC_CTYPE=zh_CN.UTF-8   
+
+    export GTK_IM_MODULE=fcitx
+    export QT_IM_MODULE=fcitx
+    export XMODIFIERS="@im=fcitx"
+    exec fcitx &    
+    #+END_SRC
+** NetworkManager
+功能：profiles支持(yes) 自动连接和重连(Yes) PPP支持3G(Yes) 官方GUI(yes) 控制台工具(nmcli,nmtui)
+*** 安装
+#+BEGIN_SRC shell
+sudo apt install wpasupplicant
+sudo apt install network-manager
+sudo apt install  network-manager-gnome
+重启计算机
+#+END_SRC
++修改/usr/lib/NetworkManager/conf.d/10-globally-managed-devices.conf找到“unmanaged-devices”一行，在最后添加“,except:type:ethernet” （以上不包括引号）
++ 网络管理内部获得了对基本DHCP功能的支持。对于全功能的DHCP或者如果你需要IPV6支持，dhclient 集成了这些功能
+*** 配置文件(通常无需设置)
++ 在/etc/NetworkManager/NetworkManager.conf有一个全局的配置文件,通常全局的默认配置不需要改动
+*** 前端
+**** network-manager-applet
++ GTK3+前端小程序，工作在Xorg环境下，带有一个系统托盘
+  #+BEGIN_SRC conf
+  # /etc/X11/xinit/xinitrc
+  exec nm-applet &
+  exec nm-applet --no-agent   在消息服务器被禁用到情况下使用--no-agent选项
+
+  #+END_SRC
++ 也可以添加到DE或WM的配置文件中实现自动启动
+  例如Awesome
+  #+BEGIN_SRC conf
+  -- Autorun Programs
+  autorun = true
+  autorunApps =   
+  {   
+      -- "gnome-settings-daemon",
+      "nm-applet",  
+      "~/.nutstore/dist/bin/nutstore-pydaemon.py",
+  }  
+    
+  if autorun then  
+      for app = 1, #autorunApps do  
+          awful.util.spawn_with_shell(autorunApps[app])  
+      end  
+  end
+  #+END_SRC
+**** GNOME applet
++ ???在一些 non-xdg-compliant 窗口系统，比如 Awesome 中启动 GNOME applet
+  #+BEGIN_SRC shell
+  # nm-applet --sm-disable &
+  #+END_SRC
+** virtualbox
++ 参照官网有详细说明
+** 浏览器
+*** firefox
++ 安装
+  sudo apt install iceweasel
++ flash插件
+  下载地址：http://get.adobe.com/cn/flashplayer/ 
+  找到libflashplayer.so文件和usr/这个文件夹，
+  复制libflashplayer.so到/usr/lib/mozilla/plugins
+  把解压出的usr/文件夹复制到/usr
+*** chrome
+wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+sudo apt install ./google-chrome-stable_current_amd64.deb
+此命令将在Debian上安装Google Chrome，在此过程中，它还会添加Google存储库，以便你的系统自动更新
+** PDF
+*** evince
+sudo apt-get install evince 
+** Nodejs
+sudo apt install nodejs npm
+当提示npm与node版本不匹配时升级npm
+sudo npm install -g npm
+npm -v 如果版本号未改变，则需要重启电脑
+** 截图工具
++ flameshot
+** 坚果云
++ 需要中启动文件中当python后加数字3即python3
+** grub编辑工具
++ 安装
+  sudo apt install grub-customizer
++ 使用
+  需要在root权限下使用
+** 包管理软件
+*** gdebi
+sudo apt install gdebi

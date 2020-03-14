@@ -1,0 +1,2826 @@
+* 请求–响应循环 
+** 应用和请求上下文 
++ 为了避免大量可有可无的参数把视图函数弄得一团糟，Flask 使用上下文 临时把某些对象变为全局可访问。有了上下文，便可以像下面这样编写视图函数
+  #+BEGIN_SRC python
+  from flask import request
+  @app.route('/')
+  def index():
+      user_agent = request.headers.get('User-Agent')
+      return '<p>Your browser is {}</p>'.format(user_agent)
+  #+END_SRC
++ 在这个视图函数中我们把 request 当作全局变量使用。事实上，request 不可能是全局变量。试想，在多线程服务器中，多个线程同时处理不同客户端发送的不同请求时，每个线程看到的 request 对象必然不同。Flask 使用上下文让特定的变量在一个线程中全局可访问，与此同时却不会干扰其他线程
++ 线程是可单独管理的最小指令集。进程经常使用多个活动线程，有时还会共享内存或文件句柄等资源。多线程 Web 服务器会创建一个线程池，再从线程池中选择一个线程处理接收到的请求
++ 在 Flask 中有两种上下文：应用上下文 和请求上下文
+  - current_app  应用上下文  当前应用的应用实例
+  - g            应用上下文  处理请求时用作临时存储的对象，每次请求都会重设这个变量
+  - request      请求上下文  请求对象，封装了客户端发出的 HTTP 请求中的内容
+  - session      请求上下文  用户会话，值为一个字典，存储请求之间需要“记住”的值
++ Flask 在分派请求之前激活（或推送 ）应用和请求上下文，请求处理完成后再将其删除。应用上下文被推送后，就可以在当前线程中使用current_app 和 g 变量。类似地，请求上下文被推送后，就可以使用request 和 session 变量。如果使用这些变量时没有激活应用上下文或请求上下文，就会导致错误
+  #+BEGIN_SRC python
+  >>> from hello import app
+  >>> from flask import current_app
+  >>> current_app.name
+  Traceback (most recent call last):
+  ...
+  RuntimeError: working outside of application context
+  >>> app_ctx = app.app_context()
+  >>> app_ctx.push()
+  >>> current_app.name
+  'hello'
+  >>> app_ctx.pop()
+  #+END_SRC
+** 请求分派
++ 应用收到客户端发来的请求时，要找到处理该请求的视图函数。为了完成这个任务，Flask 会在应用的 URL 映射 中查找请求的 URL。URL 映射是 URL 和视图函数之间的对应关系。Flask 使用 app.route 装饰器或者作用相同的 app.add_url_rule() 方法构建映射
++ 要想查看 Flask 应用中的 URL 映射是什么样子，可以在 Python shell 中审查为 hello.py 生成的映射。测试之前，请确保你激活了虚拟环境
+  #+BEGIN_SRC python
+  (venv) $ python
+  >>> from hello import app
+  >>> app.url_map
+  Map([<Rule '/' (HEAD, OPTIONS, GET) -> index>,<Rule '/static/<filename>' (HEAD, OPTIONS, GET) -> static>,<Rule '/user/<name>' (HEAD, OPTIONS, GET) -> user>])
+  #+END_SRC
+  / 和 /user/<name > 路由在应用中使用 app.route 装饰器定义。/static/<filename > 路由是 Flask 添加的特殊路由，用于访问静态文件
+** 请求对象(request)
++ Flask请求对象(request)属性和方法
+  - form  一个字典，存储请求提交的所有表单字段
+  - args  一个字典，存储通过 URL 查询字符串传递的所有参数
+  - values  一个字典， form 和 args 的合集
+  - cookies  一个字典，存储请求的所有 cookie
+  - headers  一个字典，存储请求的所有 HTTP 首部
+  - files  一个字典，存储请求上传的所有文件
+  - get_data()  返回请求主体缓冲的数据
+  - get_json()  返回一个 Python 字典，包含解析请求主体后得到的 JSON
+  - blueprint  处理请求的 Flask 蓝本的名称
+  - endpoint  处理请求的 Flask 端点的名称；Flask 把视图函数的名称用作路由端点的名称
+  - method  HTTP 请求方法，例如 GET 或 POST
+  - scheme  URL 方案（ http 或 https ）
+  - is_secure()  通过安全的连接（HTTPS）发送请求时返回 True
+  - host  请求定义的主机名，如果客户端定义了端口号，还包括端口号
+  - path  URL 的路径部分
+  - query_string  URL 的查询字符串部分，返回原始二进制值
+  - full_path  URL 的路径和查询字符串部分
+  - url  客户端请求的完整 URL
+  - base_url  同 url ，但没有查询字符串部分
+  - remote_addr  客户端的 IP 地址
+  - environ  请求的原始 WSGI 环境字典
+** 请求钩子
++ 有时在处理请求之前或之后执行代码会很有用。例如，在请求开始时，我们可能需要创建数据库连接或者验证发起请求的用户身份。为了避免在每个视图函数中都重复编写代码，Flask 提供了注册通用函数的功能，注册的函数可在请求被分派到视图函数之前或之后调用
++ 请求钩子通过装饰器实现。Flask 支持以下 4 种钩子
+  - before_request
+    注册一个函数，在每次请求之前运行
+  - before_first_request
+    注册一个函数，只在处理第一个请求之前运行。可以通过这个钩子添加服务器初始化任务
+  - after_request
+    注册一个函数，如果没有未处理的异常抛出，在每次请求之后运行
+  - teardown_request
+    注册一个函数，即使有未处理的异常抛出，也在每次请求之后运行
++ 在请求钩子函数和视图函数之间共享数据一般使用上下文全局变量 g 。例如，before_request 处理程序可以从数据库中加载已登录用户，并将其保存到 g.user 中。随后调用视图函数时，便可以通过 g.user 获取用户
+** 响应
++ Flask 调用视图函数后，会将其返回值作为响应的内容。多数情况下，响应就是一个简单的字符串，作为 HTML 页面回送客户端
++ 但 HTTP 协议需要的不仅是作为请求响应的字符串。HTTP 响应中一个很重要的部分是状态码 ，Flask 默认设为 200，表明请求已被成功处理
++ 如果视图函数返回的响应需要使用不同的状态码，可以把数字代码作为第二个返回值，添加到响应文本之后。例如，下述视图函数返回 400 状态码，表示请求无效
+  #+BEGIN_SRC python
+  @app.route('/')
+  def index():
+      return '<h1>Bad Request</h1>', 400
+  #+END_SRC
++ 视图函数返回的响应还可接受第三个参数，这是一个由 HTTP 响应首部组成的字典
++ 如果不想返回由 1 个、2 个或 3 个值组成的元组，Flask 视图函数还可以返回一个响应对象 。make_response() 函数可接受 1 个、2 个或 3 个参数（和视图函数的返回值一样），然后返回一个等效的响应对象。有时我们需要在视图函数中生成响应对象，然后在响应对象上调用各个方法，进一步设置响应。下例创建一个响应对象，然后设置 cookie
+  #+BEGIN_SRC python
+  from flask import make_response
+  @app.route('/')
+  def index():
+      response = make_response('<h1>This document carries a cookie!</h1>')
+      response.set_cookie('answer', '42')
+      return response
+  #+END_SRC
++ 响应对象最常使用的属性和方法(response)
+  - status_code HTTP 数字状态码
+  - headers  一个类似字典的对象，包含随响应发送的所有首部
+  - set_cookie()  为响应添加一个 cookie
+  - delete_cookie()   删除一个 cookie
+  - content_length  响应主体的长度
+  - content_type  响应主体的媒体类型
+  - set_data()  使用字符串或字节值设定响应
+  - get_data()  获取响应主体
++ 响应有个特殊的类型，称为重定向 。这种响应没有页面文档，只会告诉浏览器一个新 URL，用以加载新页面。重定向经常在 Web 表单中使用
++ 重定向的状态码通常是 302，在 Location 首部中提供目标 URL。重定向响应可以使用 3 个值形式的返回值生成，也可在响应对象中设定。不过，由于使用频繁，Flask 提供了 redirect() 辅助函数，用于生成这种响应
+  #+BEGIN_SRC python
+  from flask import redirect
+  @app.route('/')
+  def index():
+      return redirect('http://www.example.com')
+  #+END_SRC
++ 还有一种特殊的响应由 abort() 函数生成，用于处理错误。在下面这个例子中，如果 URL 中动态参数 id 对应的用户不存在，就返回状态码404,abort() 不会把控制权交还给调用它的函数，而是抛出异常
+  #+BEGIN_SRC python
+  from flask import abort
+  @app.route('/user/<id>')
+  def get_user(id):
+      user = load_user(id)
+      if not user:
+          abort(404)
+      return '<h1>Hello, {}</h1>'.format(user.name)
+  #+END_SRC
+** Flask扩展
++ Flask 的设计考虑了可扩展性，故而没有提供一些重要的功能，例如数据库和用户身份验证，所以开发者可以自由选择最适合应用的包，或者按需求自行开发。社区成员开发了大量不同用途的 Flask 扩展，如果这还不能满足需求，任何 Python 标准包或代码库都可以使用
+* 模板
++ 模板是包含响应文本的文件，其中包含用占位变量表示的动态部分，其具体值只在请求的上下文中才能知道。使用真实值替换变量，再返回最终得到的响应字符串，这一过程称为渲染
+** Jinja2模板引擎
+*** 渲染模板
++ 默认情况下，Flask 在应用目录中的 templates 子目录里寻找模板+ Flask 提供的 render_template() 函数把 Jinja2 模板引擎集成到了应用中。这个函数的第一个参数是模板的文件名，随后的参数都是键 – 值对，表示模板中变量对应的具体值。在这段代码中，第二个模板收到一个名为 name 的变量
+  #+BEGIN_SRC python
+  from flask import Flask, render_template
+  # ...
+  @app.route('/')
+  def index():
+      return render_template('index.html')
+  @app.route('/user/<name>')
+  def user(name):
+      return render_template('user.html', name=name)
+  #+END_SRC
++ 前例中的 name=name 是经常使用的关键字参数，如果你不熟悉的话，可能不知所云。左边的 name 表示参数名，就是模板中使用的占位符；右边的 name 是当前作用域中的变量，表示同名参数的值。两侧使用相同的变量名是很常见，但不是强制要求
+*** 变量
++ 在模板中使用的 {{ name }} 结构表示一个变量，这是一种特殊的占位符，告诉模板引擎这个位置的值从渲染模板时使用的数据中获取
++ Jinja2 能识别所有类型的变量，甚至是一些复杂的类型，例如列表、字典和对象。下面是在模板中使用变量的一些示例
+  #+BEGIN_SRC python
+  <p>A value from a dictionary: {{ mydict['key'] }}.</p>
+  <p>A value from a list: {{ mylist[3] }}.</p>
+  <p>A value from a list, with a variable index: {{ mylist[myintvar] }}.</p>
+  <p>A value from an object's method: {{ myobj.somemethod() }}.</p>
+  #+END_SRC
++ 变量的值可以使用过滤器 修改。过滤器添加在变量名之后，二者之间以竖线分隔。例如，下述模板把 name 变量的值变成首字母大写的形式
+  #+BEGIN_SRC python
+  Hello, {{ name|capitalize }}
+  #+END_SRC
+**** 变量过滤器
++ 变量的值可以使用过滤器 修改。过滤器添加在变量名之后，二者之间以竖线分隔。例如，下述模板把 name 变量的值变成首字母大写的形式
+  #+BEGIN_SRC python
+  Hello, {{ name|capitalize }}
+  #+END_SRC
++ 常用过滤器
+  - safe 渲染值时不转义
+    1. safe 过滤器值得特别说明一下。默认情况下，出于安全考虑，Jinja2 会转义 所有变量。例如，如果一个变量的值为 '<h1>Hello</h1>' ，Jinja2 会将其渲染成 '&lt;h1&gt;Hello&lt;/ h1&gt;' ，浏览器能显示这个 h1 元素，但不会解释它。很多情况下需要显示变量中存储的HTML 代码，这时就可使用 safe 过滤器
+    2. 千万别在不可信的值上使用 safe 过滤器，例如用户在表单中输入的文本
+  - capitalize 把值的首字母转换成大写，其他字母转换成小写
+  - lower 把值转换成小写形式
+  - upper 把值转换成大写形式
+  - title 把值中每个单词的首字母都转换成大写
+  - trim 把值的首尾空格删掉
+  - striptags 渲染之前把值中所有的 HTML 标签都删掉
++ 完整的过滤器列表可在 Jinja2 文档
+  http://jinja.pocoo.org/docs/2.10/templates/#builtin-filters 
+*** 控制结构 
++ Jinja2 提供了多种控制结构，可用来改变模板的渲染流程
+**** 条件判断语句
++ 在模板中使用条件判断语句
+  #+BEGIN_SRC python
+  {% if user %}
+      Hello, {{ user }}!
+  {% else %}
+      Hello, Stranger!
+  {% endif %}
+  #+END_SRC
+**** for 循环
++ 在模板中渲染一组元素。下例展示了如何使用 for 循环实现这一需求
+  #+BEGIN_SRC python
+  <ul>
+      {% for comment in comments %}
+          <li>{{ comment }}</li>
+      {% endfor %}
+  </ul>
+  #+END_SRC
+**** 宏
++ 宏类似于 Python 代码中的函数
+  #+BEGIN_SRC python
+  {% macro render_comment(comment) %}
+      <li>{{ comment }}</li>
+  {% endmacro %}
+  <ul>
+      {% for comment in comments %}
+          {{ render_comment(comment) }}
+      {% endfor %}
+  </ul>
+  #+END_SRC
++ 为了重复使用宏，可以把宏保存在单独的文件中，然后在需要使用的模板中导入
+  #+BEGIN_SRC python
+  {% import 'macros.html' as macros %}
+  <ul>
+      {% for comment in comments %}
+          {{ macros.render_comment(comment) }}
+      {% endfor %}
+  </ul>
+  #+END_SRC
++ 需要在多处重复使用的模板代码片段可以写入单独的文件，再引入 所有模板中，以避免重复
+  #+BEGIN_SRC python
+  {% include 'common.html' %}
+  #+END_SRC
+*** 模板继承
++ 另一种重复使用代码的强大方式是模板继承，这类似于 Python 代码中的类继承。首先，创建一个名为 base.html 的基模板
+  #+BEGIN_SRC python
+  <html>
+  <head>
+      {% block head %}
+      <title>{% block title %}{% endblock %} - My Application</title>
+      {% endblock %}
+  </head>
+  <body>
+      {% block body %}
+      {% endblock %}
+  </body>
+  </html>
+  #+END_SRC
++ 基模板中定义的区块 可在衍生模板中覆盖。Jinja2 使用 block 和endblock 指令在基模板中定义内容区块。在本例中，我们定义了名为head 、title 和 body 的区块。注意，title 包含在 head 中。下面这个示例是基模板的衍生模板
+  #+BEGIN_SRC python
+  {% extends "base.html" %}
+  {% block title %}Index{% endblock %}
+  {% block head %}
+      {{ super() }}
+      <style>
+      </style>
+  {% endblock %}
+  {% block body %}
+      <h1>Hello, World!</h1>
+  {% endblock %}
+  #+END_SRC
++ extends 指令声明这个模板衍生自 base.html。在 extends 指令之后，基模板中的 3 个区块被重新定义，模板引擎会将其插入适当的位置。如果基模板和衍生模板中的同名区块中都有内容，衍生模板中的内容将显示出来。在衍生模板的区块里可以调用 super() ，引用基模板中同名区块里的内容。上例中的 head 区块就是这么做的
+* Flask-Bootstrap集成Bootstrap
++ Bootstrap 是客户端框架，因此不会直接涉及服务器。服务器需要做的只是提供引用了 Bootstrap 层叠样式表（CSS，cascading style sheet）和JavaScript 文件的 HTML 响应，并在 HTML、CSS 和 JavaScript 代码中实例化所需的用户界面元素。这些操作最理想的执行场所就是模板
++ 要想在应用中集成 Bootstrap，最直接的方法是根据 Bootstrap 文档中的说明对 HTML 模板进行必要的改动。不过，这个任务使用 Flask 扩展处理要简单得多，而且相关的改动不会导致主逻辑凌乱不堪
++ 使用的扩展是 Flask-Bootstrap
+  #+BEGIN_SRC shell
+  pip install flask-bootstrap
+  #+END_SRC
++ Flask 扩展在创建应用实例时初始化,Flask-Bootstrap 的初始化方式
+  #+BEGIN_SRC python
+  from flask_bootstrap import Bootstrap
+  # ...
+  bootstrap = Bootstrap(app)
+  #+END_SRC
++ 扩展通常从 flask_<name> 包中导入，其中 <name> 是扩展的名称。多数 Flask 扩展采用两种初始化方式中的一种,是初始化扩展的方式是把应用实例作为参数传给构造函数,大型应用初始化扩展的一种高级方式
++ 初始化 Flask-Bootstrap 之后，就可以在应用中使用一个包含所有Bootstrap 文件和一般结构的基模板。应用利用 Jinja2 的模板继承机制来扩展这个基模板。把 user.html 改写为衍生模板后的新版本
+  #+BEGIN_SRC python
+  {% extends "bootstrap/base.html" %}
+  {% block title %}Flasky{% endblock %}
+  {% block navbar %}
+  <div class="navbar navbar-inverse" role="navigation">
+      <div class="container">
+          <div class="navbar-header">
+              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                  <span class="sr-only">Toggle navigation</span>
+                  <span class="icon-bar"></span>
+                  <span class="icon-bar"></span>
+                  <span class="icon-bar"></span>
+              </button>
+              <a class="navbar-brand" href="/">Flasky</a>
+          </div>
+          <div class="navbar-collapse collapse">
+              <ul class="nav navbar-nav">
+                  <li><a href="/">Home</a></li>
+              </ul>
+          </div>
+      </div>
+  </div>
+  {% endblock %}
+  {% block content %}
+      <div class="container">
+          <div class="page-header">
+              <h1>Hello, {{ name }}!</h1>
+          </div>
+      </div>
+  {% endblock %}
+  #+END_SRC
++ inja2 中的 extends 指令从 Flask-Bootstrap 中导入 bootstrap/base.html，从而实现模板继承。Flask-Bootstrap 的基模板提供了一个网页骨架，引入了 Bootstrap 的所有 CSS 和 JavaScript 文件
++ Flask-Bootstrap 的 base.html 模板还定义了很多其他区块，都可在衍生模板中使用
+  - doc 整个 HTML 文档
+  - html_attribs <html> 标签的属性
+  - html <html> 标签中的内容
+  - head <head> 标签中的内容
+  - title <title> 标签中的内容
+  - metas 一组 <meta> 标签
+  - styles CSS 声明
+  - body_attribs <body> 标签的属性
+  - body <body> 标签中的内容
+  - navbar 用户定义的导航栏
+  - content 用户定义的页面内容
+  - scripts 文档底部的 JavaScript 声明
++ 很多区块都是 Flask-Bootstrap 自用的，如果直接覆盖可能会导致一些问题。例如，Bootstrap 的 CSS 和 JavaScript 文件在 styles 和scripts 区块中声明。如果应用需要向已经有内容的块中添加新内容，必须使用 Jinja2 提供的 super() 函数。例如，如果要在衍生模板中添加新的 JavaScript 文件，需要这么定义 scripts 区块
+  #+BEGIN_SRC python
+  {% block scripts %}
+      {{ super() }}
+      <script type="text/javascript" src="my-script.js"></script>
+  {% endblock %}
+  #+END_SRC
++ 自定义错误页面
+  - 在浏览器的地址栏中输入了无效的路由，会看到一个状态码为404 的错误页面。与使用 Bootstrap 的页面相比，现在这个错误页面太简陋、平庸，而且与现有页面不一致
+  - 像常规路由一样，Flask 允许应用使用模板自定义错误页面。最常见的错误代码有两个： 404，客户端请求未知页面或路由时显示；500，应用有未处理的异常时显示。使用 app.errorhandler 装饰器为这两个错误提供自定义的处理函数
+    #+BEGIN_SRC python
+    @app.errorhandler(404)
+    def page_not_found(e):
+        return render_template('404.html'), 404
+    @app.errorhandler(500)
+    def internal_server_error(e):
+        return render_template('500.html'), 500
+    #+END_SRC
+  - 与视图函数一样，错误处理函数也返回一个响应。此外，错误处理函数还要返回与错误对应的数字状态码。状态码可以直接通过第二个返回值指定
+  - 错误处理函数中引用的模板也需要我们编写。这些模板应该和常规页面使用相同的布局，因此要有一个导航栏和显示错误消息的页头,编写这些模板最直接的方法是复制 templates/user.html，分别创建templates/404.html 和 templates/500.html，然后把这两个文件中的页头元素改为相应的错误消息。但是这么做会带来很多重复劳动
+  - Jinja2 的模板继承机制可以帮助我们解决这一问题。Flask-Bootstrap 提供了一个具有页面基本布局的基模板，同样，应用也可以定义一个具有统一页面布局的基模板，其中包含导航栏，而页面内容则留给衍生模板定义
+    #+BEGIN_SRC python
+    # templates/404.html
+    {% extends "base.html" %}
+    {% block title %}Flasky - Page Not Found{% endblock %}
+    {% block page_content %}
+        <div class="page-header">
+            <h1>Not Found</h1>
+        </div>
+    {% endblock %}
+    #+END_SRC
+* 链接url_for()
++ 任何具有多个路由的应用都需要可以连接不同页面的链接，例如导航栏
++ 在模板中直接编写简单路由的 URL 链接不难，但对于包含可变部分的动态路由，在模板中构建正确的 URL 就很困难了。而且，直接编写URL 会对代码中定义的路由产生不必要的依赖关系。如果重新定义路由，模板中的链接可能会失效
++ 为了避免这些问题，Flask 提供了 url_for() 辅助函数，它使用应用的URL 映射中保存的信息生成 URL
++ url_for() 函数最简单的用法是以视图函数名（或者app.add_url_route() 定义路由时使用的端点 名）作为参数，返回对应的 URL。例如，在当前版本的 hello.py 应用中调用url_for('index') 得到的结果是 / ，即应用的根 URL。调用url_for('index', _external=True) 返回的则是绝对地址，在这个示例中是 http://localhost:5000/
++ 生成连接应用内不同路由的链接时，使用相对地址就足够了。如果要生成在浏览器之外使用的链接，则必须使用绝对地址，例如在电子邮件中发送的链接
++ 使用 url_for() 生成动态 URL 时，将动态部分作为关键字参数传入。例如，url_for('user', name='john', _external=True) 的返回结果是 http://localhost:5000/user/john
++ 传给 url_for() 的关键字参数不仅限于动态路由中的参数，非动态的参数也会添加到查询字符串中。例如，url_for('user',name='john', page=2, version=1) 的返回结果是 /user/ john?page=2&version=1
+* 静态文件
++ 默认设置下，Flask 在应用根目录中名为 static 的子目录中寻找静态文件。如果需要，可在 static 文件夹中使用子文件夹存放文件。服务器收到映射到 static 路由上的 URL 后，生成的响应包含文件系统中对应文件里的内容
++ 在应用的基模板中引入 favicon.ico 图标。这个图标会显示在浏览器的地址栏中
+  #+BEGIN_SRC python
+  {% block head %}
+  {{ super() }}
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+  {% endblock %}
+  #+END_SRC
+* 使用Flask-Moment本地化日期和时间
++ 如果 Web 应用的用户来自世界各地，那么处理日期和时间可不是一个简单的任务。服务器需要统一时间单位，这和用户所在的地理位置无关，所以一般使用协调世界时（UTC，coordinated universal time）。不过用户看到 UTC格式的时间会感到困惑，他们更希望看到当地时间，而且采用当地惯用的格式
++ 要想在服务器上只使用 UTC 时间，一个优雅的解决方案是，把时间单位发送给 Web 浏览器，转换成当地时间，然后用 JavaScript 渲染。Web浏览器可以更好地完成这一任务，因为它能获取用户计算机中的时区和区域设置
++ 有一个使用 JavaScript 开发的优秀客户端开源库，名为 Moment.js，它可以在浏览器中渲染日期和时间。Flask-Moment 是一个 Flask 扩展，能简化把 Moment.js 集成到 Jinja2 模板中的过程。Flask-Moment 使用 pip安装
+  #+BEGIN_SRC shell
+  pip install flask-moment
+  #+END_SRC
++ 扩展的初始化方法与 Flask-Bootstrap 类似
+  #+BEGIN_SRC python
+  from flask_moment import Moment
+  moment = Moment(app)
+  #+END_SRC
++ 除了 Moment.js，Flask-Moment 还依赖 jQuery.js。因此，要在 HTML 文档的某个地方引入这两个库，可以直接引入，这样可以选择使用哪个版本，也可以使用扩展提供的辅助函数,Bootstrap 已经引入了jQuery.js，因此只需引入 Moment.js 即可。示例 3-12 展示了如何在基模板的 scripts 块中引入这个库，同时还保留基模板中定义的原始内容。注意，这个区块在 Flask-Bootstrap 的基模板中已经预定义，因此放在 templates/base.html 的任何位置都行
+  #+BEGIN_SRC python
+  # templates/base.html：引入 Moment.js 库
+  {% block scripts %}
+  {{ super() }}
+  {{ moment.include_moment() }}
+  {% endblock %}
+  #+END_SRC
++ 为了处理时间戳，Flask-Moment 向模板开放了 moment 对象。示例 3-13中的代码把变量 current_time 传入模板进行渲染
+  #+BEGIN_SRC python
+  # hello.py：添加一个 datetime 变量
+  from datetime import datetime
+  @app.route('/')
+  def index():
+      return render_template('index.html', current_time=datetime.utcnow())
+  #+END_SRC
++ 渲染模板变量 current_time 
+  #+BEGIN_SRC python
+  # templates/index.html：使用 Flask-Moment 渲染时间戳
+  <p>The local date and time is {{ moment(current_time).format('LLL') }}.</p>
+  <p>That was {{ moment(current_time).fromNow(refresh=True) }}</p>
+  #+END_SRC
++ format('LLL') 函数根据客户端计算机中的时区和区域设置渲染日期和时间。参数决定了渲染的方式，从 'L' 到 'LLLL' 分别对应不同的复杂度。format() 函数还可接受很多自定义的格式说明符
++ 第二行中的 fromNow() 渲染相对时间戳，而且会随着时间的推移自动刷新显示的时间。这个时间戳最开始显示为“a few seconds ago”，但设定refresh=True 参数后，其内容会随着时间的推移而更新。如果一直待在这个页面，几分钟后会看到显示的文本变成“a minute ago”“2 minutesago”，等等
++ Flask-Moment 实现了 Moment.js 的 format() 、fromNow()、fromTime() 、calendar() 、valueOf() 和 unix() 等方法。请查阅 Moment.js 的文档（http://momentjs.com/docs/#/displaying/ ），学习这个库提供的全部格式化选项
++ Flask-Moment 假定服务器端应用处理的时间戳是“纯正的”datetime 对象，且使用 UTC 表示。关于纯正和细致的日期和时间对象 的说明，请阅读标准库中 datetime 包的文档（https://docs.python.org/3.6/library/datetime.html ）
+* Web 表单
+** 概述
++ 使用 HTML 可以创建 Web 表单，供用户填写信息。表单数据由 Web 浏览器提交给服务器，这一过程通常使用 POST 请求,对包含表单数据的POST 请求来说，用户填写的信息通过 request.form 访问
++ Flask-WTF 扩展可以把处理 Web 表单的过程变成一种愉悦的体验。这个扩展对独立的 WTForms 包进行了包装，方便集成到 Flask 应用中
+  #+BEGIN_SRC shell
+  pip install flask-wtf
+  #+END_SRC
+** 配置
++ 与其他多数扩展不同，Flask-WTF 无须在应用层初始化，但是它要求应用配置一个密钥 。密钥是一个由随机字符构成的唯一字符串，通过加密或签名以不同的方式提升应用的安全性。Flask 使用这个密钥保护用户会话，以防被篡改。每个应用的密钥应该不同，而且不能让任何人知道
+  #+BEGIN_SRC python
+  app = Flask(__name__)
+  app.config['SECRET_KEY'] = 'hard to guess string'
+  #+END_SRC
++ app.config 字典可用于存储 Flask、扩展和应用自身的配置变量。使用标准的字典句法就能把配置添加到 app.config 对象中。这个对象还提供了一些方法，可以从文件或环境中导入配置
++ 为了增强安全性，密钥不应该直接写入源码，而要保存在环境变量中
+** 表单类
++ 使用 Flask-WTF 时，在服务器端，每个 Web 表单都由一个继承自FlaskForm 的类表示。这个类定义表单中的一组字段，每个字段都用对象表示。字段对象可附属一个或多个验证函数 。验证函数用于验证用户提交的数据是否有效
+  #+BEGIN_SRC python
+  # hello.py：定义表单类
+  from flask_wtf import FlaskForm
+  from wtforms import StringField, SubmitField
+  from wtforms.validators import DataRequired
+  class NameForm(FlaskForm):
+      name = StringField('What is your name?', validators=[DataRequired()])
+      submit = SubmitField('Submit')
+  #+END_SRC
++ 这个表单中的字段都定义为类变量，而各个类变量的值是相应字段类型的对象。在这个示例中，NameForm 表单中有一个名为 name 的文本字段和一个名为 submit 的提交按钮。StringField 类表示属性为type="text" 的 HTML <input> 元素。SubmitField 类表示属性为type="submit" 的 HTML <input> 元素。字段构造函数的第一个参数是把表单渲染成 HTML 时使用的标注（label）
++ StringField 构造函数中的可选参数 validators 指定一个由验证函数组成的列表，在接受用户提交的数据之前验证数据。验证函数DataRequired() 确保提交的字段内容不为空
++ FlaskForm 基类由 Flask-WTF 扩展定义，所以要从flask_wtf 中导入。然而，字段和验证函数却是直接从 WTForms包中导入的
++ WTForms 支持的 HTML 标准字段
+  - BooleanField 复选框，值为 True 和 False
+  - DateField 文本字段，值为 datetime.date 格式
+  - DateTimeField 文本字段，值为 datetime.datetime 格式
+  - DecimalField 文本字段，值为 decimal.Decimal
+  - FileField 文件上传字段
+  - HiddenField 隐藏的文本字段
+  - MultipleFileField 多文件上传字段
+  - FieldList 一组指定类型的字段
+  - FloatField 文本字段，值为浮点数
+  - FormField 把一个表单作为字段嵌入另一个表单
+  - IntegerField 文本字段，值为整数
+  - PasswordField 密码文本字段
+  - RadioField 一组单选按钮
+  - SelectField 下拉列表
+  - SelectMultipleField 下拉列表，可选择多个值
+  - SubmitField 表单提交按钮
+  - StringField 文本字段
+  - TextAreaField 多行文本字段
++ WTForms验证函数
+  - DataRequired 确保转换类型后字段中有数据
+  - Email 验证电子邮件地址
+  - EqualTo 比较两个字段的值；常用于要求输入两次密码进行确认的情况
+  - InputRequired 确保转换类型前字段中有数据
+  - IPAddress 验证 IPv4 网络地址
+  - Length 验证输入字符串的长度
+  - MacAddress 验证 MAC 地址
+  - NumberRange 验证输入的值在数字范围之内
+  - Optional 允许字段中没有输入，将跳过其他验证函数
+  - Regexp 使用正则表达式验证输入值
+  - URL 验证 URL
+  - UUID 验证 UUID
+  - AnyOf 确保输入值在一组可能的值中
+  - NoneOf 确保输入值不在一组可能的值中
+** 把表单渲染成HTML
++ 表单字段是可调用的，在模板中调用后会渲染成 HTML。假设视图函数通过 form 参数把一个 NameForm 实例传入模板，在模板中可以生成一个简单的 HTML
+  #+BEGIN_SRC python
+  <form method="POST">
+      {{ form.hidden_tag() }}
+      {{ form.name.label }} {{ form.name() }}
+      {{ form.submit() }}
+  </form>
+  #+END_SRC
+  除了 name 和 submit 字段，这个表单还有个form.hidden_tag() 元素。这个元素生成一个隐藏的字段，供 Flask-WTF 的 CSRF 防护机制使用
++ 调用字段时传入的任何关键字参数都将转换成字段的 HTML 属性。例如，可以为字段指定 id 或class 属性，然后为其定义 CSS 样式
+  #+BEGIN_SRC python
+  <form method="POST">
+      {{ form.hidden_tag() }}
+      {{ form.name.label }} {{ form.name(id='my-text-field') }}
+      {{ form.submit() }}
+  </form>
+  #+END_SRC
++ 即便能指定 HTML 属性，但按照这种方式渲染及美化表单的工作量还是很大，所以在条件允许的情况下，最好使用 Bootstrap 的表单样式。Flask-Bootstrap 扩展提供了一个高层级的辅助函数，可以使用 Bootstrap预定义的表单样式渲染整个 Flask-WTF 表单，而这些操作只需一次调用即可完成。使用 Flask-Bootstrap，上述表单可以用下面的方式渲染
+  #+BEGIN_SRC python
+  {% import "bootstrap/wtf.html" as wtf %}
+  {{ wtf.quick_form(form) }}
+  #+END_SRC
++ import 指令的使用方法和普通 Python 代码一样，通过它可以导入模板元素，在多个模板中使用。导入的 bootstrap/wtf.html 文件中定义了一个使用 Bootstrap 渲染 Flask-WTF 表单对象的辅助函数。wtf.quick_form() 函数的参数为 Flask-WTF 表单对象，使用Bootstrap 的默认样式渲染传入的表单
+  #+BEGIN_SRC python
+  # 使用 Flask-WTF 和 Flask-Bootstrap渲染表单
+  {% extends "base.html" %}
+  {% import "bootstrap/wtf.html" as wtf %}
+  {% block title %}Flasky{% endblock %}
+  {% block page_content %}
+      <div class="page-header">
+          <h1>Hello, {% if name %}{{ name }}{% else %}Stranger{% endif %}!</h1>
+      </div>
+  {{ wtf.quick_form(form) }}
+  {% endblock %}
+  #+END_SRC
+** 在视图函数中处理表单
++ 在新版 hello.py 中，视图函数 index() 有两个任务：一是渲染表单，二是接收用户在表单中填写的数据,更新后的 index() 视图函数
+  #+BEGIN_SRC python
+  @app.route('/', methods=['GET', 'POST'])
+  def index():
+      name = None
+      form = NameForm()
+      if form.validate_on_submit():
+          name = form.name.data
+          form.name.data = ''
+      return render_template('index.html', form=form, name=name)
+  #+END_SRC
++ app.route 装饰器中多出的 methods 参数告诉 Flask，在 URL 映射中把这个视图函数注册为 GET 和 POST 请求的处理程序。如果没指定methods 参数，则只把视图函数注册为 GET 请求的处理程序
++ 这里有必要把 POST 加入方法列表，因为更常使用 POST 请求处理表单提交。表单也可以通过 GET 请求提交，但是 GET 请求没有主体，提交的数据以查询字符串的形式附加到 URL 中，在浏览器的地址栏中可见。基于这个以及其他多个原因，处理表单提交几乎都使用 POST 请求
++ 局部变量 name 用于存放表单中输入的有效名字，如果没有输入，其值为 None 。如上述代码所示，我们在视图函数中创建了一个 NameForm实例，用于表示表单。提交表单后，如果数据能被所有验证函数接受，那么 validate_on_submit() 方法的返回值为 True ，否则返回 False。这个函数的返回值决定是重新渲染表单还是处理表单提交的数据
++ 用户首次访问应用时，服务器会收到一个没有表单数据的 GET 请求，所以 validate_on_submit() 将返回 False 。此时，if 语句的内容将被跳过，对请求的处理只是渲染模板，并传入表单对象和值为 None 的name 变量作为参数。用户会看到浏览器中显示了一个表单
++ 用户提交表单后，服务器会收到一个包含数据的 POST 请求。validate_on_submit() 会调用名字字段上依附的DataRequired() 验证函数。如果名字不为空，就能通过验证，validate_on_submit() 返回 True 。现在，用户输入的名字可通过字段的 data 属性获取。在 if 语句中，把名字赋值给局部变量 name，然后再把 data 属性设为空字符串，清空表单字段。因此，再次渲染这个表单时，各字段中将没有内容。最后一行调用render_template() 函数渲染模板，但这一次参数 name 的值为表单中输入的名字，因此会显示一个针对该用户的欢迎消息
++ 如果用户提交表单之前没有输入名字，那么 DataRequired() 验证函数会捕获这个错误，如图 4-3 所示。注意这个扩展自动提供了多少功能。这说明，像 Flask-WTF 和 Flask-Bootstrap 这样设计良好的扩展能给应用提供十分强大的功能
+* 重定向和用户会话
++ 前一版 hello.py 存在一个可用性问题。用户输入名字后提交表单，然后点击浏览器的刷新按钮，会看到一个莫名其妙的警告，要求在再次提交表单之前进行确认。之所以出现这种情况，是因为刷新页面时浏览器会重新发送之前发送过的请求。如果前一个请求是包含表单数据的 POST请求，刷新页面后会再次提交表单。多数情况下，这并不是我们想执行的操作，因此浏览器才要求用户确认
++ 最好别让 Web 应用把 POST 请求作为浏览器发送的最后一个请求。这种需求的实现方式是，使用重定向 作为 POST 请求的响应，而不是使用常规响应
++ 重定向是一种特殊的响应，响应内容包含的是 URL，而不是 HTML 代码的字符串。浏览器收到这种响应时，会向重定向的URL 发起 GET 请求，显示页面的内容。这个页面的加载可能要多花几毫秒，因为要先把第二个请求发给服务器。除此之外，用户不会察觉到有什么不同。现在，前一个请求是 GE T 请求，所以刷新命令能像预期的那样正常运作了。这个技巧称为 Post / 重定向 /Get 模式
++ 但这种方法又会引起另一个问题。应用处理 POST 请求时，可以通过form.name.data 获取用户输入的名字，然而一旦这个请求结束，数据也就不见了。因为这个 POST 请求使用重定向处理，所以应用需要保存输入的名字，这样重定向后的请求才能获得并使用这个名字，从而构建真正的响应
++ 应用可以把数据存储在用户会话 中，以便在请求之间“记住”数据。用户会话是一种私有存储，每个连接到服务器的客户端都可访问。我们在第 2 章介绍过用户会话，它是请求上下文中的变量，名为 session ，像标准的 Python 字典一样操作
++ 默认情况下，用户会话保存在客户端 cookie 中，使用前面设置的密钥加密签名。如果篡改了 cookie 的内容，签名就会失效，会话也将随之失效
++ index() 视图函数的新版本，实现了重定向和用户会话
+  #+BEGIN_SRC python
+  from flask import Flask, render_template, session, redirect, url_for
+  @app.route('/', methods=['GET', 'POST'])
+  def index():
+    form = NameForm()
+    if form.validate_on_submit():
+        session['name'] = form.name.data
+        return redirect(url_for('index'))
+    return render_template('index.html', form=form, name=session.get('name'))
+  #+END_SRC
++ 应用的前一个版本在局部变量 name 中存储用户在表单中输入的名字。这个变量现在保存在用户会话中，即 session['name'] ，所以在两次请求之间能记住输入的值
++ 现在，包含有效表单数据的请求最后会使视图函数调用 redirect() 函数。这是 Flask 提供的辅助函数，用于生成 HTTP 重定向响应。redirect() 函数的参数是重定向的 URL，这里使用的重定向URL 是应用的根 URL，因此重定向响应本可以写得更简单一些，写成redirect('/') ，不过这里却使用了 Flask 提供的 URL 生成函数url_for()
++ url_for() 函数的第一个且唯一必须指定的参数是端点 名，即路由的内部名称。默认情况下，路由的端点是相应视图函数的名称。在这个示例中，处理根 URL 的视图函数是 index() ，因此传给 url_for() 函数的名字是 index
++ 最后一处改动位于 render_template() 函数中，现在我们使用session.get('name') 直接从会话中读取 name 参数的值。与普通的字典一样，这里使用 get() 获取字典中键对应的值，可以避免未找到键时抛出异常。如果指定的键不存在，则 get() 方法返回默认值 None
+* 闪现消息
++ 请求完成后，有时需要让用户知道状态发生了变化，可以是确认消息、警告或者错误提醒。一个典型例子是，用户提交有一项错误的登录表单后，服务器发回的响应重新渲染登录表单，并在表单上面显示一个消息，提示用户名或密码无效
++ 请求完成后，有时需要让用户知道状态发生了变化，可以是确认消息、警告或者错误提醒。一个典型例子是，用户提交有一项错误的登录表单后，服务器发回的响应重新渲染登录表单，并在表单上面显示一个消息，提示用户名或密码无效
++ Flask 本身内置这个功能,flash() 函数可实现这种效果
+  #+BEGIN_SRC python
+  from flask import Flask, render_template, session, redirect, url_for, flash
+  @app.route('/', methods=['GET', 'POST'])
+  def index():
+      form = NameForm()
+      if form.validate_on_submit():
+          old_name = session.get('name')
+          if old_name is not None and old_name != form.name.data:
+              flash('Looks like you have changed your name!')
+          session['name'] = form.name.data
+          return redirect(url_for('index'))
+      return render_template('index.html',
+          form = form, name = session.get('name'))
+  #+END_SRC
++ 在这个示例中，每次提交的名字都会和存储在用户会话中的名字进行比较，而会话中存储的名字是前一次在这个表单中提交的数据。如果两个名字不一样，就会调用 flash() 函数，在发给客户端的下一个响应中显示一个消息
++ 仅调用 flash() 函数并不能把消息显示出来，应用的模板必须渲染这些消息。最好在基模板中渲染闪现消息，因为这样所有页面都能显示需要显示的消息。Flask 把 get_flashed_messages() 函数开放给模板，用于获取并渲染闪现消息
+  #+BEGIN_SRC python
+  # templates/base.html：渲染闪现消息
+  {% block content %}
+  <div class="container">
+      {% for message in get_flashed_messages() %}
+      <div class="alert alert-warning">
+          <button type="button" class="close" data-dismiss="alert">&times;</button>
+          {{ message }}
+      </div>
+      {% endfor %}
+  {% block page_content %}{% endblock %}
+  </div>
+  {% endblock %}
+  #+END_SRC
++ 这里使用了循环，因为在之前的请求循环中每次调用 flash() 函数时都会生成一个消息，所以可能有多个消息在排队等待显示。get_flashed_messages() 函数获取的消息在下次调用时不会再次返回，因此闪现消息只显示一次，然后就消失了
+* 数据库
+** Python数据库框架
++ 大多数数据库引擎都有对应的 Python 包，包括开源包和商业包。Flask并不限制你使用何种类型的数据库包，因此你可以根据自己的喜好选择使用 MySQL、Postgres、SQLite、Redis、MongoDB、CouchDB 或DynamoDB
++ 如果这些都无法满足需求，还有一些数据库抽象层代码包供选择，例如SQLAlchemy 和 MongoEngine。你可以使用这些抽象包直接处理高等级的 Python 对象，而不用处理如表、文档或查询语言之类的数据库实体
++ 选择数据库框架时，不一定非得选择已经集成了 Flask 的框架，但选择这样的框架可以节省编写集成代码的时间。使用集成了 Flask 的框架可以简化配置和操作，所以专门为 Flask 开发的扩展是你的首选
+** Flask-SQLAlchemy管理数据库
+*** 概述
++ Flask-SQLAlchemy 是一个 Flask 扩展，简化了在 Flask 应用中使用SQLAlchemy 的操作。SQLAlchemy 是一个强大的关系型数据库框架，支持多种数据库后台。SQLAlchemy 提供了高层 ORM，也提供了使用数据库原生 SQL 的低层功能
++ 安装
+  #+BEGIN_SRC shell
+  pip install flask-sqlalchemy
+  #+END_SRC
+*** 数据库使用URL指定
++ 在 Flask-SQLAlchemy 中，数据库使用 URL 指定。几种最流行的数据库引擎使用的 URL 格式
+  - MySQL mysql://username:password@hostname/database
+  - Postgres postgresql://username:password@hostname/database
+  - SQLite（Linux，macOS） sqlite:////absolute/path/to/database
+  - SQLite（Windows） sqlite:///c:/absolute/path/to/database
++ 应用使用的数据库 URL 必须保存到 Flask 配置对象的SQLALCHEMY_DATABASE_URI 键中。Flask-SQLAlchemy 文档还建议把SQLALCHEMY_TRACK_MODIFICATIONS 键设为 False ，以便在不需要跟踪对象变化时降低内存消耗
+*** 配置数据库
++ 简单范例
+  #+BEGIN_SRC python
+  import os
+  from flask_sqlalchemy import SQLAlchemy
+  basedir = os.path.abspath(os.path.dirname(__file__))
+  app = Flask(__name__)
+  app.config['SQLALCHEMY_DATABASE_URI'] ='sqlite:///' + os.path.join(basedir, 'data.sqlite')
+  app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+  db = SQLAlchemy(app)
+  #+END_SRC
+*** 定义模型
++ 模型 这个术语表示应用使用的持久化实体。在 ORM 中，模型一般是一个 Python 类，类中的属性对应于数据库表中的列
++ Flask-SQLAlchemy 创建的数据库实例为模型提供了一个基类以及一系列辅助类和辅助函数，可用于定义模型的结构
+  #+BEGIN_SRC python
+  # hello.py：定义 Role 和 User 模型
+  class Role(db.Model):
+      __tablename__ = 'roles'
+      id = db.Column(db.Integer, primary_key=True)
+      name = db.Column(db.String(64), unique=True)
+
+      def __repr__(self):
+          return '<Role %r>' % self.name
+
+
+  class User(db.Model):
+      __tablename__ = 'users'
+      id = db.Column(db.Integer, primary_key=True)
+      username = db.Column(db.String(64), unique=True, index=True)
+
+      def __repr__(self):
+          return '<User %r>' % self.username
+  #+END_SRC
++ 类变量__tablename__定义在数据库中使用的表名。如果没有定义__tablename__ ，Flask-SQLAlchemy 会使用一个默认名称，但默认的表名没有遵守流行的使用复数命名的约定，所以最好由我们自己来指定表名。其余的类变量都是该模型的属性，定义为 db.Column 类的实例
++ db.Column 类构造函数的第一个参数是数据库列和模型属性的类型
+  - Integer int 普通整数，通常是 32 位
+  - SmallInteger int 取值范围小的整数，通常是 16 位
+  - BigInteger int 或 long 不限制精度的整数
+  - Float float 浮点数
+  - Numeric decimal.Decimal 定点数
+  - String str 变长字符串
+  - Text str 变长字符串，对较长或不限长度的字符串做了优化
+  - Unicode unicode 变长 Unicode 字符串
+  - UnicodeText unicode变长 Unicode 字符串，对较长或不限长度的字符串做了优化
+  - Boolean bool 布尔值
+  - Date datetime.date 日期
+  - Time datetime.time 时间
+  - DateTime datetime.datetime 日期和时间
+  - Interval datetime.timedelta 时间间隔
+  - Enum str 一组字符串
+  - PickleType 任何 Python 对象 自动使用 Pickle 序列化
+  - LargeBinary str 二进制 blob
++ db.Column 的其余参数指定属性的配置选项,列出了一些可用选项
+  - primary_key 如果设为 True ，列为表的主键
+  - uniquey 如果设为 True ，列不允许出现重复的值
+  - indexy 如果设为 True ，为列创建索引，提升查询效率
+  - nullabley 如果设为 True ，列允许使用空值；如果设为 False ，列不允许使用空值
+  - defaulty 为列定义默认值
++ Flask-SQLAlchemy 要求每个模型都定义主键 ，这一列经常命名为 id
++ 虽然没有强制要求，但这两个模型都定义了__repr()__方法，返回一个具有可读性的字符串表示模型，供调试和测试时使用
+*** 关系
++ 关系型数据库使用关系把不同表中的行联系起来。图 5-1 所示的关系图表示用户和角色之间的一种简单关系。这是角色到用户的一对多关系，因为一个角色可属于多个用户，而每个用户都只能有一个角色
++ 一对多关系在模型类中的表示方法
+  #+BEGIN_SRC python
+  class Role(db.Model):
+      # ...
+      users = db.relationship('User', backref='role')
+  class User(db.Model):
+      # ...
+      role_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
+  #+END_SRC
++ 关系使用 users 表中的外键连接两行。添加到 User 模型中的 role_id 列被定义为外键，就是这个外键建立起了关系。传给db.ForeignKey() 的参数 'roles.id' 表明，这列的值是 roles 表中相应行的 id 值
++ 从“一”那一端可见，添加到 Role 模型中的 users 属性代表这个关系的面向对象视角。对于一个 Role 类的实例，其 users 属性将返回与角色相关联的用户组成的列表（即“多”那一端）。db.relationship() 的第一个参数表明这个关系的另一端是哪个模型。如果关联的模型类在模块后面定义，可使用字符串形式指定
++ db.relationship() 中的 backref 参数向 User 模型中添加一个 role属性，从而定义反向关系。通过 User 实例的这个属性可以获取对应的Role 模型对象，而不用再通过 role_id 外键获取
++ 多数情况下，db.relationship() 都能自行找到关系中的外键，但有时却无法确定哪一列是外键。例如，如果 User 模型中有两个或以上的列定义为 Role 模型的外键，SQLAlchemy 就不知道该使用哪一列。如果无法确定外键，就要为 db.relationship() 提供额外的参数
+  - backref 在关系的另一个模型中添加反向引用
+  - primaryjoin 明确指定两个模型之间使用的联结条件；只在模棱两可的关系中需要指定
+  - lazy 指定如何加载相关记录，可选值有 select （首次访问时按需加载）、 immediate （源对象加载后就加载）、 joined （加载记录，但使用联结）、 subquery （立即加载，但使用子查询）， noload （永不加载）和 dynamic （不加载记录，但提供加载记录的查询）
+  - uselist 如果设为 False ，不使用列表，而使用标量值
+  - order_by 指定关系中记录的排序方式
+  - secondary 指定多对多关系中关联表的名称
+  - secondaryjoin SQLAlchemy 无法自行决定时，指定多对多关系中的二级联结条件
++ 除了一对多之外，还有其他几种关系类型。一对一 关系可以用前面介绍的一对多关系表示，但调用 db.relationship() 时要把 uselist 设为 False ，把“多”变成“一”。多对一 关系也可使用一对多表示，对调两个表即可，或者把外键和 db.relationship() 都放在“多”这一侧。最复杂的关系类型是多对多 ，需要用到第三张表，这个表称为关联表（或联结表 ）
+*** 数据库操作
++ 学习使用模型的最好方法是在 Python shell 中实际操作。接下来的几节将介绍最常用的数据库操作。shell 使用 flask shell 命令启动。不过在执行这个命令之前，要按照第 2 章的说明，把 FLASK_APP 环境变量设为 hello.py
+**** 创建表
++ 要让 Flask-SQLAlchemy 根据模型类创建数据库。db.create_all() 函数将寻找所有 db.Model 的子类，然后在数据库中创建对应的表
+  #+BEGIN_SRC shell
+  (venv) $ flask shell
+  >>> from hello import db
+  >>> db.create_all()
+  #+END_SRC
++ 现在查看应用目录，你会发现有个名为 data.sqlite 的文件，文件名与配置中指定的一样。如果数据库表已经存在于数据库中，那么db.create_all() 不会重新创建或者更新相应的表。如果修改模型后要把改动应用到现有的数据库中，这一行为会带来不便。更新现有数据库表的蛮力方式是先删除旧表再重新创建,这个方法有个我们不想看到的副作用，它把数据库中原有的数据都销毁了
+  #+BEGIN_SRC shell
+  >>> db.drop_all()
+  >>> db.create_all()
+  #+END_SRC
+**** 插入行
++ 下面这段代码创建一些角色和用户
+  #+BEGIN_SRC python
+  >>> from hello import Role, User
+  >>> admin_role = Role(name='Admin')
+  >>> mod_role = Role(name='Moderator')
+  >>> user_role = Role(name='User')
+  >>> user_john = User(username='john', role=admin_role)
+  >>> user_susan = User(username='susan', role=user_role)
+  >>> user_david = User(username='david', role=user_role)
+  #+END_SRC
++ 模型的构造函数接受的参数是使用关键字参数指定的模型属性初始值。注意，role 属性也可使用，虽然它不是真正的数据库列，但却是一对多关系的高级表示。新建对象时没有明确设定 id 属性，因为在多数数据库中主键由数据库自身管理。现在这些对象只存在于 Python 中，还未写入数据库。因此，id 尚未赋值
+  #+BEGIN_SRC shell
+  >>> print(admin_role.id)
+  None
+  >>> print(mod_role.id)
+  None
+  >>> print(user_role.id)
+  None
+  #+END_SRC
++ 对数据库的改动通过数据库会话 管理，在 Flask-SQLAlchemy 中，会话由 db.session 表示。准备把对象写入数据库之前，要先将其添加到会话中
+  #+BEGIN_SRC shell
+  >>> db.session.add(admin_role)
+  >>> db.session.add(mod_role)
+  >>> db.session.add(user_role)
+  >>> db.session.add(user_john)
+  >>> db.session.add(user_susan)
+  >>> db.session.add(user_david)
+  # 或者简写成
+  >>> db.session.add_all([admin_role, mod_role, user_role,... user_john, user_susan, user_david])
+  #+END_SRC
++ 把对象写入数据库，我们要调用 commit() 方法提交 会话
+  #+BEGIN_SRC shell
+  >>> db.session.commit()
+  #+END_SRC
++ 提交数据后再查看 id 属性，现在它们已经赋值了
+  #+BEGIN_SRC shell
+  >>> print(admin_role.id)
+  1
+  >>> print(mod_role.id)
+  2
+  >>> print(user_role.id)
+  3
+  #+END_SRC
++ 数据库会话能保证数据库的一致性。提交操作使用原子方式把会话中的对象全部写入数据库。如果在写入会话的过程中发生了错误，那么整个会话都会失效。如果你始终把相关改动放在会话中提交，就能避免因部分更新导致的数据库不一致
++ 据库会话也可回滚 。调用 db.session.rollback() 后，添加到数据库会话中的所有对象都将还原到它们在数据库中的状态。
+**** 修改行
++ 在数据库会话上调用 add() 方法也能更新模型。我们继续在之前的shell 会话中进行操作，下面这个例子把 "Admin" 角色重命名为"Administrator"
+  #+BEGIN_SRC shell
+  >>> admin_role.name = 'Administrator'
+  >>> db.session.add(admin_role)
+  >>> db.session.commit()
+  #+END_SRC
+**** 删除行
++ 数据库会话还有个 delete() 方法。下面这个例子把 "Moderator" 角色从数据库中删除
+  #+BEGIN_SRC shell
+  >>> db.session.delete(mod_role)
+  >>> db.session.commit()
+  #+END_SRC
++ 删除与插入和更新一样，提交数据库会话后才会执行
+**** 查询行
++ Flask-SQLAlchemy 为每个模型类都提供了 query 对象。最基本的模型查询是使用 all() 方法取回对应表中的所有记录
+  #+BEGIN_SRC shell
+  >>> Role.query.all()
+  [<Role 'Administrator'>, <Role 'User'>]
+  >>> User.query.all()
+  [<User 'john'>, <User 'susan'>, <User 'david'>]
+  #+END_SRC
++ 使用过滤器 可以配置 query 对象进行更精确的数据库查询。下面这个例子查找角色为 "User" 的所有用户
+  #+BEGIN_SRC shell
+  >>> User.query.filter_by(role=user_role).all()
+  [<User 'susan'>, <User 'david'>]
+  #+END_SRC
++ 若想查看 SQLAlchemy 为查询生成的原生 SQL 查询语句，只需把query 对象转换成字符串
+  #+BEGIN_SRC shell
+  >>> str(User.query.filter_by(role=user_role))
+  'SELECT users.id AS users_id, users.username AS users_username,
+  users.role_id AS users_role_id \nFROM users \nWHERE :param_1 = users.role_id'
+  #+END_SRC
++ 下面查询的不是 all() 方法，而是 first() 方法。all()方法返回所有结果构成的列表，而 first() 方法只返回第一个结果，如果没有结果的话，则返回 None 。因此，如果知道查询最多返回一个结果，就可以用这个方法
+  #+BEGIN_SRC shell
+  >>> user_role = Role.query.filter_by(name='User').first()
+  #+END_SRC
++ filter_by() 等过滤器在 query 对象上调用，返回一个更精确的query 对象。多个过滤器可以一起调用，直到获得所需结果
++ query 对象上调用的常用过滤器
+  - filter() 把过滤器添加到原查询上，返回一个新查询
+  - filter_by() 把等值过滤器添加到原查询上，返回一个新查询
+  - limit() 使用指定的值限制原查询返回的结果数量，返回一个新查询
+  - offset() 偏移原查询返回的结果，返回一个新查询
+  - order_by() 根据指定条件对原查询结果进行排序，返回一个新查询
+  - group_by() 根据指定条件对原查询结果进行分组，返回一个新查询
++ 最常用的SQLAlchemy查询执行方法
+  - all() 以列表形式返回查询的所有结果
+  - first() 返回查询的第一个结果，如果没有结果，则返回 None
+  - first_or_404()  回查询的第一个结果，如果没有结果，则终止请求，返回 404 错误响应
+  - get() 返回指定主键对应的行，如果没有对应的行，则返回 None
+  - get_or_404()  回指定主键对应的行，如果没找到指定的主键，则终止请求，返回 404 错误响应
+  - count() 返回查询结果的数量
+  - paginate() 返回一个 Paginate 对象，包含指定范围内的结果
++ 关系与查询的处理方式类似。下面这个例子分别从关系的两端查询角色和用户之间的一对多关系
+  #+BEGIN_SRC shell
+  >>> users = user_role.users
+  >>> users
+  [<User 'susan'>, <User 'david'>]
+  >>> users[0].role
+  <Role 'User'>
+  #+END_SRC
++ 这个例子中的 user_role.users 查询有个小问题。执行user_role.users 表达式时，隐式的查询会调用 all() 方法，返回一个用户列表。此时，query 对象是隐藏的，无法指定更精确的查询过滤器。就这个示例而言，返回一个按照字母顺序排列的用户列表可能更好。在示例 5-4 中，我们修改了关系的设置，加入了 lazy='dynamic'参数，从而禁止自动执行查询
+  #+BEGIN_SRC python
+  # hello.py：动态数据库关系
+  class Role(db.Model):
+      # ...
+      users = db.relationship('User', backref='role', lazy='dynamic')
+      # ...
+  #+END_SRC
++ 这样配置关系之后，user_role.users 将返回一个尚未执行的查询，因此可以在其上添加过滤器
+  #+BEGIN_SRC shell
+  >>> user_role.users.order_by(User.username).all()
+  [<User 'david'>, <User 'susan'>]
+  >>> user_role.users.count()
+  2
+  #+END_SRC
+**** 在视图函数中操作数据库
++ 把用户输入的名字记录到数据库中
+  #+BEGIN_SRC python
+  @app.route('/', methods=['GET', 'POST'])
+  def index():
+      form = NameForm()
+      if form.validate_on_submit():
+          user = User.query.filter_by(username=form.name.data).first()
+          if user is None:
+              user = User(username=form.name.data)
+              db.session.add(user)
+              db.session.commit()
+              session['known'] = False
+          else:
+              session['known'] = True
+          session['name'] = form.name.data
+          form.name.data = ''
+          return redirect(url_for('index'))
+      return render_template('index.html', form=form, name=session.get('name'), known=session.get('known', False))
+  #+END_SRC
++ 对应的模板新版本
+  #+BEGIN_SRC html
+  {% extends "base.html" %}
+  {% import "bootstrap/wtf.html" as wtf %}
+  {% block title %}Flasky{% endblock %}
+  {% block page_content %}
+  <div class="page-header">
+      <h1>Hello, {% if name %}{{ name }}{% else %}Stranger{% endif %}!</h1>
+      {% if not known %}
+      <p>Pleased to meet you!</p>
+      {% else %}
+      <p>Happy to see you again!</p>
+      {% endif %}
+  </div>
+  {{ wtf.quick_form(form) }}
+  {% endblock %}
+  #+END_SRC
+**** 集成Python shell
++ 每次启动 shell 会话都要导入数据库实例和模型，这真是份枯燥的工作。为了避免一直重复导入，我们可以做些配置，让 flask shell 命令自动导入这些对象
++ 若想把对象添加到导入列表中，必须使用app.shell_context_processor 装饰器创建并注册一个 shell 上下文处理器 
+  #+BEGIN_SRC python
+  @app.shell_context_processor
+  def make_shell_context():
+      return dict(db=db, User=User, Role=Role)
+  #+END_SRC
++ 这个 shell 上下文处理器函数返回一个字典，包含数据库实例和模型。除了默认导入的 app 之外，flask shell 命令将自动把这些对象导入shell
+  #+BEGIN_SRC shell
+  $ flask shell
+  >>> app
+  <Flask 'hello'>
+  >>> db
+  <SQLAlchemy engine='sqlite:////home/flask/flasky/data.sqlite'>
+  >>> User
+  <class 'hello.User'>
+  #+END_SRC
+**** 使用Flask-Migrate实现数据库迁移
++ 在开发应用的过程中，你会发现有时需要修改数据库模型，而且修改之后还要更新数据库。仅当数据库表不存在时，Flask-SQLAlchemy 才会根据模型创建。因此，更新表的唯一方式就是先删除旧表，但是这样做会丢失数据库中的全部数据
++ 更新表更好的方法是使用数据库迁移 框架。源码版本控制工具可以跟踪源码文件的变化；类似地，数据库迁移框架能跟踪数据库模式 的变化，然后以增量的方式把变化应用到数据库中
++ SQLAlchemy 的开发人员编写了一个迁移框架，名为 Alembic。除了直接使用 Alembic 之外，Flask 应用还可使用 Flask-Migrate 扩展。这个扩展是对 Alembic 的轻量级包装，并与 flask 命令做了集成
+***** 创建迁移仓库
++ 安装 Flask-Migrate
+  #+BEGIN_SRC shell
+  pip install flask-migrate
+  #+END_SRC
++ 初始化 Flask-Migrate
+  #+BEGIN_SRC python
+  from flask_migrate import Migrate
+  # ...
+  migrate = Migrate(app, db)
+  #+END_SRC
++ 为了开放数据库迁移相关的命令，Flask-Migrate 添加了 flask db 命令和几个子命令。在新项目中可以使用 init 子命令添加数据库迁移支持,这个命令会创建 migrations 目录，所有迁移脚本都存放在这里
+  #+BEGIN_SRC shell
+  $ flask db init
+  #+END_SRC
+***** 创建迁移脚本
++ 在 Alembic 中，数据库迁移用迁移脚本 表示。脚本中有两个函数，分别是 upgrade() 和 downgrade() 。upgrade() 函数把迁移中的改动应用到数据库中，downgrade() 函数则将改动删除。Alembic 具有添加和删除改动的能力，意味着数据库可重设到修改历史的任意一点
++ 可以使用 revision 命令手动创建 Alembic 迁移，也可使用migrate 命令自动创建。手动创建的迁移只是一个骨架，upgrade()和 downgrade() 函数都是空的，开发者要使用 Alembic 提供的Operations 对象指令实现具体操作。自动创建的迁移会根据模型定义和数据库当前状态之间的差异尝试生成 upgrade() 和 downgrade() 函数的内容
++ 自动创建的迁移不一定总是正确的，有可能会漏掉一些细节。比如说我们重命名了一列，自动生成的迁移可能会把这当作删除了一列，然后又新增了一列。如果原封不动地使用自动生成的迁移，这一列中的数据就会丢失！鉴于此，自动生成迁移脚本后一定要进行检查，把不准确的部分手动改过来
++ 使用 Flask-Migrate 管理数据库模式变化的步骤如下
+  - 对模型类做必要的修改
+  - 执行 flask db migrate 命令，自动创建一个迁移脚本
+  - 检查自动生成的脚本，根据对模型的实际改动进行调整
+  - 把迁移脚本纳入版本控制
+  - 执行 flask db upgrade 命令，把迁移应用到数据库中
++ flask db migrate 子命令用于自动创建迁移脚本
+  #+BEGIN_SRC shell
+  $ flask db migrate -m "initial migration"
+  INFO [alembic.migration] Context impl SQLiteImpl.
+  INFO [alembic.migration] Will assume non-transactional DDL.
+  INFO [alembic.autogenerate] Detected added table 'roles'
+  INFO [alembic.autogenerate] Detected added table 'users'
+  INFO [alembic.autogenerate.compare] Detected added index
+  'ix_users_username' on '['username']'
+  Generating /home/flask/flasky/migrations/versions/1bc
+  594146bb5_initial_migration.py...done
+  #+END_SRC
+***** 更新数据库
++ 检查并修正好迁移脚本之后，执行 flask db upgrade 命令，把迁移应用到数据库中
+  #+BEGIN_SRC shell
+  $ flask db upgrade
+  INFO [alembic.migration] Context impl SQLiteImpl.
+  INFO [alembic.migration] Will assume non-transactional DDL.
+  INFO [alembic.migration] Running upgrade None -> 1bc594146bb5, initial migration
+  #+END_SRC
++ 对第一个迁移来说，其作用与调用 db.create_all() 方法一样。但在后续的迁移中，flask db upgrade 命令能把改动应用到数据库中，且不影响其中保存的数据
++ 按照之前的说明操作过，那么已经使用db.create_all() 函数创建了数据库文件。此时，flask dbupgrade 命令将失败，因为它试图创建已经存在的数据库表。一种简单的处理方法是，把 data.sqlite 数据库文件删掉，然后执行flask db upgrade 命令，通过迁移框架重新创建数据库。另一种方法是不执行 flask db upgrade 命令，而是使用 flask dbstamp 命令把现有数据库标记为已更新
+***** 添加几个迁移
++ 在开发项目的过程中，时常要修改数据库模型。如果使用迁移框架管理数据库，必须在迁移脚本中定义所有改动，否则改动将不可复现。修改数据库的步骤与创建第一个迁移类似
+  - 对数据库模型做必要的修改
+  - 执行 flask db migrate 命令，生成迁移脚本
+  - 检查自动生成的脚本，改正不准确的地方
+  - 执行 flask db upgrade 命令，把改动应用到数据库中
++ 实现一个功能时，可能要多次修改数据库模型才能得到预期结果。如果前一个迁移还未提交到源码控制系统中，可以继续在那个迁移中修改，以免创建大量无意义的小迁移脚本。在前一个迁移脚本的基础上修改的步骤如下
+  - 执行 flask db downgrade 命令，还原前一个脚本对数据库的改动（注意，这可能导致部分数据丢失）
+  - 删除前一个迁移脚本，因为现在已经没什么用了
+  - 执行 flask db migrate 命令生成一个新的数据库迁移脚本。这个迁移脚本除了前面删除的那个脚本中的改动之外，还包括这一次对模型的改动。
+  - 根据前面的说明，检查并应用迁移脚本
+* 电子邮件
+* 大型应用的结构
+** 项目结构
++ Flask 应用的基本结构
+  + flasky
+    + app/
+      - templates/
+      - static/
+      - main/
+        __init__.py
+        errors.py
+        forms.py
+        views.py
+      __init__.py
+      email.py
+      models.py
+    + migrations/
+    + tests/
+      __init__.py
+      test*.py
+    + venv/
+    requirements.txt
+    config.py
+    flasky.py
++ 这种结构有4个顶级文件夹
+  - Flask 应用一般保存在名为 app 的包中
+  - 和之前一样，数据库迁移脚本在 migrations 文件夹中
+  - 单元测试在 tests 包中编写
+  - 和之前一样，Python 虚拟环境在 venv 文件夹中
++ 这种结构还多了一些新文件
+  - requirements.txt 列出了所有依赖包，便于在其他计算机中重新生成相同的虚拟环境
+  - config.py 存储配置
+  - flasky.py 定义 Flask 应用实例，同时还有一些辅助管理应用的任务
+** 配置选项
++ 应用经常需要设定多个配置。这方面最好的例子就是开发、测试和生产环境要使用不同的数据库，这样才不会彼此影响
++ 除了hello.py中类似字典的app.config对象之外，还可以使用具有层次结构的配置类,config.py文件的内容涵盖hello.py中的所有设置
+  #+BEGIN_SRC python
+  # config.py：应用的配置
+  import os
+  basedir = os.path.abspath(os.path.dirname(__file__))
+  class Config:
+      SECRET_KEY = os.environ.get('SECRET_KEY') or 'hard to guess string'
+      MAIL_SERVER = os.environ.get('MAIL_SERVER', 'smtp.googlemail.com')
+      MAIL_PORT = int(os.environ.get('MAIL_PORT', '587'))
+      MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', 'on', '1']
+      MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
+      MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
+      FLASKY_MAIL_SUBJECT_PREFIX = '[Flasky]'
+      FLASKY_MAIL_SENDER = 'Flasky Admin <flasky@example.com>'
+      FLASKY_ADMIN = os.environ.get('FLASKY_ADMIN')
+      SQLALCHEMY_TRACK_MODIFICATIONS = False
+      @staticmethod
+      def init_app(app):
+          pass
+  class DevelopmentConfig(Config):
+      DEBUG = True
+      SQLALCHEMY_DATABASE_URI = os.environ.get('DEV_DATABASE_URL') or 'sqlite:///' + os.path.join(basedir, 'data-dev.sqlite')
+  class TestingConfig(Config):
+      TESTING = True
+      SQLALCHEMY_DATABASE_URI = os.environ.get('TEST_DATABASE_URL') or 'sqlite://'
+  class ProductionConfig(Config):
+      SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///' + os.path.join(basedir, 'data.sqlite')
+  config = {
+      'development': DevelopmentConfig,
+      'testing': TestingConfig,
+      'production': ProductionConfig,
+      'default': DevelopmentConfig
+  }
+  #+END_SRC
++ 基类 Config 中包含通用配置，各个子类分别定义专用的配置。如果需要，你还可添加其他配置类
++ 为了让配置方式更灵活且更安全，多数配置都可以从环境变量中导入。例如，SECRET_KEY 的值，这是个敏感信息，可以在环境中设定，但系统也提供了一个默认值，以防环境中没有定义。通常，在开发过程中可以使用这些设置的默认值，但是在生产服务器中应该通过环境变量设定各个值。电子邮件服务器的配置选项也都从环境变量中导入，不过为了开发方便，提供了指向 Gmail 服务器的默认值
++ 千万不要把密码或其他机密信息写在纳入版本控制的配置文件中
++ 在 3 个子类中，SQLALCHEMY_DATABASE_URI 变量都被指定了不同的值。这样应用就可以在不同的环境中使用不同的数据库。把不同环境的数据库区分开是十分必要的，因为你肯定不想让单元测试修改日常开发中使用的数据库。各配置子类尝试从环境变量中导入数据库的 URL，如果相应的环境变量没有设定，则使用基于 SQLite 的默认值。测试环境默认使用一个内存中的数据库，因为测试运行结束后无需保留任何数据
++ 开发环境和生产环境都配置了邮件服务器。为了再给应用提供一种定制配置的方式，Config 类及其子类可以定义 init_app() 类方法，其参数为应用实例。现在，基类 Config 中的 init_app() 方法为空
++ 在这个配置脚本末尾，config 字典中注册了不同的配置环境，而且还注册了一个默认配置（这里注册为开发环境）
+** 应用包
++ 应用包用于存放应用的所有代码、模板和静态文件。我们可以把这个包直接称为 app（应用），如果有需求，也可使用一个应用专属的名称。templates 和 static 目录现在是应用包的一部分，因此要把二者移到 app包中。数据库模型和电子邮件支持函数也要移到这个包中，分别保存为app/models.py 和 app/email.py
+** 使用应用工厂函数
++ 在单个文件中开发应用是很方便，但却有个很大的缺点：应用在全局作用域中创建，无法动态修改配置。运行脚本时，应用实例已经创建，再修改配置为时已晚。这一点对单元测试尤其重要，因为有时为了提高测试覆盖度，必须在不同的配置下运行应用
++ 这个问题的解决方法是延迟创建应用实例，把创建过程移到可显式调用的工厂函数 中。这种方法不仅可以给脚本留出配置应用的时间，还能够创建多个应用实例，为测试提供便利。应用的工厂函数在 app 包的构造文件中定义
+  #+BEGIN_SRC python
+  # app/__init__.py：应用包的构造文件
+  from flask import Flask, render_template
+  from flask_bootstrap import Bootstrap
+  from flask_mail import Mail
+  from flask_moment import Moment
+  from flask_sqlalchemy import SQLAlchemy
+  from config import config
+  bootstrap = Bootstrap()
+  mail = Mail()
+  moment = Moment()
+  db = SQLAlchemy()
+  def create_app(config_name):
+      app = Flask(__name__)
+      app.config.from_object(config[config_name])
+      config[config_name].init_app(app)
+      bootstrap.init_app(app)
+      mail.init_app(app)
+      moment.init_app(app)
+      db.init_app(app)
+      # 添加路由和自定义的错误页面
+      return app
+  #+END_SRC
++ 构造文件导入了大多数正在使用的 Flask 扩展。由于尚未初始化所需的应用实例，所以创建扩展类时没有向构造函数传入参数，因此扩展并未真正初始化
++ create_app() 函数是应用的工厂函数，接受一个参数，是应用使用的配置名。配置类在 config.py 文件中定义，其中保存的配置可以使用 Flask app.config 配置对象提供的 from_object() 方法直接导入应用。至于配置对象，则可以通过名称从 config 字典中选择。应用创建并配置好后，就能初始化扩展了。在之前创建的扩展对象上调用 init_app() 便可以完成初始化
++ 现在，应用在这个工厂函数中初始化，使用 Flask 配置对象的from_object() 方法，其参数为 config.py 中定义的某个配置类。此外，这里还调用了所选配置的 init_app() 方法，以便执行更复杂的初始化过程
++ 工厂函数返回创建的应用示例，不过要注意，现在工厂函数创建的应用还不完整，因为没有路由和自定义的错误页面处理程序
+** 在蓝本中实现应用功能
++ 将视图方法模块化，既当大量的视图函数放在一个文件中，很明显是不合适，最好的方案是根据功能将路由合理的划分到不同的文件中；而蓝本就是为了解决这个问题而出现的
++ 转换成应用工厂函数的操作让定义路由变复杂了。在单脚本应用中，应用实例存在于全局作用域中，路由可以直接使用 app.route 装饰器定义。但现在应用在运行时创建，只有调用 create_app() 之后才能使用app.route 装饰器，这时定义路由就太晚了。自定义的错误页面处理程序也面临相同的问题，因为错误页面处理程序使用 app.errorhandler装饰器定义
++ Flask 使用蓝本 （blueprint）提供了更好的解决方法。蓝本和应用类似，也可以定义路由和错误处理程序。不同的是，在蓝本中定义的路由和错误处理程序处于休眠状态，直到蓝本注册到应用上之后，它们才真正成为应用的一部分。使用位于全局作用域中的蓝本时，定义路由和错误处理程序的方法几乎与单脚本应用一样
++ 与应用一样，蓝本可以在单个文件中定义，也可使用更结构化的方式在包中的多个模块中创建。为了获得最大的灵活性，我们将在应用包中创建一个子包，用于保存应用的第一个蓝本
+  #+BEGIN_SRC python
+  # app/main/__init__.py：创建主蓝本
+  from flask import Blueprint
+  main = Blueprint('main', __name__)
+  from . import views, errors
+  #+END_SRC
++ 蓝本通过实例化一个 Blueprint 类对象创建。这个构造函数有两个必须指定的参数：蓝本的名称和蓝本所在的包或模块。与应用一样，多数情况下第二个参数使用 Python 的__name__变量即可
++ 应用的路由保存在包里的 app/main/views.py 模块中，而错误处理程序保存在 app/main/errors.py 模块中。导入这两个模块就能把路由和错误处理程序与蓝本关联起来。注意，这些模块在 app/main/__init__.py 脚本的末尾导入，这是为了避免循环导入依赖，因为在 app/main/views.py 和app/main/errors.py 中还要导入 main 蓝本，所以除非循环引用出现在定义 main 之后，否则会致使导入出错
++ from . import <some-module> 句法表示相对导入。语句中的 . 表示当前包。稍后还会见到一种十分有用的相对导入句法，即 from .. import <some-module> ，这里的 .. 表示当前包的上一层
++ 蓝本在工厂函数 create_app() 中注册到应用上
+  #+BEGIN_SRC python
+  # app/__init__.py：注册主蓝本
+  def create_app(config_name):
+      # ...
+      from .main import main as main_blueprint
+      app.register_blueprint(main_blueprint)
+      return app
+  #+END_SRC
++ 错误处理程序
+  #+BEGIN_SRC python
+  # app/main/errors.py：主蓝本中的错误处理程序
+  from flask import render_template
+  from . import main
+  @main.app_errorhandler(404)
+  def page_not_found(e):
+      return render_template('404.html'), 404
+  @main.app_errorhandler(500)
+  def internal_server_error(e):
+      return render_template('500.html'), 500
+  #+END_SRC
+  - 在蓝本中编写错误处理程序稍有不同，如果使用 errorhandler 装饰器，那么只有蓝本中的错误才能触发处理程序。要想注册应用全局的错误处理程序，必须使用 app_errorhandler 装饰器
++ 在蓝本中定义的应用路由
+  #+BEGIN_SRC python
+  # app/main/views.py：主蓝本中定义的应用路由
+  from datetime import datetime
+  from flask import render_template, session, redirect, url_for
+  from . import main
+  from .forms import NameForm
+  from .. import db
+  from ..models import User
+  @main.route('/', methods=['GET', 'POST'])
+  def index():
+      form = NameForm()
+      if form.validate_on_submit():
+          # ...
+          return redirect(url_for('.index'))
+      return render_template('index.html', form=form, name=session.get('name'), known=session.get('known', False), current_time=datetime.utcnow())
+  #+END_SRC
+  - 在蓝本中编写视图函数主要有些不同
+    1. 与前面的错误处理程序一样，路由装饰器由蓝本提供，因此使用的是 main.route ，而非app.route
+    2. url_for() 函数的用法不同。你可能还记得，url_for() 函数的第一个参数是路由的端点名，在应用的路由中，默认为视图函数的名称。例如，在单脚本应用中，index() 视图函数的URL 可使用 url_for('index') 获取;
+    3. 在蓝本中就不一样了，Flask 会为蓝本中的全部端点加上一个命名空间，这样就可以在不同的蓝本中使用相同的端点名定义视图函数，而不产生冲突。命名空间是蓝本的名称（Blueprint 构造函数的第一个参数），而且它与端点名之间以一个点号分隔。因此，视图函数 index()注册的端点名是 main.index ，其 URL 使用url_for('main.index') 获取
+    4. url_for() 函数还支持一种简写的端点形式，在蓝本中可以省略蓝本名，例如 url_for('.index') 。在这种写法中，使用当前请求的蓝本名补足端点名。这意味着，同一蓝本中的重定向可以使用简写形式，但跨蓝本的重定向必须使用带有蓝本名的完全限定端点名
++ 为了完成对应用包的修改，还要把表单对象移到蓝本中，保存在app/main/forms.py 模块里
+** 应用脚本
++ 应用实例在顶级目录中的 flasky.py 模块里定义
+  #+BEGIN_SRC python
+  # flasky.py：主脚本
+  import os
+  from app import create_app, db
+  from app.models import User, Role
+  from flask_migrate import Migrate
+  app = create_app(os.getenv('FLASK_CONFIG') or 'default')
+  migrate = Migrate(app, db)
+  @app.shell_context_processor
+  def make_shell_context():
+      return dict(db=db, User=User, Role=Role)
+  #+END_SRC
++ 这个脚本先创建一个应用实例。如果已经定义了环境变量FLASK_CONFIG ，则从中读取配置名；否则使用默认配置。然后初始化Flask-Migrate 和为 Python shell 定义的上下文
++ 因为应用的主脚本由 hello.py 变成了 flasky.py，所以要相应地修改FLASK_APP 环境变量，以便 flask 命令找到应用实例。此外，还可以设置 FLASK_DEBUG=1 ，启用 Flask 的调试模式。Linux 和 macOS 用户这样做
+  #+BEGIN_SRC shell
+  # linux和macOS
+  (venv) $ export FLASK_APP=flasky.py
+  (venv) $ export FLASK_DEBUG=1
+
+  # windows
+  (venv) $ set FLASK_APP=flasky.py
+  (venv) $ set FLASK_DEBUG=1
+  #+END_SRC
+** 需求文件
++ 应用中最好有个 requirements.txt 文件，用于记录所有依赖包及其精确的版本号。如果要在另一台计算机上重新生成虚拟环境，这个文件的重要性就体现出来了，例如部署应用时使用的设备。这个文件可由 pip 自动生成，使用的命令如下
+  #+BEGIN_SRC shell
+  (venv) $ pip freeze >requirements.txt
+  #+END_SRC
++ 安装或升级包后，最好更新这个文件。需求文件的内容示例如下
+  #+BEGIN_SRC conf
+  alembic==0.9.3
+  blinker==1.4
+  click==6.7
+  dominate==2.3.1
+  Flask==0.12.2
+  Flask-Bootstrap==3.3.7.1
+  Flask-Mail==0.9.1
+  Flask-Migrate==2.0.4
+  Flask-Moment==0.5.1
+  Flask-SQLAlchemy==2.2
+  Flask-WTF==0.14.2
+  itsdangerous==0.24
+  Jinja2==2.9.6
+  Mako==1.0.7
+  MarkupSafe==1.0
+  python-dateutil==2.6.1
+  python-editor==1.0.3
+  six==1.10.0
+  SQLAlchemy==1.1.11
+  visitor==0.1.3
+  Werkzeug==0.12.2
+  WTForms==2.1
+  #+END_SRC
++ 如果你想创建这个虚拟环境的完整副本，先创建一个新的虚拟环境，然后在其中运行下述命令
+  #+BEGIN_SRC shell
+  (venv) $ pip install -r requirements.txt
+  #+END_SRC
+** 单元测试
++ tests/test_basics.py：单元测试,这些测试使用 Python 标准库中的 unittest 包编写。测试用例类的setUp() 和 tearDown() 方法分别在各测试之前和之后运行。名称以test_ 开头的方法都作为测试运行
+  #+BEGIN_SRC python
+  import unittest
+  from flask import current_app
+  from app import create_app, db
+  class BasicsTestCase(unittest.TestCase):
+      def setUp(self):
+          self.app = create_app('testing')
+          self.app_context = self.app.app_context()
+          self.app_context.push()
+          db.create_all()
+      def tearDown(self):
+          db.session.remove()
+          db.drop_all()
+          self.app_context.pop()
+      def test_app_exists(self):
+          self.assertFalse(current_app is None)
+      def test_app_is_testing(self):
+          self.assertTrue(current_app.config['TESTING'])
+  #+END_SRC
++ setUp() 方法尝试创建一个测试环境，尽量与正常运行应用所需的环境一致。首先，使用测试配置创建应用，然后激活上下文。这一步的作用是确保能在测试中使用 current_app ，就像普通请求一样。然后，使用 Flask-SQLAlchemy 的 create_all() 方法创建一个全新的数据库，供测试使用。数据库和应用上下文在 tearDown() 方法中删除
++ 第一个测试确保应用实例存在。第二个测试确保应用在测试配置中运行。若想把 tests 目录作为包来使用，要添加 tests/init.py 模块，不过这个文件可以为空，因为 unittest 包会扫描所有模块，找出测试
++ 为了运行单元测试，可以在 flasky.py 脚本中添加一个自定义命令
+  #+BEGIN_SRC python
+  # flasky.py：启动单元测试的命令
+  @app.cli.command()
+  def test():
+      """Run the unit tests."""
+      import unittest
+      tests = unittest.TestLoader().discover('tests')
+      unittest.TextTestRunner(verbosity=2).run(tests)
+  #+END_SRC
++ app.cli.command 装饰器把自定义命令变得很简单。被装饰的函数名就是命令名，函数的文档字符串会显示在帮助消息中。test() 函数的定义体中调用了 unittest 包提供的测试运行程序
++ 单元测试可使用下面的命令运行
+  #+BEGIN_SRC shell
+  (venv) $ flask test
+  test_app_exists (test_basics.BasicsTestCase) ... ok
+  test_app_is_testing (test_basics.BasicsTestCase) ... ok
+  .----------------------------------------------------------------------
+  Ran 2 tests in 0.001s
+  OK
+  ----
+  #+END_SRC
+** 创建数据库
++ 重组后的应用和单脚本版本使用不同的数据库,首选从环境变量中读取数据库的 URL，同时还提供了一个默认的SQLite 数据库作为备用。3 种配置环境中的环境变量名和 SQLite 数据库文件名都不一样。例如，在开发环境中，数据库 URL 从环境变量DEV_DATABASE_URL 中读取，如果没有定义这个环境变量，则使用名为data-dev.sqlite 的 SQLite 数据库
++ 不管从哪里获取数据库 URL，都要在新数据库中创建数据表。如果使用 Flask-Migrate 跟踪迁移，可使用下述命令创建数据表或者升级到最新修订版本
+  #+BEGIN_SRC shell
+  (venv) $ flask db upgrade
+  #+END_SRC
+** 运行应用
++ 构至此结束，可以启动应用了。先确保更新了FLASK_APP 环境变量，然后像之前一样运行应用
+  #+BEGIN_SRC shell
+  (venv) $ flask run
+  #+END_SRC
++ 每次启动一个新的命令提示符会话，都要设定 FLASK_APP 和FLASK_DEBUG 环境变量，这有点麻烦。你可以做些配置，让系统自动设定这些变量。如果你使用 bash，可以把环境变量添加到~/.bashrc 文件中
+* 用户身份验证
+** Flask的身份验证扩展
++ 优秀的 Python 身份验证包很多，但没有一个能实现所有功能。本章介绍的身份验证方案将使用多个包，而且还要编写胶水代码，让不同的包良好协作
+  - Flask-Login：管理已登录用户的用户会话
+  - Werkzeug：计算密码散列值并进行核对
+  - itsdangerous ：生成并核对加密安全令牌
+** 密码安全性
++ 若想保证数据库中用户密码的安全，关键在于不存储密码本身，而是存储密码的散列值 。计算密码散列值的函数接收密码作为输入，添加随机内容（盐值 ）之后，使用多种单向加密算法转换密码，最终得到一个和原始密码没有关系的字符序列，而且无法还原成原始密码。核对密码时，密码散列值可代替原始密码，因为计算散列值的函数是可复现的：只要输入（密码和盐值）一样，结果就一样
++ 使用Werkzeug计算密码散列值
+  - Werkzeug 中的 security 模块实现了密码散列值的计算。这一功能的实现只需要两个函数，分别用在注册和核对两个阶段
+    #+BEGIN_SRC python
+    generate_password_hash(password, method='pbkdf2:sha256', salt_length=8)
+    # 这个函数的输入为原始密码，返回密码散列值的字符串形式，供存入用户数据库。method 和 salt_length 的默认值就能满足大多数需求
+    #+END_SRC
+    #+BEGIN_SRC python
+    check_password_hash(hash, password)
+    # 这个函数的参数是从数据库中取回的密码散列值和用户输入的密码。返回值为 True 时表明用户输入的密码正确
+    #+END_SRC
+  - app/models.py：在 User 模型中加入密码散列
+    #+BEGIN_SRC python
+    from werkzeug.security import generate_password_hash, check_password_hash
+    class User(db.Model):
+        # ...
+        password_hash = db.Column(db.String(128))
+        @property
+        def password(self):
+            raise AttributeError('password is not a readable attribute')
+        @password.setter
+        def password(self, password):
+            self.password_hash = generate_password_hash(password)
+        def verify_password(self, password):
+            return check_password_hash(self.password_hash, password)
+    #+END_SRC
+  - 计算密码散列值的函数通过名为 password 的只写属性实现。设定这个属性的值时，赋值方法会调用 Werkzeug 提供的generate_password_hash() 函数，并把得到的结果写入password_hash 字段。如果试图读取 password 属性的值，则会返回错误，原因很明显，因为生成散列值后就无法还原成原来的密码了
+  - verify_password() 方法接受一个参数（即密码），将其传给Werkzeug 提供的 check_password_hash() 函数，与存储在 User 模型中的密码散列值进行比对。如果这个方法返回 True ，表明密码是正确的
+  - 在 shell 中测试
+    #+BEGIN_SRC shell
+    (venv) $ flask shell
+    >>> u = User()
+    >>> u.password = 'cat'
+    >>> u.password
+    Traceback (most recent call last):
+      File "<console>", line 1, in <module>
+      File "/home/flask/flasky/app/models.py", line 24, in password
+        raise AttributeError('password is not a readable attribute')
+    AttributeError: password is not a readable attribute
+    >>> u.password_hash
+    'pbkdf2:sha256:50000$moHwFH1B$ef1574909f9c549285e8547cad181c5e0213cfa44a4aba4349fa830aa1fd227f'
+    >>> u.verify_password('cat')
+    True
+    >>> u.verify_password('dog')
+    False
+    >>> u2 = User()
+    >>> u2.password = 'cat'
+    >>> u2.password_hash
+    'pbkdf2:sha256:50000$Pfz0m0KU$27be930b7f0e0119d38e8d8a62f7f5e75c0a7db61ae16709bcaa6cfd60c44b74'
+    #+END_SRC
+  - 访问 password 属性会返回 AttributeError 。另外，即使用户 u 和 u2 使用了相同的密码，它们的密码散列值也完全不一样。为了确保这个功能今后依然能使用，我们可以把上述手动测试的过程写成单元测试，以便重复执行。在 tests 包中新建一个模块，编写 3 个新测试，测试最近对 User 模型所做的改动
+    #+BEGIN_SRC python
+    # tests/test_user_model.py：密码散列测试
+    import unittest
+    from app.models import User
+    class UserModelTestCase(unittest.TestCase):
+        def test_password_setter(self):
+            u = User(password = 'cat')
+            self.assertTrue(u.password_hash is not None)
+        def test_no_password_getter(self):
+            u = User(password = 'cat')
+            with self.assertRaises(AttributeError):
+                u.password
+        def test_password_verification(self):
+            u = User(password = 'cat')
+            self.assertTrue(u.verify_password('cat'))
+            self.assertFalse(u.verify_password('dog'))
+        def test_password_salts_are_random(self):
+            u = User(password='cat')
+            u2 = User(password='cat')
+            self.assertTrue(u.password_hash != u2.password_hash)
+    #+END_SRC
+  - 执行下述命令，运行新增的单元测试
+    #+BEGIN_SRC shell
+    (venv) $ flask test
+    test_app_exists (test_basics.BasicsTestCase) ... ok
+    test_app_is_testing (test_basics.BasicsTestCase) ... ok
+    test_no_password_getter (test_user_model.UserModelTestCase) ... ok
+    test_password_salts_are_random (test_user_model.UserModelTestCase) ... ok
+    test_password_setter (test_user_model.UserModelTestCase) ... ok
+    test_password_verification (test_user_model.UserModelTestCase) ... ok
+    .----------------------------------------------------------------------
+    Ran 6 tests in 0.379s
+    OK
+    #+END_SRC
+** 创建身份验证蓝本
++ 在一个新蓝本中定义与用户身份验证子系统相关的路由，这个蓝本名为 auth 。把应用的不同子系统放在不同的蓝本中，有利于保持代码整洁有序
++ auth 蓝本保存在同名 Python 包中。这个蓝本的包构造函数创建蓝本对象，再从 views.py 模块中导入路由
+  #+BEGIN_SRC python
+  from flask import Blueprint
+  auth = Blueprint('auth', __name__)
+  from . import views
+  #+END_SRC
++ app/auth/views.py 模块导入蓝本，然后使用蓝本的 route 装饰器定义与身份验证相关的路由，这段代码添加了一个 /login 路由，渲染同名占位模板
+  #+BEGIN_SRC python
+  # app/auth/views.py：身份验证蓝本中的路由和视图函数
+  from flask import render_template
+  from . import auth
+  @auth.route('/login')
+  def login():
+      return render_template('auth/login.html')
+  #+END_SRC
++ 注意，为 render_template() 指定的模板文件保存在 auth 目录中。这个目录必须在 app/ templates 中创建，因为 Flask 期望模板的路径是相对于应用的模板目录而言的。把蓝本中用到的模板放在单独的子目录中，能避免与 main 蓝本或以后添加的蓝本发生冲突
++ 也可以配置蓝本使用专门的目录保存模板。如果配置了多个模板目录，那么 render_template() 函数会先搜索应用的模板目录，然后再搜索蓝本的模板目录
++ auth 蓝本要在 create_app() 工厂函数中附加到应用上
+  #+BEGIN_SRC python
+  # app/__init__.py：注册身份验证蓝本
+  def create_app(config_name):
+      # ...
+      from .auth import auth as auth_blueprint
+      app.register_blueprint(auth_blueprint, url_prefix='/auth')
+      return app
+  #+END_SRC
++ 注册蓝本时使用的 url_prefix 是可选参数。如果使用了这个参数，注册后蓝本中定义的所有路由都会加上指定的前缀，即这个例子中的/auth。例如，/login 路由会注册成 /auth/login，在开发 Web 服务器中，完整的 URL 就变成了 http://localhost:5000/auth/login
+** 使用Flask-Login验证用户身份
++ 用户登录应用后，他们的验证状态要记录在用户会话中，这样浏览不同的页面时才能记住这个状态。Flask-Login 是个非常有用的小型扩展，专门用于管理用户身份验证系统中的验证状态，且不依赖特定的身份验证机制
+  #+BEGIN_SRC shell
+  (venv) $ pip install flask-login
+  #+END_SRC
+*** 准备用于登录的用户模型
++ Flask-Login 的运转需要应用中有 User 对象。要想使用 Flask-Login 扩展，应用的 User 模型必须实现几个属性和方法
+  - is_authenticated 如果用户提供的登录凭据有效，必须返回 True ，否则返回 False
+  - is_active 如果允许用户登录，必须返回 True ，否则返回 False 。如果想禁用账户，可以返回 False
+  - is_anonymous 对普通用户必须始终返回 False ，如果是表示匿名用户的特殊用户对象，应该返回 True
+  - get_id() 必须返回用户的唯一标识符，使用 Unicode 编码字符串
++ 这些属性和方法可以直接在模型类中实现，不过还有一种更简单的替代方案。Flask-Login 提供了一个 UserMixin 类，其中包含默认实现，能满足多数需求。修改后的 User 模型如示例 
+  #+BEGIN_SRC python
+  # app/models.py：修改 User 模型，支持用户登录
+  from flask_login import UserMixin
+  class User(UserMixin, db.Model):
+      __tablename__ = 'users'
+      id = db.Column(db.Integer, primary_key = True)
+      email = db.Column(db.String(64), unique=True, index=True)
+      username = db.Column(db.String(64), unique=True, index=True)
+      password_hash = db.Column(db.String(128))
+      role_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
+  #+END_SRC
+  这个示例中还添加了 email 字段。在这个应用中，用户使用电子邮件地址登录，因为相对于用户名而言，用户更不容易忘记自己的电子邮件地址
++ Flask-Login 在应用的工厂函数中初始化
+  #+BEGIN_SRC python
+  # app/__init__.py：初始化Flask-Login
+  from flask_login import LoginManager
+  login_manager = LoginManager()
+  login_manager.login_view = 'auth.login'
+  def create_app(config_name):
+      # ...
+      login_manager.init_app(app)
+      # ...
+  #+END_SRC
++ LoginManager 对象的 login_view 属性用于设置登录页面的端点。匿名用户尝试访问受保护的页面时，Flask-Login 将重定向到登录页面。因为登录路由在蓝本中定义，所以要在前面加上蓝本的名称
++ Flask-Login 要求应用指定一个函数，在扩展需要从数据库中获取指定标识符对应的用户时调用。这个函数的定义如示例
+  #+BEGIN_SRC python
+  # app/models.py：加载用户的函数
+  from . import login_manager
+  @login_manager.user_loader
+  def load_user(user_id):
+      return User.query.get(int(user_id))
+  #+END_SRC
++ login_manager.user_loader 装饰器把这个函数注册给 Flask-Login，在这个扩展需要获取已登录用户的信息时调用。传入的用户标识符是个字符串，因此这个函数先把标识符转换成整数，然后传给 Flask-SQLAlchemy 查询，加载用户。正常情况下，这个函数的返回值必须是用户对象；如果用户标识符无效，或者出现了其他错误，则返回 None
+*** 保护路由
++ 为了保护路由，只让通过身份验证的用户访问，Flask-Login 提供了一个login_required 装饰器。其用法演示如下
+  #+BEGIN_SRC python
+  from flask_login import login_required
+  @app.route('/secret')
+  @login_required
+  def secret():
+      return 'Only authenticated users are allowed!'
+  #+END_SRC
++ 从这个示例可以看出，多个函数装饰器可以叠加使用。函数上有多个装饰器时，各装饰器只对随后的装饰器和目标函数起作用。在这个示例中，secret() 函数受 login_required 装饰器的保护，禁止未授权的用户访问，得到的函数又注册为一个 Flask 路由。如果调换两个装饰器，得到的结果将是错的，因为原始函数先注册为路由，然后才从login_required 装饰器接收到额外的属性
++ 得益于 login_required 装饰器，如果未通过身份验证的用户访问这个路由，Flask-Login 将拦截请求，把用户发往登录页面
+*** 添加登录表单
++ 呈现给用户的登录表单中包含一个用于输入电子邮件地址的文本字段、一个密码字段、一个“记住我”复选框和一个提交按钮。这个表单使用的Flask-WTF 类如示例
+  #+BEGIN_SRC python
+  # app/auth/forms.py：登录表单
+  from flask_wtf import FlaskForm
+  from wtforms import StringField, PasswordField, BooleanField, SubmitField
+  from wtforms.validators import DataRequired, Length, Email
+  class LoginForm(FlaskForm):
+      email = StringField('Email', validators=[DataRequired(), Length(1, 64), Email()])
+      password = PasswordField('Password', validators=[DataRequired()])
+      remember_me = BooleanField('Keep me logged in')
+      submit = SubmitField('Log In')
+  #+END_SRC
++ PasswordField 类表示属性为 type="password" 的 <input> 元素。BooleanField 类表示复选框
++ 电子邮件字段用到了 WTForms 提供的 Length() 、Email() 和DataRequired() 这 3 个验证函数，不仅确保这个字段有值，而且必须是有效的。提供验证函数列表时，WTForms 将按照指定的顺序执行各个验证函数。倘若验证失败，显示的错误消息将是首个失败的验证函数的消息
++ 登录页面使用的模板保存在 auth/login.html 文件中。这个模板只需使用Flask-Bootstrap 提供的 wtf.quick_form() 宏渲染表单即可
++ base.html 模板中的导航栏可以使用 Jinja2 条件语句判断当前用户的登录状态，分别显示 Log In 或 Log Out 链接
+  #+BEGIN_SRC html
+  <!-- app/templates/base.html -->
+  <ul class="nav navbar-nav navbar-right">
+      {% if current_user.is_authenticated %}
+      <li><a href="{{ url_for('auth.logout') }}">Log Out</a></li>
+      {% else %}
+      <li><a href="{{ url_for('auth.login') }}">Log In</a></li>
+      {% endif %}
+  </ul>
+  #+END_SRC
++ 判断条件中的变量 current_user 由 Flask-Login 定义，在视图函数和模板中自动可用。这个变量的值是当前登录的用户，如果用户未登录，则是一个匿名用户代理对象。匿名用户对象的 is_authenticated 属性值是 False ，所以通过 current_user.is_authenticated 表达式就能判断当前用户是否登录
+*** 登入用户
++ 视图函数 login() 的实现
+  #+BEGIN_SRC python
+  # app/auth/views.py：登录路由
+  from flask import render_template, redirect, request, url_for, flash
+  from flask_login import login_user
+  from . import auth
+  from ..models import User
+  from .forms import LoginForm
+  @auth.route('/login', methods=['GET', 'POST'])
+  def login():
+      form = LoginForm()
+      if form.validate_on_submit():
+          user = User.query.filter_by(email=form.email.data).first()
+          if user is not None and user.verify_password(form.password.data):
+              login_user(user, form.remember_me.data)
+              next = request.args.get('next')
+              if next is None or not next.startswith('/'):
+                  next = url_for('main.index')
+              return redirect(next)
+          flash('Invalid username or password.')
+      return render_template('auth/login.html', form=form)
+  #+END_SRC
++ 这个视图函数创建了一个 LoginForm 对象，用法和第 4 章中的那个简单表单一样。当请求类型是 GET 时，视图函数直接渲染模板，即显示表单。当表单通过 POST 请求提交时，Flask-WTF 的validate_on_submit() 函数会验证表单数据，然后尝试登入用户
++ 为了登入用户，视图函数首先使用表单中填写的电子邮件地址从数据库中加载用户。如果电子邮件地址对应的用户存在，再调用用户对象的verify_password() 方法，其参数是表单中填写的密码。如果密码正确，调用 Flask-Login 的 login_user() 函数，在用户会话中把用户标记为已登录。login_user() 函数的参数是要登录的用户，以及可选的“记住我”布尔值，“记住我”也在表单中勾选。如果这个字段的值为False ，关闭浏览器后用户会话就过期了，所以下次用户访问时要重新登录。如果值为 True ，那么会在用户浏览器中写入一个长期有效的cookie，使用这个 cookie 可以复现用户会话。cookie 默认记住一年，可以使用可选的 REMEMBER_COOKIE_DURATION 配置选项更改这个值
++ 按照“Post / 重定向 /Get 模式”，提交登录凭据的 POST 请求最后也做了重定向，不过目标 URL 有两种可能。用户访问未授权的URL 时会显示登录表单，Flask-Login 会把原 URL 保存在查询字符串的next 参数中，这个参数可从 request.args 字典中读取。如果查询字符串中没有 next 参数，则重定向到首页。next 参数中的 URL 会经验证，确保是相对 URL，以防恶意用户利用这个参数，把不知情的用户重定向到其他网站
++ 如果用户输入的电子邮件地址或密码不正确，应用会设定一个闪现消息，并再次渲染表单，让用户再次尝试登录
++ 在生产服务器上，应用必须使用安全的 HTTP，保证始终以加密的方式传输登录凭据和用户会话。如果没使用安全的 HTTP，敏感数据在传输过程中可能会被攻击者截获
++ 更新登录模板
+  #+BEGIN_SRC html
+  <!-- app/templates/auth/login.html：登录表单模板 -->
+  {% extends "base.html" %}
+  {% import "bootstrap/wtf.html" as wtf %}
+  {% block title %}Flasky - Login{% endblock %}
+  {% block page_content %}
+  <div class="page-header">
+      <h1>Login</h1>
+  </div>
+  <div class="col-md-4">
+      {{ wtf.quick_form(form) }}
+  </div>
+  {% endblock %}
+  #+END_SRC
+*** 登出用户
++ 退出路由的实现
+  #+BEGIN_SRC python
+  # app/auth/views.py：退出路由
+  from flask_login import logout_user, login_required
+  @auth.route('/logout')
+  @login_required
+  def logout():
+      logout_user()
+      flash('You have been logged out.')
+      return redirect(url_for('main.index'))
+  #+END_SRC
++ 为了登出用户，这个视图函数调用 Flask-Login 的 logout_user() 函数，删除并重设用户会话。随后会显示一个闪现消息，确认这次操作，然后重定向到首页，这样就成功退出了
+*** 理解Flask-Login的运作方式
++ Flask-Login 是个相当小的扩展，但是身份验证流程中有太多变动部分，因此 Flask 用户往往难以理解这个扩展的运作方式。用户登录过程涉及以下操作步骤
+  - 用户点击 Log In 链接，访问 http://localhost:5000/auth/login 处理这个 URL 的函数返回登录表单模板
+  - 用户输入用户名和密码，然后点击提交按钮。再次调用相同的处理函数，不过这一次处理的是 POST 请求，而非 GET 请求
+    1. 处理函数验证通过表单提交的凭据，然后调用 Flask-Login 的login_user() 函数，登入用户
+    2. login_user() 函数把用户的 ID 以字符串的形式写入用户会话
+    3. 视图函数重定向到首页
+  - 浏览器收到重定向响应，请求首页
+    1. 调用首页的视图函数，渲染主页的 Jinja2 模板
+    2. 在渲染这个 Jinja2 模板的过程中，首次出现对 Flask-Login 的current_user 的引用
+    3. 这个请求还没有给上下文变量 current_user 赋值，因此调用Flask-Login 内部的 _get_user() 函数，找出用户是谁
+    4. _get_user() 函数检查用户会话中有没有用户 ID。如果没有，返回一个 Flask-Login 的 AnonymousUser 实例。如果有 ID，调用应用中使用 user_loader 装饰器注册的函数，传入用户 ID
+    5. 应用中的 user_loader 处理函数从数据库中读取用户，将其返回。Flask-Login 把返回的用户对象赋值给当前请求的 current_user上下文变量
+    6. 模板收到新赋值的 current_user
++ 使用 login_required 装饰器装饰的视图函数将使用 current_user上下文变量判断 current_user.is_authenticated 表达式的结果是否为 True 。logout_user() 函数就简单了，它直接从用户会话中把用户 ID 删除
+*** 登录测试
++ 为验证登录功能可用，可以更新首页，使用已登录用户的名字显示一个欢迎消息。模板中生成欢迎消息的部分
+  #+BEGIN_SRC html 
+  <!-- app/templates/index.html：为已登录的用户显示一个欢迎消息 -->
+  Hello,
+  {% if current_user.is_authenticated %}
+      {{ current_user.username }}
+  {% else %}
+      Stranger
+  {% endif %}!
+  #+END_SRC
++ 这个模板再次使用 current_user.is_authenticated 判断用户是否已经登录
++ 因为还未实现用户注册功能，所以目前只能在 shell 中注册新用户
+  #+BEGIN_SRC shell
+  (venv) $ flask shell
+  >>> u = User(email='john@example.com', username='john', password='cat')
+  >>> db.session.add(u)
+  >>> db.session.commit()
+  #+END_SRC
+** 注册新用户
+*** 添加用户注册表单
++ 注册页面中的表单要求用户输入电子邮件地址、用户名和密码
+  #+BEGIN_SRC python
+  # app/auth/forms.py：用户注册表单
+  from flask_wtf import FlaskForm
+  from wtforms import StringField, PasswordField, BooleanField, SubmitField
+  from wtforms.validators import DataRequired, Length, Email, Regexp, EqualTo
+  from wtforms import ValidationError
+  from ..models import User
+  class RegistrationForm(FlaskForm):
+      email = StringField('Email', validators=[DataRequired(), Length(1, 64), Email()])
+      username = StringField('Username', validators=[
+          DataRequired(), Length(1, 64),
+          Regexp('^[A-Za-z][A-Za-z0-9_.]*$', 0, 'Usernames must have only letters, numbers, dots or ' 'underscores')])
+      password = PasswordField('Password', validators=[DataRequired(), EqualTo('password2', message='Passwords must match.')])
+      password2 = PasswordField('Confirm password', validators=[DataRequired()])
+      submit = SubmitField('Register')
+      def validate_email(self, field):
+          if User.query.filter_by(email=field.data).first():
+              raise ValidationError('Email already registered.')
+      def validate_username(self, field):
+          if User.query.filter_by(username=field.data).first():
+              raise ValidationError('Username already in use.')
+  #+END_SRC
++ 这个表单使用 WTForms 提供的 Regexp 验证函数，确保 username 字段的值以字母开头，而且只包含字母、数字、下划线和点号。这个验证函数中正则表达式后面的两个参数分别是正则表达式的标志和验证失败时显示的错误消息
++ 为了安全起见，密码要输入两次。此时要验证两个密码字段中的值是否一致，这种验证可使用 WTForms 提供的另一验证函数实现，即EqualTo 。这个验证函数要附属到两个密码字段中的一个上，另一个字段则作为参数传入
++ 这个表单还有两个自定义的验证函数，以方法的形式实现。如果表单类中定义了以 validate_ 开头且后面跟着字段名的方法，这个方法就和常规的验证函数一起调用。本例分别为 email 和 username 字段定义了验证函数，确保填写的值在数据库中没出现过。自定义的验证函数要想表示验证失败，可以抛出 ValidationError 异常，其参数就是错误消息
++ 显示这个表单的模板是 /templates/auth/register.html。与登录模板一样，这个模板也使用 wtf.quick_form() 渲染表单
++ 登录页面要显示一个指向注册页面的链接，让没有账户的用户能轻松找到注册页面
+  #+BEGIN_SRC html
+  <!-- app/templates/auth/login.html：链接到注册页面 -->
+  <p>
+      New user?
+      <a href="{{ url_for('auth.register') }}">
+          Click here to register
+      </a>
+  </p>
+  #+END_SRC
+*** 注册新用户
++ 处理用户注册的过程没有什么难以理解的地方。提交注册表单，通过验证后，系统使用用户填写的信息在数据库中添加一个新用户。处理这个任务的视图函数如示例
+  #+BEGIN_SRC python
+  # app/auth/views.py：用户注册路由
+  @auth.route('/register', methods=['GET', 'POST'])
+  def register():
+      form = RegistrationForm()
+      if form.validate_on_submit():
+          user = User(email=form.email.data, username=form.username.data, password=form.password.data)
+          db.session.add(user)
+          db.session.commit()
+          flash('You can now login.')
+          return redirect(url_for('auth.login'))
+      return render_template('auth/register.html', form=form)
+  #+END_SRC
+** 确认账户
++ 对于某些特定类型的应用，有必要确认注册时用户提供的信息是否正确。常见要求是能通过提供的电子邮件地址与用户取得联系。为了确认电子邮件地址，用户注册后，应用会立即发送一封确认邮件。新账户先被标记成待确认状态，用户按照邮件中的说明操作后，才能证明自己可以收到电子邮件。账户确认过程中，往往会要求用户点击一个包含确认令牌的特殊 URL 链
+*** 使用itsdangerous 生成确认令牌
++ 确认邮件中最简单的确认链接是http://www.example.com/auth/confirm/<id> 这种形式的 URL，其中 <id>是数据库分配给用户的数字 id 。用户点击链接后，处理这个路由的视图函数将确认收到的用户 id ，然后将用户状态更新为已确认
++ 但这种实现方式显然不是很安全，只要用户能判断确认链接的格式，就可以随便指定 URL 中的数字，从而确认任意账户。解决方法是把 URL中的 <id> 换成包含相同信息的令牌，但是只有服务器才能生成有效的确认 URL
++ Flask 使用加密的签名cookie 保护用户会话，以防止被篡改。用户会话 cookie 中有一个由itsdangerous 包生成的加密签名。如果用户会话的内容被篡改，签名将不再与内容匹配，这样会使 Flask 销毁会话，然后重建一个。同样的方法也可用在确认令牌上
++ 下面这个简短的 shell 会话展示如何使用 itsdangerous 包生成包含用户 id 的签名令牌：
+  #+BEGIN_SRC shell
+  (venv) $ flask shell
+  >>> from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
+  >>> s = Serializer(app.config['SECRET_KEY'], expires_in=3600)
+  >>> token = s.dumps({ 'confirm': 23 })
+  >>> token
+  'eyJhbGciOiJIUzI1NiIsImV4cCI6MTM4MTcxODU1OCwiaWF0IjoxMzgxNzE0OTU4fQ.ey ...'
+  >>> data = s.loads(token)
+  >>> data
+  {'confirm': 23}
+  #+END_SRC
++ itsdangerous 提供了多种生成令牌的方法。其中，TimedJSONWebSignatureSerializer 类生成具有过期时间的JSON Web 签名（JWS）。这个类的构造函数接收的参数是一个密钥，在 Flask 应用中可使用 SECRET_KEY 设置
++ dumps() 方法为指定的数据生成一个加密签名，然后再对数据和签名进行序列化，生成令牌字符串。expires_in 参数设置令牌的过期时间，单位为秒
++ 为了解码令牌，序列化对象提供了 loads() 方法，其唯一的参数是令牌字符串。这个方法会检验签名和过期时间，如果都有效，则返回原始数据。如果提供给 loads() 方法的令牌无效或是过期了，则抛出异常
++ 可以把这种生成和检验令牌的功能添加到 User 模型中，改动如示例
+  #+BEGIN_SRC python
+  # app/models.py：确认用户账户
+  from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
+  from flask import current_app
+  from . import db
+  class User(UserMixin, db.Model):
+      # ...
+      confirmed = db.Column(db.Boolean, default=False)
+      def generate_confirmation_token(self, expiration=3600):
+          s = Serializer(current_app.config['SECRET_KEY'], expiration)
+          return s.dumps({'confirm': self.id}).decode('utf-8')
+      def confirm(self, token):
+          s = Serializer(current_app.config['SECRET_KEY'])
+          try:
+              data = s.loads(token.encode('utf-8'))
+          except:
+              return False
+          if data.get('confirm') != self.id:
+              return False
+          self.confirmed = True
+          db.session.add(self)
+          return True
+  #+END_SRC
++ generate_confirmation_token() 方法生成一个令牌，有效期默认为一小时。confirm() 方法检验令牌，如果检验通过，就把用户模型中新添加的 confirmed 属性设为 True
++ 除了检验令牌，confirm() 方法还检查令牌中的 id 是否与存储在current_user 中的已登录用户匹配。这样能确保为一个用户生成的确认令牌无法用于确认其他用户
++ 由于模型中新加入了一列用来保存账户的确认状态，因此要生成并运行一个新数据库迁移
+*** 发送确认邮件
++ 当前的 /register 路由把新用户添加到数据库中之后，会重定向到/index。在重定向之前，这个路由现在需要发送确认邮件
+  #+BEGIN_SRC python
+  # app/auth/views.py：能发送确认邮件的注册路由
+  from ..email import send_email
+  @auth.route('/register', methods=['GET', 'POST'])
+  def register():
+      form = RegistrationForm()
+      if form.validate_on_submit():
+          # ...
+          db.session.add(user)
+          db.session.commit()
+          token = user.generate_confirmation_token()
+          send_email(user.email, 'Confirm Your Account', 'auth/email/confirm', user=user, token=token)
+          flash('A confirmation email has been sent to you by email.')
+          return redirect(url_for('main.index'))
+      return render_template('auth/register.html', form=form)
+  #+END_SRC
++ 注意，在发送确认邮件之前要调用 db.session.commit() 。之所以这么做，是因为提交之后才能赋予新用户 id 值，而确认令牌需要用到 id。身份验证蓝本使用的电子邮件模板保存在 templates/auth/email 目录中，以便与 HTML 模板区分开来。第 6 章说过，一个电子邮件需要两个模板，分别用于渲染纯文本正文和 HTML 正文。举个例子，示例 8-20 是确认邮件模板的纯文本版本
+  #+BEGIN_SRC html
+  <!-- app/templates/auth/email/conf irm.txt：确认邮件的纯文本正文 -->
+  Dear {{ user.username }},
+  Welcome to Flasky!
+  To confirm your account please click on the following link:
+  {{ url_for('auth.confirm', token=token, _external=True) }}
+  Sincerely,
+  The Flasky Team
+  Note: replies to this email address are not monitored.
+  #+END_SRC
++ 默认情况下，url_for() 生成相对 URL，例如url_for('auth.confirm', token='abc') 返回的字符串是'/auth/confirm/abc' 。这显然不是能够在电子邮件中发送的正确URL，因为只有 URL 的路径部分。相对 URL 在网页的上下文中可以正常使用，因为浏览器会添加当前页面的主机名和端口号，将其转换成绝对 URL。但是通过电子邮件发送的 URL 并没有这种上下文。添加到url_for() 函数中的 _external=True 参数要求应用生成完全限定的URL，包括协议（http:// 或 https://）、主机名和端口。确认账户的视图函数如示例
+  #+BEGIN_SRC python
+  # app/auth/views.py：确认用户的账户
+  from flask_login import current_user
+  @auth.route('/confirm/<token>')
+  @login_required
+  def confirm(token):
+      if current_user.confirmed:
+          return redirect(url_for('main.index'))
+      if current_user.confirm(token):
+          db.session.commit()
+          flash('You have confirmed your account. Thanks!')
+      else:
+          flash('The confirmation link is invalid or has expired.')
+      return redirect(url_for('main.index'))
+  #+END_SRC
++ Flask-Login 提供的 login_required 装饰器会保护这个路由，因此，用户点击确认邮件中的链接后，要先登录，然后才能执行这个视图函数。这个函数先检查已登录的用户是否已经确认过，如果确认过，则重定向到首页，因为很显然此时不用做什么操作。这样处理可以避免用户不小心多次点击确认令牌带来的额外工作
++ 由于令牌确认完全在 User 模型中完成，所以视图函数只需调用confirm() 方法即可，然后再根据确认结果显示不同的闪现消息。确认成功后，User 模型中 confirmed 属性的值会被修改并添加到会话中，然后提交数据库会话
++ 各个应用可以自行决定用户确认账户之前可以做哪些操作。比如，允许未确认的用户登录，但只显示一个页面，要求用户在获取进一步访问权限之前先确认账户
++ 这一步可使用 Flask 提供的 before_request 钩子完成，我们在第 2 章就已经简单介绍过钩子的相关内容。对蓝本来说，before_request 钩子只能应用到属于蓝本的请求上。若想在蓝本中使用针对应用全局请求的钩子，必须使用 before_app_request 装饰器
+  #+BEGIN_SRC python
+  # app/auth/views.py：使用 before_app_request 处理程序过滤未确认的账户
+  @auth.before_app_request
+  def before_request():
+      if current_user.is_authenticated \
+              and not current_user.confirmed \
+              and request.blueprint != 'auth' \
+              and request.endpoint != 'static':
+          return redirect(url_for('auth.unconfirmed'))
+  @auth.route('/unconfirmed')
+  def unconfirmed():
+      if current_user.is_anonymous or current_user.confirmed:
+          return redirect(url_for('main.index'))
+      return render_template('auth/unconfirmed.html')
+  #+END_SRC
++ 同时满足以下 3 个条件时，before_app_request 处理程序会拦截请求
+  - 用户已登录（current_user.is_authenticated 的值为 True）
+  - 用户的账户还未确认
+  - 请求的 URL 不在身份验证蓝本中，而且也不是对静态文件的请求。要赋予用户访问身份验证路由的权限，因为这些路由的作用是让用户确认账户或执行其他账户管理操作
++ 如果请求满足以上条件，会被重定向到 /auth/unconfirmed 路由，显示一个确认账户相关信息的页面
++ 如果 before_request 或 before_app_request 的回调返回响应或重定向，Flask 会直接将其发送至客户端，而不会调用相应的视图函数。因此，这些回调可在必要时拦截请求
++ 呈现给未确认用户的页面（如图 8-4 所示）只渲染一个模板，其中有如何确认账户的说明，此外还有一个链接，用于请求发送新的确认邮件，以防之前的邮件丢失。重新发送确认邮件的路由如示例
+  #+BEGIN_SRC python
+  # app/auth/views.py：重新发送账户确认邮件
+  @auth.route('/confirm')
+  @login_required
+  def resend_confirmation():
+      token = current_user.generate_confirmation_token()
+      send_email(current_user.email, 'Confirm Your Account', 'auth/email/confirm', user=current_user, token=token)
+      flash('A new confirmation email has been sent to you by email.')
+      return redirect(url_for('main.index'))
+  #+END_SRC
++ 这个路由为 current_user （即已登录的用户，也是目标用户）重做了一遍注册路由中的操作。这个路由也用 login_required 保护，确保只有通过身份验证的用户才能再次请求发送确认邮件
+** 管理账户
++ 拥有应用账户的用户有时可能需要修改账户信息。下面这些功能可使用本章介绍的技术添加到身份验证蓝本中
++ 修改密码
+  安全意识强的用户可能想定期修改密码。这是一个很容易实现的功能，只要用户处于登录状态，就可以放心显示一个表单，要求用户输入旧密码和替换的新密码。这个功能的实现参见 GitHub 仓库中标签为 8f的提交。此次修改还把导航栏中的 Log Out 链接改成了下拉菜单，里面有 Change Password 和 Log Out 两个链接
++ 重设密码
+  为避免用户忘记密码后无法登入，应用可以提供重设密码功能。为了安全起见，有必要使用令牌，类似于确认账户时用到的。用户请求重设密码后，应用向用户注册时提供的电子邮件地址发送一封包含重设令牌的邮件。用户点击邮件中的链接，令牌通过验证后，显示一个用于输入新密码的表单
++ 修改电子邮件地址
+  应用可以提供修改注册电子邮件地址的功能，不过接受新地址之前，必须使用确认邮件进行验证。使用这个功能时，用户在表单中输入新的电子邮件地址。为了验证新地址，应用发送一封包含令牌的邮件。服务器收到令牌后，再更新用户对象。服务器收到令牌之前，可以把新电子邮件地址保存在一个新数据库字段中作为待定地址，或者将其与id 一起保存在令牌中
+* 用户角色
++ Web 应用中的用户并非都具有同等地位。在多数应用中，一小部分可信用户具有额外权限，用于保障应用平稳运行。管理员就是最好的例子，但有时也需要介于管理员和普通用户之间的角色，例如内容协管员。为此，要为所有用户分配一个角色
++ 简单的应用可能只需要两个角色，一个表示普通用户，一个表示管理员。对于这种情况，在 User 模型中添加一个is_administrator 布尔值字段可能就够了。复杂的应用可能需要在普通用户和管理员之间再细分出多个不同等级的角色。有些应用甚至不能使用分立的角色，赋予用户一系列独立的权限 或许更合适
+** 角色在数据库中的表示
++ 演示一对多关系，创建了一个简单的 roles 表,下面是改进后的 Role 模型
+  #+BEGIN_SRC python
+  # app/models.py：角色数据库模型
+  class Role(db.Model):
+      __tablename__ = 'roles'
+      id = db.Column(db.Integer, primary_key=True)
+      name = db.Column(db.String(64), unique=True)
+      default = db.Column(db.Boolean, default=False, index=True)
+      permissions = db.Column(db.Integer)
+      users = db.relationship('User', backref='role', lazy='dynamic')
+
+      def __init__(self, **kwargs):
+          super(Role, self).__init__(**kwargs)
+          if self.permissions is None:
+              self.permissions = 0
+  #+END_SRC
++ 这个模型新增了 default 字段。只能有一个角色的这个字段可以设为True ，其他角色都应该设为 False 。默认角色是注册新用户时赋予用户的角色。因为应用将在 roles 表中搜索默认角色，所以我们为这一列设置了索引，提升搜索的速度
++ 这个模型的另一处改动是添加了 permissions 字段，其值是一个整数，以简洁的方式定义一组权限。SQLAlchemy 默认把这个字段的值设为 None ，因此我们添加了一个类构造函数，在未给构造函数提供参数时，把这个字段的值设为 0
++ 各操作所需的权限在不同的应用中是不一样的。对 Flasky 来说，各种操作及其权限如表
+    操作    权限名   权限值
+  - 关注用户 FOLLOW 1
+  - 在他人的文章中发表评论` COMMENT 2
+  - 写文章` WRITE 4
+  - 管理他人发表的评论` MODERATE 8
+  - 管理员权限` ADMIN 16
++ 使用 2 的幂表示权限值有个好处：每种不同的权限组合对应的值都是唯一的，方便存入角色的 permissions 字段。例如，若想为一个用户角色赋予权限，使其能够关注其他用户，并在文章中发表评论，则权限值为 FOLLOW + COMMENT = 3 。通过这种方式存储各个角色的权限特别高效
++ 权限常量
+  #+BEGIN_SRC python
+  # app/models.py：权限常量
+  class Permission:
+      FOLLOW = 1
+      COMMENT = 2
+      WRITE = 4
+      MODERATE = 8
+      ADMIN = 16
+  #+END_SRC
++ 添加这些权限常量之后，可以在 Role 模型中定义几个新方法，用于管理权限
+  #+BEGIN_SRC python
+  # app/models.py：Role 模型中管理权限的方法
+  class Role(db.Model):
+      # ...
+      def add_permission(self, perm):
+          if not self.has_permission(perm):
+              self.permissions += perm
+      def remove_permission(self, perm):
+          if self.has_permission(perm):
+              self.permissions -= perm
+      def reset_permissions(self):
+          self.permissions = 0
+      def has_permission(self, perm):
+          return self.permissions & perm == perm
+  #+END_SRC
++ add_permission() 、remove_permission() 和reset_permission() 这 3 个方法使用基本的算术运算符更新权限列表。has_permission() 方法是这几个方法中最复杂的，它使用位与运算符 & （https://docs.python.org/3/reference/expressions.html#binary-bitwise-operations ）检查组合权限是否包含指定的单独权限。你可以在Python shell 中试试这些方法
+  #+BEGIN_SRC shell
+  (venv) $ flask shell
+  >>> r = Role(name='User')
+  >>> r.add_permission(Permission.FOLLOW)
+  >>> r.add_permission(Permission.WRITE)
+  >>> r.has_permission(Permission.FOLLOW)
+  True
+  >>> r.has_permission(Permission.ADMIN)
+  False
+  >>> r.reset_permissions()
+  >>> r.has_permission(Permission.FOLLOW)
+  False
+  #+END_SRC
++ 列出这个应用会支持的用户角色，以及定义各个角色的权限组合
+  用户角色    权限                                          说明
+  - 匿名      无                                           对应只读权限；这是未登录的未知用户
+  - 用户      FOLLOW 、 COMMENT 、 WRITE                    具有发布文章、发表评论和关注其他用户的权限；这是新用户的默认角色
+  - 协管员     FOLLOW 、 COMMENT 、 WRITE、 MODERATE         增加管理其他用户所发表评论的权限
+  - 管理员     FOLLOW 、 COMMENT 、 WRITE、 MODERATE 、 ADMIN 具有所有权限，包括修改其他用户所属角色的权限
++ 将角色手动添加到数据库中既耗时又容易出错。作为替代，我们可以在Role 类中添加一个类方法，完成这个操作，通过这个方法，可以在单元测试中轻松重建正确的角色和权限。当然，更重要的是，把应用部署到生产服务器上时也可以这么做
+  #+BEGIN_SRC python
+  # app/models.py：在数据库中创建角色
+  class Role(db.Model):
+      # ...
+      @staticmethod
+      def insert_roles():
+          roles = {
+              'User': [Permission.FOLLOW, Permission.COMMENT, Permission.WRITE],
+              'Moderator': [Permission.FOLLOW, Permission.COMMENT, Permission.WRITE, Permission.MODERATE],
+              'Administrator': [Permission.FOLLOW, Permission.COMMENT, Permission.WRITE, Permission.MODERATE, Permission.ADMIN],
+          }
+          default_role = 'User'
+          for r in roles:
+              role = Role.query.filter_by(name=r).first()
+              if role is None:
+                  role = Role(name=r)
+              role.reset_permissions()
+              for perm in roles[r]:
+                  role.add_permission(perm)
+              role.default = (role.name == default_role)
+              db.session.add(role)
+          db.session.commit()
+  #+END_SRC
++ insert_roles() 函数并不直接创建新角色对象，而是通过角色名查找现有的角色，然后再进行更新。只有当数据库中没有某个角色名时，才会创建新角色对象。如此一来，如果以后更新了角色列表，就可以执行更新操作了。要想添加新角色，或者修改角色的权限，修改函数顶部的roles 字典，再运行这个函数即可。注意，“匿名”角色不需要在数据库中表示出来，这个角色的作用就是为了表示不在数据库中的未知用户
++ 此外还要注意，insert_roles() 是静态方法 。这是一种特殊的方法，无须创建对象，而是直接在类上调用，例如Role.insert_roles() 。与实例方法不同的是，静态方法的参数中没有 self
+** 赋予角色
++ 用户在应用中注册账户时，应该赋予其适当的角色。多数用户在注册时赋予的角色是“用户”，因为这是默认角色。唯一的例外是管理员，管理员在最开始就应该赋予“管理员”角色。管理员由保存在设置变量FLASKY_ADMIN 中的电子邮件地址识别，只要这个电子邮件地址出现在注册请求中，就会被赋予正确的角色。示例 9-5 展示了如何在 User 模型的构造函数中完成这一操作
+  #+BEGIN_SRC python
+  # app/models.py：定义默认的用户角色
+  class User(UserMixin, db.Model):
+      # ...
+      def __init__(self, **kwargs):
+          super(User, self).__init__(**kwargs)
+          if self.role is None:
+              if self.email == current_app.config['FLASKY_ADMIN']:
+                  self.role = Role.query.filter_by(name='Administrator').first()
+              if self.role is None:
+                  self.role = Role.query.filter_by(default=True).first()
+      # ...
+  #+END_SRC
+** 检验角色
++ 为了简化角色和权限的实现过程，可在 User 模型中添加一个辅助方法，检查赋予用户的角色是否有某项权限。这个辅助方法的实现很简单，直接委托前面添加的权限管理方法
+  #+BEGIN_SRC python
+  # app/models.py：检查用户是否有指定的权限
+  from flask_login import UserMixin, AnonymousUserMixin
+  class User(UserMixin, db.Model):
+      # ...
+      def can(self, perm):
+          return self.role is not None and self.role.has_permission(perm)
+      def is_administrator(self):
+          return self.can(Permission.ADMIN)
+  class AnonymousUser(AnonymousUserMixin):
+      def can(self, permissions):
+          return False
+      def is_administrator(self):
+          return False
+  login_manager.anonymous_user = AnonymousUser
+  #+END_SRC
++ 如果角色中包含请求的权限，那么 User 模型中添加的 can() 方法会返回 True ，表示允许用户执行此项操作。因为经常需要检查是否具有管理员权限，所以还单独实现了 is_administrator() 方法
++ 为了操作方便，我们还定义了 AnonymousUser 类，并实现了 can() 方法和 is_administrator() 方法。这样，应用无须检查用户是否登录，就能放心调用 current_user.can() 和current_user.is_administrator() 。我们通过login_manager.anonymous_user 属性告诉 Flask-Login 使用应用自定义的匿名用户类
++ 如果想让视图函数只对具有特定权限的用户开放，可以使用自定义的装饰器。示例 9-7 实现了两个装饰器，一个用于检查常规权限，另一个专门检查管理员权限
+  #+BEGIN_SRC python
+  # app/decorators.py：检查用户权限的自定义装饰器
+  from functools import wraps
+  from flask import abort
+  from flask_login import current_user
+  from .models import Permission
+  def permission_required(permission):
+      def decorator(f):
+          @wraps(f)
+          def decorated_function(*args, **kwargs):
+              if not current_user.can(permission):
+                  abort(403)
+              return f(*args, **kwargs)
+          return decorated_function
+      return decorator
+  def admin_required(f):
+      return permission_required(Permission.ADMIN)(f)
+  #+END_SRC
++ 这两个修饰器都使用了 Python 标准库中的 functools 包（https://docs.python.org/3/library/functools.html ），如果用户不具有指定权限，则返回 403 响应，即 HTTP“禁止”错误。我们在第 3 章为 404和 500 错误编写了自定义的错误页面，所以现在也要以类似的方式添加
+  #+BEGIN_SRC python
+  from .decorators import admin_required, permission_required
+  @main.route('/admin')
+  @login_required
+  @admin_required
+  def for_admins_only():
+      return "For administrators!"
+  @main.route('/moderate')
+  @login_required
+  @permission_required(Permission.MODERATE)
+  def for_moderators_only():
+      return "For comment moderators!"
+  #+END_SRC
++ 根据经验，在视图函数上使用多个装饰器时，应该把 Flask 的 route 装饰器放在首位。余下的装饰器应该按照调用视图函数时的执行顺序排列。以上示例中应该先检查用户的身份验证状态，因为如果发现用户未通过身份验证，要将其重定向到登录页面
++ 在模板中可能也需要检查权限，所以 Permission 类的所有常量要能在模板中访问。为了避免每次调用 render_template() 时都多添加一个模板参数，可以使用上下文处理器 。在渲染时，上下文处理器能让变量在所有模板中可访问
+  #+BEGIN_SRC python
+  # app/main/__init__.py：把 Permission 类加入模板上下文
+  @main.app_context_processor
+  def inject_permissions():
+      return dict(Permission=Permission)
+  #+END_SRC
++ 新添加的角色和权限可在单元测试中进行测试，示例 9-9 是其中两个测试
+  #+BEGIN_SRC python
+  # tests/test_user_model.py：角色和权限的单元测试
+  class UserModelTestCase(unittest.TestCase):
+      # ...
+      def test_user_role(self):
+          u = User(email='john@example.com', password='cat')
+          self.assertTrue(u.can(Permission.FOLLOW))
+          self.assertTrue(u.can(Permission.COMMENT))
+          self.assertTrue(u.can(Permission.WRITE))
+          self.assertFalse(u.can(Permission.MODERATE))
+          self.assertFalse(u.can(Permission.ADMIN))
+      def test_anonymous_user(self):
+          u = AnonymousUser()
+          self.assertFalse(u.can(Permission.FOLLOW))
+          self.assertFalse(u.can(Permission.COMMENT))
+          self.assertFalse(u.can(Permission.WRITE))
+          self.assertFalse(u.can(Permission.MODERATE))
+          self.assertFalse(u.can(Permission.ADMIN))
+  #+END_SRC
++ 在 shell 会话中把这些新角色添加到开发数据库中
+  #+BEGIN_SRC shell
+  (venv) $ flask shell
+  >>> Role.insert_roles()
+  >>> Role.query.all()
+  [<Role 'Administrator'>, <Role 'User'>, <Role 'Moderator'>]
+  #+END_SRC
++ 更新用户列表，为在此之前创建的用户账户分配用户角色。这个操作可通过在 Python shell 中执行下述代码完成
+  #+BEGIN_SRC shell
+  (venv) $ flask shell
+  >>> admin_role = Role.query.filter_by(name='Administrator').first()
+  >>> default_role = Role.query.filter_by(default=True).first()
+  >>> for u in User.query.all():
+  ... if u.role is None:
+  ...     if u.email == app.config['FLASKY_ADMIN']:
+  ...          u.role = admin_role
+  ...     else:
+  ...          u.role = default_role
+  ...
+  >>> db.session.commit()
+  #+END_SRC
+* 用户资料
+** 资料信息
++ 为了让用户的资料页面更吸引人，可以在数据库中存储用户的一些额外信息
+  #+BEGIN_SRC python
+  # app/models.py：用户信息字段
+  class User(UserMixin, db.Model):
+      # ...
+      name = db.Column(db.String(64))
+      location = db.Column(db.String(64))
+      about_me = db.Column(db.Text())
+      member_since = db.Column(db.DateTime(), default=datetime.utcnow)
+      last_seen = db.Column(db.DateTime(), default=datetime.utcnow)
+  #+END_SRC
++ 新添加的字段保存用户的真实姓名、所在地、自我介绍、注册日期和最后访问日期。about_me 字段的类型是 db.Text() 。db.String 和db.Text 的区别在于后者是变长字段，因此不需要指定最大长度
++ 两个时间戳的默认值都是当前时间。注意，datetime.utcnow 后面没有 () ，因为 db.Column() 的 default 参数可以接受函数作为默认值，每次需要生成默认值时，SQLAlchemy 都会调用指定的函数。member_since 字段使用默认值即可
++ last_seen 字段的默认值也是创建时的当前时间，但用户每次访问网站后，这个值都要刷新。我们可以在 User 类中添加一个方法执行这个操作
+  #+BEGIN_SRC python
+  # app/models.py：刷新用户的最后访问时间
+  class User(UserMixin, db.Model):
+      # ...
+      def ping(self):
+          self.last_seen = datetime.utcnow()
+          db.session.add(self)
+          db.session.commit()
+  #+END_SRC
++ 为了确保每个用户的最后访问时间都是最新的，每次收到用户的请求时都要调用 ping() 方法。因为 auth 蓝本中的 before_app_request 处理程序会在每次请求前运行，所以能很轻松地实现这个需求
+  #+BEGIN_SRC python
+  # app/auth/views.py：更新已登录用户的最后访问时间
+  @auth.before_app_request
+  def before_request():
+      if current_user.is_authenticated:
+          current_user.ping()
+          if not current_user.confirmed \
+                  and request.endpoint \
+                  and request.blueprint != 'auth' \
+                  and request.endpoint != 'static':
+              return redirect(url_for('auth.unconfirmed'))
+  #+END_SRC
+** 用户资料页面
++ 为每个用户创建资料页面并没有什么难度
+  #+BEGIN_SRC python
+  # app/main/views.py：资料页面的路由
+  @main.route('/user/<username>')
+  def user(username):
+      user 模型中的密码散列值进行比对。如果这个方法返回= User.query.filter_by(username=username).first_or_404()
+      return render_template('user.html', user=user)
+  #+END_SRC
++ 这个路由添加到 main 蓝本中。对于名为 john 的用户，其资料页面的地址是 http:// localhost:5000/user/john。这个视图函数会在数据库中搜索URL 中指定的用户名，如果找到，则渲染模板 user.html，并把用户名作为参数传入模板。如果传入路由的用户名不存在，则返回 404 错误。使用 Flask-SQLAlchemy 时，搜到结果和返回错误这两种情况可以在同一个语句中表达，即在查询对象上调用 first_or_404() 方法
++ user.html 模板用于呈现用户信息，因此要把用户对象作为参数传入其中
+  #+BEGIN_SRC html
+  <!-- app/templates/user.html：用户资料页面的模板 -->
+  {% extends "base.html" %}
+  {% block title %}Flasky - {{ user.username }}{% endblock %}
+  {% block page_content %}
+  <div class="page-header">
+      <h1>{{ user.username }}</h1>
+      {% if user.name or user.location %}
+      <p>
+          {% if user.name %}{{ user.name }}{% endif %}
+          {% if user.location %}
+              From <a href="http://maps.google.com/?q={{ user.location }}">
+                  {{ user.location }}
+              </a>
+          {% endif %}
+      </p>
+      {% endif %}
+      {% if current_user.is_administrator() %}
+      <p><a href="mailto:{{ user.email }}">{{ user.email }}</a></p>
+      {% endif %}
+      {% if user.about_me %}<p>{{ user.about_me }}</p>{% endif %}
+      <p>
+          Member since {{ moment(user.member_since).format('L') }}.
+          Last seen {{ moment(user.last_seen).fromNow() }}.
+      </p>
+  </div>
+  {% endblock %}
+  #+END_SRC
++ 在这个模板中，有几处实现细节需要说明一下
+  - name 和 location 字段在同一个 <p> 元素中渲染。Jinja2 条件语句确保，仅当至少定义了这两个字段中的一个时，才会创建 <p> 元素
+  - 用户的 location 字段被渲染成指向谷歌地图的查询链接，点击打开后将显示一个地图，以所标位置为中心
+  - 如果登录的用户是管理员，显示各用户的电子邮件地址，且渲染成mailto 链接。这样便于管理员查看用户资料页面并联系该用户
+  - 两个时间戳使用 Flask-Moment 渲染
++ 多数用户都希望能轻松找到自己的资料页面，因此我们可以在导航栏中添加一个链接。对 base.html 模板所做的修改如示例
+  #+BEGIN_SRC html
+  <!-- app/templates/base.html：在导航栏中添加指向资料页面的链接 -->
+  {% if current_user.is_authenticated %}
+  <li>
+      <a href="{{ url_for('main.user', username=current_user.username) }}">
+          Profile
+      </a>
+  </li>
+  {% endif %}
+  #+END_SRC
++ 把资料页面的链接包含在条件语句中是非常必要的，因为未通过身份验证的用户也能看到导航栏，但我们不应该让他们看到资料页面的链接
+** 资料编辑器
++ 用户资料的编辑分两种情况。最显而易见的情况是，用户要进入一个页面，输入自己的资料，以便显示在自己的资料页面上。还有一种不太明显但也同样重要的情况，那就是要让管理员能够编辑任意用户的资料——不仅要能编辑用户的个人信息，还要能编辑用户不能直接访问的User 模型字段，例如用户角色。这两种编辑需求有本质上的区别，所以我们将创建两个不同的表单
+*** 用户级资料编辑器
++ 普通用户的资料编辑表单
+  #+BEGIN_SRC python
+  # app/main/forms.py：资料编辑表单
+  class EditProfileForm(FlaskForm):
+      name = StringField('Real name', validators=[Length(0, 64)])
+      location = StringField('Location', validators=[Length(0, 64)])
+      about_me = TextAreaField('About me')
+      submit = SubmitField('Submit')
+  #+END_SRC
++ 注意，这个表单中的所有字段都是可选的，因此长度验证函数的最小值为零。显示这个表单的路由定义如示例
+  #+BEGIN_SRC python
+  # app/main/views.py：资料编辑路由
+  @main.route('/edit-profile', methods=['GET', 'POST'])
+  @login_required
+  def edit_profile():
+      form = EditProfileForm()
+      if form.validate_on_submit():
+          current_user.name = form.name.data
+          current_user.location = form.location.data
+          current_user.about_me = form.about_me.data
+          db.session.add(current_user._get_current_object())
+          db.session.commit()
+          flash('Your profile has been updated.')
+          return redirect(url_for('.user', username=current_user.username))
+      form.name.data = current_user.name
+      form.location.data = current_user.location
+      form.about_me.data = current_user.about_me
+      return render_template('edit_profile.html', form=form)
+  #+END_SRC
++ 与之前的表单一样，各表单字段中的数据使用 form.<field-name>.data 获取。通过这个表达式不仅能获取用户提交的值，还能在字段中显示初始值，供用户编辑。当 form.validate_on_submit()返回 False 时，表单中的 3 个字段都使用 current_user 中保存的初始值。提交表单后，表单字段的 data 属性中保存有更新后的值，因此可以将其赋值给用户对象中的各字段，然后再把用户对象存入数据库
++ 为了让用户能轻松找到编辑页面，我们可以在资料页面中添加一个链接,链接外层的条件语句能确保只有当用户查看自己的资料页面时才显示这个链接
+  #+BEGIN_SRC html
+  <!-- app/templates/user.html：资料编辑页面的链接 -->
+  {% if user == current_user %}
+  <a class="btn btn-default" href="{{ url_for('.edit_profile') }}">
+      Edit Profile
+  </a>
+  {% endif %}
+  #+END_SRC
+*** 管理员级资料编辑器
++ 管理员使用的资料编辑表单比普通用户的表单更加复杂。除了前面的 3个资料信息字段之外，管理员在表单中还要能编辑用户的电子邮件、用户名、确认状态和角色
+  #+BEGIN_SRC python
+  # app/main/forms.py：管理员使用的资料编辑表单
+  class EditProfileAdminForm(FlaskForm):
+      email = StringField('Email', validators=[DataRequired(), Length(1, 64), Email()])
+      username = StringField('Username', validators=[
+      DataRequired(), Length(1, 64),
+      Regexp('^[A-Za-z][A-Za-z0-9_.]*$', 0, 'Usernames must have only letters, numbers, dots or ' 'underscores')])
+      confirmed = BooleanField('Confirmed')
+      role = SelectField('Role', coerce=int)
+      name = StringField('Real name', validators=[Length(0, 64)])
+      location = StringField('Location', validators=[Length(0, 64)])
+      about_me = TextAreaField('About me')
+      submit = SubmitField('Submit')
+      def __init__(self, user, *args, **kwargs):
+          super(EditProfileAdminForm, self).__init__(*args, **kwargs)
+          self.role.choices = [(role.id, role.name)
+                                for role in Role.query.order_by(Role.name).all()]
+          self.user = user
+      def validate_email(self, field):
+          if field.data != self.user.email and \ User.query.filter_by(email=field.data).first():
+              raise ValidationError('Email already registered.')
+      def validate_username(self, field):
+          if field.data != self.user.username and \ User.query.filter_by(username=field.data).first():
+              raise ValidationError('Username already in use.')
+  #+END_SRC
++ SelectField 是 WTForms 对 HTML 表单控件 <select> 的包装，功能是实现下拉列表，这个表单中用于选择用户角色。SelectField 实例必须在其 choices 属性中设置各选项。选项必须是一个由元组构成的列表，各元组都包含两个元素：选项的标识符，以及显示在控件中的文本字符串。choices 列表在表单的构造函数中设定，其值从 Role 模型中获取，使用一个查询按照角色名的字母顺序排列所有角色。元组中的标识符是角色的 id ，因为这是个整数，所以在 SelectField 构造函数中加上了 coerce=int 参数，把字段的值转换为整数，而不使用默认的字符串。
++ email 和 username 字段的构造方式与身份验证表单中的一样，但处理验证时需要更加小心。验证这两个字段时，首先要检查字段的值是否发生了变化：仅当有变化时，才要保证新值不与其他用户的相应字段值重复；如果字段值没有变化，那么应该跳过验证。为了实现这个逻辑，表单构造函数接收用户对象作为参数，并将其保存在成员变量中，供后面自定义的验证方法使用
++ 管理员的资料编辑器路由定义如示例
+  #+BEGIN_SRC python
+  # app/main/views.py：管理员的资料编辑路由
+  from ..decorators import admin_required
+  @main.route('/edit-profile/<int:id>', methods=['GET', 'POST'])
+  @login_required
+  @admin_required
+  def edit_profile_admin(id):
+      user = User.query.get_or_404(id)
+      form = EditProfileAdminForm(user=user)
+      if form.validate_on_submit():
+          user.email = form.email.data
+          user.username = form.username.data
+          user.confirmed = form.confirmed.data
+          user.role = Role.query.get(form.role.data)
+          user.name = form.name.data
+          user.location = form.location.data
+          user.about_me = form.about_me.data
+          db.session.add(user)
+          db.session.commit()
+          flash('The profile has been updated.')
+          return redirect(url_for('.user', username=user.username))
+      form.email.data = user.email
+      form.username.data = user.username
+      form.confirmed.data = user.confirmed
+      form.role.data = user.role_id
+      form.name.data = user.name
+      form.location.data = user.location
+      form.about_me.data = user.about_me
+      return render_template('edit_profile.html', form=form, user=user)
+  #+END_SRC
++ 这个路由与普通用户的那个相对简单的编辑路由具有基本相同的结构，只不过多了个 admin_required 装饰器（在第 9 章定义），当非管理员尝试访问这个路由时，它会自动返回 403 错误
++ 用户 id 由 URL 中的动态参数指定，因此可使用 Flask-SQLAlchemy 提供的 get_or_404() 函数，在提供的 id 不正确时返回 404 错误。我们还需要再探讨一下用于选择用户角色的 SelectField 。设定这个字段的初始值时，role_id 被赋值给了 form.role.data ，这么做的原因在于 choices 属性中设置的元组列表使用数字标识符表示各选项。表单提交后，id 从字段的 data 属性中提取，并且查询时会使用提取出来的 id 值加载角色对象。表单中声明 SelectField 时设定的coerce=int 参数，其作用是保证这个字段的 data 属性值始终被转换成整数
++ 为链接到这个页面，我们还需在用户资料页面中添加一个按钮
+  #+BEGIN_SRC html
+  <!-- app/templates/user.html：管理员使用的资料编辑页面链接 -->
+  {% if current_user.is_administrator() %}
+  <a class="btn btn-danger"
+          href="{{ url_for('.edit_profile_admin', id=user.id) }}">
+      Edit Profile [Admin]
+  </a>
+{% endif %}
+  #+END_SRC
+** 用户头像
++ 为了进一步改进资料页面的外观，可以在页面中显示用户的头像。在本节，你将学到如何添加 Gravatar 提供的用户头像。Gravatar 是一个行业领先的头像服务，能把头像和电子邮件地址关联起来。用户要先到https://en.gravatar.com/ 中注册账户，然后上传图像。这个服务通过一个特殊的 URL 对外开放用户的头像，这个 URL 中包含用户电子邮件地址的 MD5 散列值，计算方法如下
+  #+BEGIN_SRC shell
+  (venv) $ python
+  >>> import hashlib
+  >>> hashlib.md5('john@example.com'.encode('utf-8')).hexdigest()
+  'd4c74594d841139328695756648b6bd6'
+  #+END_SRC
++ 生成的头像 URL 是在 https://secure.gravatar.com/avatar/ 之后加上这个MD5 散列值。例如，你在浏览器的地址栏中输入https://secure.gravatar.com/avatar/d4c74594d841139328695756648b6bd6后，将看到电子邮件地址 john@example.com 对应的头像。如果这个电子邮件地址没有关联头像，则会显示一个默认图像。得到基本的头像URL 之后，还可以添加一些查询字符串参数，配置头像的特征。可设参数如表
+  - s 图像尺寸，单位为像素
+  - r 图像级别，可选值有 "g" 、 "pg" 、 "r" 和 "x"
+  - d 尚未注册 Gravatar 服务的用户使用的默认图像生成方式，可选值有： "404" ，返回 404 错误；一个 URL，指向默认图像；某种图像生成方式，包括 "mm"、 "identicon" 、 "monsterid" 、 "wavatar" 、 "retro" 和 "blank"
+  - fd 强制使用默认头像
++ 例如，在 john@example.com 的头像 URL 后加上 ?d=identicon，默认头像将变成几何图形。头像 URL 的这些参数都可以添加到 User 模型中，具体实现如示例
+  #+BEGIN_SRC python
+  # app/models.py：生成 Gravatar URL
+  import hashlib
+  from flask import request
+  class User(UserMixin, db.Model):
+      # ...
+      def gravatar(self, size=100, default='identicon', rating='g'):
+          url = 'https://secure.gravatar.com/avatar'
+          hash = hashlib.md5(self.email.lower().encode('utf-8')).hexdigest()
+          return '{url}/{hash}?s={size}&d={default}&r={rating}'.format(url=url, hash=hash, size=size, default=default, rating=rating)
+  #+END_SRC
++ 头像的 URL 由基 URL、用户电子邮件地址的 MD5 散列值和参数组成，而且各个参数都有默认值。注意，Gravatar 要求在计算 MD5 散列值时要规范电子邮件地址，把字母全部转换成小写，因此这个方法也添加了这一步。有了上述实现，我们就可以在 Python shell 中轻松生成头像的 URL 了
+  #+BEGIN_SRC shell
+  (venv) $ flask shell
+  >>> u = User(email='john@example.com')
+  >>> u.gravatar()
+  'https://secure.gravatar.com/avatar/d4c74594d841139328695756648b6bd6?s=100&d=
+  identicon&r=g'
+  >>> u.gravatar(size=256)
+  'https://secure.gravatar.com/avatar/d4c74594d841139328695756648b6bd6?s=256&d=
+  identicon&r=g'
+  #+END_SRC
++ gravatar() 方法也可在 Jinja2 模板中调用。示例 10-14 在资料页面中添加一个大小为 256 像素的头像
+  #+BEGIN_SRC html
+  <!-- app/tempaltes/user.html：在资料页面中添加头像 -->
+  ...
+  <img class="img-rounded profile-thumbnail" src="{{ user.gravatar(size=256) }}">
+  <div class="profile-header">
+      ...
+  </div>
+  ...
+  #+END_SRC
++ profile-thumbnail 这个 CSS 类用于定位图像在页面中的位置。头像后面的 <div> 元素把资料信息包围起来，通过 CSS profile-header类改进格式
++ 使用类似的方式，我们可在基模板的导航栏中添加一个已登录用户头像的小型缩略图。为了更好地调整页面中头像图片的显示格式，我们可使用一些自定义的 CSS 类。你可以在源码仓库的 styles.css 文件中查看自定义的 CSS。styles.css 文件保存在应用的静态文件目录中，在 base.html模板中引入应用
++ 生成头像时要生成 MD5 散列值，这是一项 CPU 密集型操作。如果要在某个页面中生成大量头像，计算量会非常大。只要电子邮件地址不变，对应的 MD5 散列值就不会变。鉴于此，我们可以将其缓存 在 User 模型中。若要把 MD5 散列值保存在数据库中，需要对 User 模型做些改动
+  #+BEGIN_SRC python
+  # app/models.py：使用缓存的 MD5 散列值生成 GravatarURL
+  class User(UserMixin, db.Model):
+      # ...
+      avatar_hash = db.Column(db.String(32))
+      def __init__(self, **kwargs):
+          # ...
+          if self.email is not None and self.avatar_hash is None:
+              self.avatar_hash = self.gravatar_hash()
+      def change_email(self, token):
+          # ...
+          self.email = new_email
+          self.avatar_hash = self.gravatar_hash()
+          db.session.add(self)
+          return True
+      def gravatar_hash(self):
+          return hashlib.md5(self.email.lower().encode('utf-8')).hexdigest()
+      def gravatar(self, size=100, default='identicon', rating='g'):
+           if request.is_secure:
+               url = 'https://secure.gravatar.com/avatar'
+           else:
+               url = 'http://www.gravatar.com/avatar'
+           hash = self.avatar_hash or self.gravatar_hash()
+           return '{url}/{hash}?s={size}&d={default}&r={rating}'.format(url=url, hash=hash, size=size, default=default, rating=rating)
+  #+END_SRC
++ 为了避免重复编写计算 Gravatar 散列值的逻辑，我们专门定义了gravatar_hash() 方法执行此项任务。模型初始化时，散列值存储在新增的 avatar_hash 属性中。如果用户更新了电子邮件地址，则重新计算散列值。如果存储了散列值，gravatar() 方法将使用存储的值，否则将按照之前的方式计算散列值
+* 实战解析
+** 博客文章
+*** 提交和显示博客文章
++ 为支持博客文章，我们需要创建一个新的数据库模型,博客文章包含正文、时间戳以及和 User 模型之间的一对多关系。body字段的类型是 db.Text ，所以不限制长度
+  #+BEGIN_SRC python
+  # app/models.py：Post 模型
+  class Post(db.Model):
+      __tablename__ = 'posts'
+      id = db.Column(db.Integer, primary_key=True)
+      body = db.Column(db.Text)
+      timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
+      author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+  class User(UserMixin, db.Model):
+      # ...
+      posts = db.relationship('Post', backref='author', lazy='dynamic')
+  #+END_SRC
++ 应用的首页要显示一个表单，让用户撰写博客。这个表单很简单，只包括一个多行文本输入框，用于输入博客文章的内容，另外还有一个提交按钮
+  #+BEGIN_SRC python
+  # app/main/forms.py：博客文章表单
+  class PostForm(FlaskForm):
+      body = TextAreaField("What's on your mind?", validators=[DataRequired()])
+      submit = SubmitField('Submit')
+  #+END_SRC
++ index() 视图函数处理这个表单并把以前发布的博客文章列表传给模板
+  #+BEGIN_SRC python
+  # app/main/views.py：处理博客文章的首页路由
+  @main.route('/', methods=['GET', 'POST'])
+  def index():
+      form = PostForm()
+      if current_user.can(Permission.WRITE_ARTICLES) and form.validate_on_submit():
+          post = Post(body=form.body.data, author=current_user._get_current_object())
+          db.session.add(post)
+          db.session.commit()
+          return redirect(url_for('.index'))
+      posts = Post.query.order_by(Post.timestamp.desc()).all()
+      return render_template('index.html', form=form, posts=posts)
+  #+END_SRC
++ 这个视图函数把表单和完整的博客文章列表传给模板。文章列表按照时间戳进行降序排列。博客文章表单采取惯常处理方式，如果提交的数据能通过验证，就创建一个新 Post 实例。在发布新文章之前，要检查当前用户是否有写文章的权限
++ 新文章对象的 author 属性值为表达式current_user._get_current_object() 。变量 current_user 由Flask-Login 提供，与所有上下文变量一样，也是实现为线程内的代理对象。这个对象的表现类似用户对象，但实际上却是一个轻度包装，包含真正的用户对象。数据库需要真正的用户对象，因此要在代理对象上调用 _get_current_object() 方法
++ 这个表单显示在 index.html 模板中的欢迎消息下方，其后是博客文章列表。这是我们首次尝试实现博客文章时间轴，按时间顺序由新到旧列出数据库中所有的博客文章
+  #+BEGIN_SRC html
+  <!-- app/templates/index.html：显示博客文章的首页模板 -->
+  {% extends "base.html" %}
+  {% import "bootstrap/wtf.html" as wtf %}
+  ...
+  <div>
+      {% if current_user.can(Permission.WRITE_ARTICLES) %}
+      {{ wtf.quick_form(form) }}
+      {% endif %}
+  </div>
+  <ul class="posts">
+      {% for post in posts %}
+      <li class="post">
+          <div class="profile-thumbnail">
+              <a href="{{ url_for('.user', username=post.author.username) }}">
+                  <img class="img-rounded profile-thumbnail" src="{{ post.author.gravatar(size=40) }}">
+              </a>
+          </div>
+          <div class="post-date">{{ moment(post.timestamp).fromNow() }}</div>
+          <div class="post-author">
+              <a href="{{ url_for('.user', username=post.author.username) }}">
+                  {{ post.author.username }}
+              </a>
+          </div>
+          <div class="post-body">{{ post.body }}</div>
+      </li>
+      {% endfor %}
+  </ul>
+  ...
+  #+END_SRC
++ 如果用户所属角色没有 WRITE 权限，经 User.can() 方法检查后，不会显示博客文章表单。博客文章列表通过 HTML 无序列表实现，并指定了一个 CSS 类，从而让格式更精美。页面左侧会显示作者的小头像，头像和作者的用户名都渲染成链接，指向用户的资料页面。所用的 CSS 样式都存储在应用的 static 目录里的 styles.css 文件中
+*** 在资料页中显示博客文章
++ 可以改进一下用户资料页面，在上面显示该用户发布的博客文章列表
+  #+BEGIN_SRC python
+  # app/main/views.py：获取博客文章的资料页面路由
+  @main.route('/user/<username>')
+  def user(username):
+      user = User.query.filter_by(username=username).first()
+      if user is None:
+          abort(404)
+      posts = user.posts.order_by(Post.timestamp.desc()).all()
+      return render_template('user.html', user=user, posts=posts)
+  #+END_SRC
++ 用户发布的博客文章列表通过 User.posts 关系获取。User.posts 返回的结果类似于查询对象，因此可像常规查询对象那样在其上调用过滤器，例如 order_by()
++ 与 index.html 模板一样，user.html 模板也要使用一个 HTML <ul> 元素渲染博客文章列表。但是维护两个完全相同的 HTML 片段副本可不是个好主意。遇到这种情况，Jinja2 提供的 include() 指令就非常有用。生成文章列表的 HTML 片段可以移到一个单独的文件中，然后在index.html 和 user.html 中将其导入
+  #+BEGIN_SRC html
+  <!-- app/templates/user.html：显示有博客文章的资料页面模 -->
+  ...
+  <h3>Posts by {{ user.username }}</h3>
+  {% include '_posts.html' %}
+  ...
+  #+END_SRC
++ 为了完成这种新的模板组织方式，index.html 模板中的 <ul> 元素需要移到新模板 _posts.html 中，并像上面那样换成一个 include 指令。注意，_posts.html 模板名中的下划线前缀不是必须使用的，这只是一种习惯用法，以区分完整模板和局部模板
+*** 分页显示长博客文章列表
+**** 创建虚拟博客文章数据
++ 想实现博客文章分页，就需要一个包含大量数据的测试数据库。手动添加数据库记录费时费力，所以最好能使用自动化方案。有多个 Python包可用于生成虚拟信息，其中功能相对完善的是 Faker。这个包使用 pip安装
+  #+BEGIN_SRC shell
+  (venv) $ pip install faker
+  #+END_SRC
++ 严格来说，Faker 包并不是这个应用的依赖，因为它只在开发过程中使用。为了区分生产环境的依赖和开发环境的依赖，我们可以用requirements 子目录替换 requirements.txt 文件，在该目录中分别存储不同环境中的依赖。在这个新目录中，我们可以创建一个 dev.txt 文件，列出开发过程中所需的依赖，再创建一个 prod.txt 文件，列出生产环境所需的依赖。由于两个环境所需的依赖大部分是相同的，可以创建一个common.txt 文件，在 dev.txt 和 prod.txt 中使用 -r 参数将其导入。dev.txt 文件的内容如示例
+  #+BEGIN_SRC conf
+  # requirements/dev.txt：开发需求文件
+  -r common.txt
+  faker==0.7.18
+  #+END_SRC
++ 在应用中创建一个新模块，在里面定义两个函数，分别生成虚拟的用户和文章,这些虚拟对象的属性使用 Faker 包提供的随机信息生成器生成，可以生成看起来很逼真的姓名、电子邮件地址、句子，等等
+  #+BEGIN_SRC python
+  # app/fake.py：生成虚拟用户和博客文章
+  from random import randint
+  from sqlalchemy.exc import IntegrityError
+  from faker import Faker
+  from . import db
+  from .models import User, Post
+  def users(count=100):
+      fake = Faker()
+      i = 0
+      while i < count:
+          u = User(email=fake.email(),
+                  username=fake.user_name(),
+                  password='password',
+                  confirmed=True,
+                  name=fake.name(),
+                  location=fake.city(),
+                  about_me=fake.text(),
+                  member_since=fake.past_date())
+          db.session.add(u)
+          try:
+              db.session.commit()
+              i += 1
+          except IntegrityError:
+              db.session.rollback()
+  def posts(count=100):
+      fake = Faker()
+      user_count = User.query.count()
+      for i in range(count):
+          u = User.query.offset(randint(0, user_count - 1)).first()
+          p = Post(body=fake.text(),
+                  timestamp=fake.past_date(),
+                  author=u)
+          db.session.add(p)
+      db.session.commit()
+  #+END_SRC
++ 用户的电子邮件地址和用户名必须是唯一的，但 Faker 是随机生成这些信息的，因此有重复的风险。如果发生了这种情况（虽然不太可能），提交数据库会话时会抛出 IntegrityError 异常。此时，数据库会话会回滚，取消添加重复用户的尝试。函数中的循环会一直运行，直到生成指定数量的唯一用户为止
++ 随机生成文章时要为每篇文章随机指定一个用户。为此，我们使用offset() 查询过滤器。这个过滤器会跳过参数指定的记录数量。为了每次都得到不同的随机用户，我们先设定一个随机的偏移，然后调用first() 方法
++ 使用新定义的这两个函数可以在 Python shell 中轻松生成大量虚拟用户和文章
+  #+BEGIN_SRC shell
+  (venv) $ flask shell
+  >>> from app import fake
+  >>> fake.users(100)
+  >>> fake.posts(100)
+  #+END_SRC
+**** 在页面中渲染数据
++ 为支持分页而对首页路由所做的改动
+  #+BEGIN_SRC python
+  # app/main/views.py：分页显示博客文章列表
+  @main.route('/', methods=['GET', 'POST'])
+  def index():
+      # ...
+      page = request.args.get('page', 1, type=int)
+      pagination = Post.query.order_by(Post.timestamp.desc()).paginate(page, per_page=current_app.config['FLASKY_POSTS_PER_PAGE'], error_out=False)
+      posts = pagination.items
+      return render_template('index.html', form=form, posts=posts, pagination=pagination)
+  #+END_SRC
++ 渲染的页数从请求的查询字符串（request.args ）中获取，如果没有明确指定，则默认渲染第 1 页。参数 type=int 确保参数在无法转换成整数时返回默认值
++ 为了显示某页中的记录，查询对象最后不能调用 all() 方法了，现在要调用 Flask-SQLAlchemy 提供的 paginate() 方法。paginate() 方法的第一个参数——也是唯一必需的参数——是页数。可选参数per_page 指定每页显示的记录数量；如果没有指定，则默认显示 20 个记录。另一个可选参数为 error_out ，如果设为 True （默认值），则请求页数超出范围时返回 404 错误；如果设为 False ，则页数超出范围时返回一个空列表。为了能够很便利地配置每页显示的记录数量，参数 per_page 的值从应用的配置变量 FLASKY_POSTS_PER_PAGE 中读取。这个配置在 config.py 中设置
++ 这样修改之后，首页中的文章列表会只显示有限数量的文章。若想查看第 2 页中的文章，则要在浏览器地址栏中的 URL 后加上查询字符串 ?page=2
+**** 添加分页导航
++ paginate() 方法的返回值是一个 Pagination 类对象，这个类在Flask-SQLAlchemy 中定义。这个对象包含很多属性，用于在模板中生成分页链接，因此将其作为参数传入了模板。分页对象的属性简介如表
+  Flask-SQLAlchemy分页对象的属性
+  - items 当前页面中的记录
+  - query 分页的源查询
+  - page 当前页数
+  - prev_num 上一页的页数
+  - next_num 下一页的页数
+  - has_next 如果有下一页，值为 True
+  - has_prev 如果有上一页，值为 True
+  - pages 查询得到的总页数
+  - per_page 每页显示的记录数量
+  - total 查询返回的记录总数
++ 分页对象还有一些方法
+  Flask-SQLAlchemy分页对象的方法
+  - iter_pages(left_edge=2,left_current=2,right_current=5,right_edge=2)
+    一个迭代器，返回一个在分页导航中显示的页数列表。这个列表的最左边显示 left_edge 页，当前页的左边显示left_current 页，当前页的右边显示 right_current 页，最右边显示 right_edge 页。例如，在一个 100 页的列表中，当前页为第 50 页，使用默认配置，这个方法会返回以下页数：1、2、 None 、48、49、50、51、52、53、54、55、 None 、99、100。 None 表示页数之间的间隔
+  - prev() 上一页的分页对象
+  - next() 下一页的分页对象
++ 拥有这么强大的对象和 Bootstrap 中的分页 CSS 类，我们就能很容易地在模板底部构建一个分页导航。示例 11-10 是以 Jinja2 宏的形式实现的分页导航
+  #+BEGIN_SRC html
+  <!-- app/templates/_macros.html：分页模板宏 -->
+  {% macro pagination_widget(pagination, endpoint) %}
+  <ul class="pagination">
+      <li{% if not pagination.has_prev %} class="disabled"{% endif %}>
+          <a href="{% if pagination.has_prev %}{{ url_for(endpoint,
+              page = pagination.page - 1, **kwargs) }}{% else %}#{% endif %}">
+              &laquo;
+          </a>
+      </li>
+      {% for p in pagination.iter_pages() %}
+          {% if p %}
+              {% if p == pagination.page %}
+              <li class="active">
+                  <a href="{{ url_for(endpoint, page = p, **kwargs) }}">{{ p }}</a>
+              </li>
+              {% else %}
+              <li>
+                  <a href="{{ url_for(endpoint, page = p, **kwargs) }}">{{ p }}</a>
+              </li>
+              {% endif %}
+          {% else %}
+          <li class="disabled"><a href="#">&hellip;</a></li>
+          {% endif %}
+      {% endfor %}
+      <li{% if not pagination.has_next %} class="disabled"{% endif %}>
+          <a href="{% if pagination.has_next %}{{ url_for(endpoint,
+              page = pagination.page + 1, **kwargs) }}{% else %}#{% endif %}">
+              &raquo;
+          </a>
+      </li>
+  </ul>
+  {% endmacro %}
+  #+END_SRC
++ 这个宏创建了一个 Bootstrap 分页元素，即一个有特殊样式的无序列表，其中定义了下述页面链接
+  - “上一页”链接。如果当前页是第一页，为这个链接加上 CSSdisabled 类。
+  - 分页对象的 iter_pages() 迭代器返回的所有页面链接。这些页面被渲染成具有明确页数的链接，页数在 url_for() 的参数中指定。当前显示的页面使用 CSS active 类高亮显示。页数列表中的间隔使用省略号表示。
+  - “下一页”链接。如果当前页是最后一页，则会禁用这个链接。
++ Jinja2 宏的参数列表中不用加入 **kwargs 即可接收关键字参数。分页宏把接收到的所有关键字参数都传给生成分页链接的 url_for() 方法。这种方式也可在路由中使用，例如包含动态部分的资料页面
++ pagination_widget 宏可放在 index.html 和 user.html 中引入的_posts.html 模板后面
+  #+BEGIN_SRC html
+  <!-- app/templates/index.html：在博客文章列表下面添加分页导航 -->
+  {% extends "base.html" %}
+  {% import "bootstrap/wtf.html" as wtf %}
+  {% import "_macros.html" as macros %}
+  ...
+  {% include '_posts.html' %}
+  <div class="pagination">
+      {{ macros.pagination_widget(pagination, '.index') }}
+  </div>
+  {% endif %}
+  #+END_SRC
+**** 使用Markdown和Flask-PageDown支持富文本文章
++ 将输入文章的多行文本输入框升级，让其支持Markdown（https://daringfireball.net/projects/markdown/ ）句法，还要添加富文本文章的预览功能。实现这个功能要用到一些新包
+  #+BEGIN_SRC shell
+  # PageDown：使用 JavaScript 实现的客户端 Markdown 到 HTML 转换程序。
+  # Flask-PageDown：为 Flask 包装的 PageDown，把 PageDown 集成到Flask-WTF 表单中。
+  # Markdown：使用 Python 实现的服务器端 Markdown 到 HTML 转换程序。
+  # Bleach：使用 Python 实现的 HTML 清理程序
+  (venv) $ pip install flask-pagedown markdown bleach
+  #+END_SRC
+***** 使用Flask-PageDown
++ Flask-PageDown 扩展定义了一个 PageDownField 类，这个类和WTForms 中的 TextAreaField 接口一致。使用 PageDownField 字段之前，先要初始化扩展
+  #+BEGIN_SRC python
+  # app/__init__.py：初始化Flask-PageDown
+  from flask_pagedown import PageDown
+  # ...
+  pagedown = PageDown()
+  # ...
+  def create_app(config_name):
+      # ...
+      pagedown.init_app(app)
+      # ...
+  #+END_SRC
++ 若想把首页中的多行文本控件转换成 Markdown 富文本编辑器，PostForm 表单中的 body 字段必须改成 PageDownField 字段
+  #+BEGIN_SRC python
+  # app/main/forms.py：支持 Markdown 的文章表单
+  from flask_pagedown.fields import PageDownField
+  class PostForm(FlaskForm):
+      body = PageDownField("What's on your mind?", validators=[Required()])
+      submit = SubmitField('Submit')
+  #+END_SRC
++ Markdown 预览使用 PageDown 库生成，因此要把相关的文件添加到模板中。Flask-Page Down 简化了这个过程，提供了一个模板宏，从 CDN中加载所需的文件
+  #+BEGIN_SRC html
+  <!-- app/templates/index.html：Flask-PageDown 模板声明 -->
+  {% block scripts %}
+  {{ super() }}
+  {{ pagedown.include_pagedown() }}
+  {% endblock %}
+  #+END_SRC
+***** 在服务器端处理富文本
++ 提交表单后，POST 请求只会发送纯 Markdown 文本，页面中显示的HTML 预览会被丢掉。随表单一起发送生成的 HTML 预览有安全隐患，因为攻击者能很轻松地修改 HTML 代码，使其和 Markdown 源不匹配，然后再提交表单。为了安全起见，应该只提交 Markdown 源文本，然后在服务器上使用 Markdown（使用 Python 编写的 Markdown 到HTML 转换程序）将其转换成 HTM L。得到 HTML 后，再使用 Bleach进行清理，确保其中只包含几个允许使用的 HTML 标签
++ 把 Markdown 格式的博客文章转换成 HTML 的过程可以在 _posts.html模板中完成，但这么做效率不高，因为每次渲染页面都要转换一次。为了避免重复工作，我们可在创建博客文章时做一次性转换，把结果缓存在数据库中。转换后的博客文章 HTML 代码缓存在 Post 模型的一个新字段中，在模板中可以直接调用。文章的 Markdown 源文本还要保存在数据库中，万一需要编辑时使用
+  #+BEGIN_SRC python
+  # app/models.py：在 Post 模型中处理 Markdown 文本
+  from markdown import markdown
+  import bleach
+  class Post(db.Model):
+      # ...
+      body_html = db.Column(db.Text)
+      # ...
+      @staticmethod
+      def on_changed_body(target, value, oldvalue, initiator):
+          allowed_tags = ['a', 'abbr', 'acronym', 'b', 'blockquote', 'code',
+                          'em', 'i', 'li', 'ol', 'pre', 'strong', 'ul',
+                          'h1', 'h2', 'h3', 'p']
+          target.body_html = bleach.linkify(bleach.clean(
+              markdown(value, output_format='html'),
+              tags=allowed_tags, strip=True))
+  db.event.listen(Post.body, 'set', Post.on_changed_body)
+  #+END_SRC
++ on_changed_body() 函数注册在 body 字段上，是 SQLAlchemy“set”事件的监听程序，这意味着只要 body 字段设了新值，这个函数就会自动被调用。on_changed_body() 函数把 body 字段中的文本渲染成HTML 格式，将结果保存在 body_html 中，自动且高效地完成Markdown 文本到 HTML 的转换
++ 真正的转换过程分 3 步完成。首先，markdown() 函数初步把Markdown 文本转换成 HTML。然后，把得到的结果和允许使用的HTML 标签列表传给 clean() 函数。clean() 函数删除所有不在白名单中的标签。转换的最后一步由 linkify() 函数完成，这个函数由Bleach 提供，把纯文本中的 URL 转换成合适的 <a> 链接。最后一步是很有必要的，因为 Markdown 规范没有为自动生成链接提供官方支持，但这是个十分便利的功能。在客户端，PageDown 以扩展的形式实现了这个功能，因此在服务器上要调用 linkify() 函数，确保结果一致
++ 最后，如果 post.body_html 字段存在，还要把模板中的 post.body换成 post.body_html 
+  #+BEGIN_SRC html
+  <!-- app/templates/_posts.html：在模板中使用文章内容的HTML 格式 -->
+  ...
+  <div class="post-body">
+      {% if post.body_html %}
+          {{ post.body_html | safe }}
+      {% else %}
+          {{ post.body }}
+      {% endif %}
+  </div>
+  ...
+  #+END_SRC
++ 渲染 HTML 格式内容时使用| safe 后缀，其目的是告诉 Jinja2 不要转义 HTML 元素。出于安全考虑，默认情况下 Jinja2 会转义所有模板变量，但是从 Markdown 到 HTML 的转换是在我们自己的服务器上完成的，因此可以放心直接渲染
+**** 博客文章的固定链接
++ 用户有时希望能在社交网络中和朋友分享某篇博客文章的链接。为此，每篇文章都要有一个专页，使用唯一的 URL 引用。支持固定链接功能的路由和视图函数,博客文章的 URL 使用插入数据库时分配的唯一 id 字段构建
+  #+BEGIN_SRC python
+  # app/main/views.py：为文章提供固定链接
+  @main.route('/post/<int:id>')
+  def post(id):
+      post = Post.query.get_or_404(id)
+      return render_template('post.html', posts=[post])
+  #+END_SRC
++ 对某些类型的应用来说，更适合使用可读性高的字符串而不是数字 ID 构建固定链接。除了数字 ID 之外，应用还可以为博客文章起个别名 ，即根据文章的标题或前几个词生成的唯一字符串
++ post.html 模板接收一个列表作为参数，这个列表只有一个元素，即要渲染的文章。传入列表是为了方便，因为这样，index.html 和user.html 引用的 _posts.html 模板就能在这个页面中使用
++ 固定链接添加到通用模板 _posts.html 中，显示在文章下方
+  #+BEGIN_SRC html
+  <!-- app/templates/_posts.html：加上文章的固定链接 -->
+  <ul class="posts">
+      {% for post in posts %}
+      <li class="post">
+          ...
+          <div class="post-content">
+              ...
+              <div class="post-footer">
+                  <a href="{{ url_for('.post', id=post.id) }}">
+                      <span class="label label-default">Permalink</span>
+                  </a>
+              </div>
+          </div>
+      </li>
+      {% endfor %}
+  </ul>
+  #+END_SRC
++ 渲染固定链接页面的 post.html 模板
+  #+BEGIN_SRC html
+  <!-- app/templates/post.html：固定链接模板 -->
+  {% extends "base.html" %}
+  {% block title %}Flasky - Post{% endblock %}
+  {% block page_content %}
+  {% include '_posts.html' %}
+  {% endblock %}``
+  #+END_SRC
+**** 博客文章编辑器
++ 与博客文章相关的最后一个功能是文章编辑器，让用户编辑自己的文章。博客文章编辑器显示在单独的页面中，而且也基于 Flask-PageDown实现，因此页面中要有个文本框，显示博客文章的 Markdown 文本，并在下方显示预览。edit_post.html 模板如示例
+  #+BEGIN_SRC html
+  <!-- app/templates/edit_post.html：编辑博客文章的模板 -->
+  {% extends "base.html" %}
+  {% import "bootstrap/wtf.html" as wtf %}
+  {% block title %}Flasky - Edit Post{% endblock %}
+  {% block page_content %}
+  <div class="page-header">
+      <h1>Edit Post</h1>
+  </div>
+  <div>
+      {{ wtf.quick_form(form) }}
+  </div>
+  {% endblock %}
+  {% block scripts %}
+  {{ super() }}
+  {{ pagedown.include_pagedown() }}
+  {% endblock %}
+  #+END_SRC
++ 博客文章编辑器使用的路由如示例
+  #+BEGIN_SRC python
+  # app/main/views.py：编辑博客文章的路由
+  @main.route('/edit/<int:id>', methods=['GET', 'POST'])
+  @login_required
+  def edit(id):
+      post = Post.query.get_or_404(id)
+      if current_user != post.author and \
+              not current_user.can(Permission.ADMIN):
+          abort(403)
+      form = PostForm()
+      if form.validate_on_submit():
+          post.body = form.body.data
+          db.session.add(post)
+          db.session.commit()
+          flash('The post has been updated.')
+          return redirect(url_for('.post', id=post.id))
+      form.body.data = post.body
+      return render_template('edit_post.html', form=form)
+  #+END_SRC
++ 这个视图函数只允许博客文章的作者编辑文章，但管理员例外，管理员能编辑所有用户的文章。如果用户试图编辑其他用户的文章，则视图函数返回 403 错误。这里使用的 PostForm 表单类和首页中使用的是同一个
++ 为了让功能完整，我们还可以在每篇博客文章的下面、固定链接的旁边添加一个指向编辑页面的链接
+  #+BEGIN_SRC html
+  <ul class="posts">
+      {% for post in posts %}
+      <li class="post">
+          ...
+          <div class="post-content">
+              ...
+              <div clnass="post-footer">
+                  ...
+                  {% if current_user == post.author %}
+                  <a href="{{ url_for('.edit', id=post.id) }}">
+                      <span class="label label-primary">Edit</span>
+                  </a>
+                  {% elif current_user.is_administrator() %}
+                  <a href="{{ url_for('.edit', id=post.id) }}">
+                      <span class="label label-danger">Edit [Admin]</span>
+                  </a>
+                  {% endif %}
+              </div>
+          </div>
+          </li>
+      {% endfor %}
+  </ul>
+  #+END_SRC
+** 关注者
+*** 再论数据库关系
++ 数据库使用关系 建立记录之间的联系。其中，一对多关系是最常用的关系类型，它把一个记录和一组相关的记录联系在一起。实现这种关系时，要在“多”这一侧加入一个外键，指向“一”这一侧连接的记录。本书开发的示例应用现在包含两个一对多关系：一个把用户角色和一组用户联系起来，另一个把用户和发布的博客文章联系起来
++ 多数其他关系类型都可以从一对多类型中衍生。多对一 关系从“多”这一侧看，就是一对多关系。一对一 关系是简化版的一对多关系，限制“多”这一侧最多只能有一个记录。唯一不能从一对多关系中简单演化出来的类型是多对多 关系，这种关系的两侧都有多个记录
+**** 多对多关系
++ 多对多关系为例，即一个记录学生和他们所选课程的数据库。很显然，你不能在学生表中加入一个指向课程的外键，因为一个学生可以选择多门课程，一个外键不够用。同样，你也不能在课程表中加入一个指向学生的外键，因为一个课程有多个学生选择。两侧都需要一组外键
++ 这种问题的解决方法是添加第三张表，这个表称为关联表 。现在，多对多关系可以分解成原表和关联表之间的两个一对多关系
++ 查询多对多关系分成两步。若想知道某位学生选择了哪些课程，要先从学生和注册之间的一对多关系开始，获取这位学生在 registrations表中的所有记录，然后再按照多到一的方向遍历课程和注册之间的一对多关系，找到这位学生在 registrations 表中各记录所对应的课程。同样，若想找到选择了某门课程的所有学生，要先从课程表中开始，获取其在 registrations 表中的记录，再获取这些记录连接的学生
++ 通过遍历两个关系来获取查询结果的做法听起来有难度，不过像前例这种简单关系，SQLAlchemy 就可以完成大部分操作
+  #+BEGIN_SRC python
+  registrations = db.Table('registrations', db.Column('student_id', db.Integer, db.ForeignKey('students.id')), db.Column('class_id', db.Integer, db.ForeignKey('classes.id')))
+  class Student(db.Model):
+      id = db.Column(db.Integer, primary_key=True)
+      name = db.Column(db.String)
+      classes = db.relationship('Class', secondary=registrations, backref=db.backref('students', lazy='dynamic'), lazy='dynamic')
+  class Class(db.Model):
+      id = db.Column(db.Integer, primary_key=True)
+      name = db.Column(db.String)
+  #+END_SRC
++ 多对多关系仍使用定义一对多关系的 db.relationship() 方法定义，但在多对多关系中，必须把 secondary 参数设为关联表。多对多关系可以在任何一个类中定义，backref 参数会处理好关系的另一侧。关联表就是一个简单的表，不是模型，SQLAlchemy 会自动接管这个表
++ classes 关系使用列表语义，这样处理多对多关系特别简单。假设学生是 s ，课程是 c ，学生注册课程的代码为
+  #+BEGIN_SRC shell
+  >>> s.classes.append(c)
+  >>> db.session.add(s)
+  #+END_SRC
++ 列出学生 s 注册的课程以及注册了课程 c 的学生也很简单
+  #+BEGIN_SRC shell
+  >>> s.classes.all()
+  >>> c.students.all()
+  #+END_SRC
++ Class 模型中的 students 关系由参数 db.backref() 定义。注意，这个关系中还指定了 lazy='dynamic' 参数，所以关系两侧返回的查询都可接受额外的过滤器。如果后来学生 s 决定不选课程 c 了，那么可使用下面的代码更新数据库
+  #+BEGIN_SRC shell
+  >>> s.classes.remove(c)
+  #+END_SRC
+**** 自引用关系
++ 多对多关系可用于实现用户之间的关注，但存在一个问题。在学生和课程的例子中，关联表链接的是两个不同的实体。但是，表示用户关注其他用户时，只有用户一个实体，没有第二个实体
++ 如果关系中的两侧都在同一个表中，这种关系称为自引用关系 。在关注中，关系的左侧是用户实体，可以称为“关注者”；关系的右侧也是用户实体，但这些是“被关注者”。从概念上来看，自引用关系和普通关系没什么区别，只是不易理解
++ 本例的关联表是 follows ，其中每一行表示一个用户关注了另一个用户。图中左边表示的一对多关系把用户和 follows 表中的一组记录联系起来，用户是关注者。图中右边表示的一对多关系把用户和 follows表中的一组记录联系起来，用户是被关注者
+**** 高级多对多关系
++ 使用多对多关系时，往往需要存储所连两个实体之间的额外信息。对用户之间的关注来说，可以存储用户关注另一个用户的日期，这样就能按照时间顺序列出所有关注者。这种信息只能存储在关联表中，但是在之前实现的学生和课程之间的关系中，关联表是完全由 SQLAlchemy 掌控的内部表，我们无法插手
++ 为了能在关系中处理自定义的数据，我们必须提升关联表的地位，使其变成应用可访问的模型。新的关联表如示例
+  #+BEGIN_SRC python
+  # app/models.py：关注关系中关联表的模型实现
+  class Follow(db.Model):
+      __tablename__ = 'follows'
+      follower_id = db.Column(db.Integer, db.ForeignKey('users.id'), primary_key=True)
+      followed_id = db.Column(db.Integer, db.ForeignKey('users.id'), primary_key=True)
+      timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+  #+END_SRC
++ SQLAlchemy 不能直接使用这个关联表，因为如果这么做应用就无法访问其中的自定义字段。相反地，要把这个多对多关系的左右两侧拆分成两个基本的一对多关系，而且要定义成标准的关系
+  #+BEGIN_SRC python
+  # app/models.py：使用两个一对多关系实现的多对多关系
+  class User(UserMixin, db.Model):
+      # ...
+      followed = db.relationship('Follow',
+                                 foreign_keys=[Follow.follower_id],
+                                 backref=db.backref('follower', lazy='joined'),
+                                 lazy='dynamic',
+                                 cascade='all, delete-orphan')
+      followers = db.relationship('Follow',
+                                   foreign_keys=[Follow.followed_id],
+                                   backref=db.backref('followed', lazy='joined'),
+                                   lazy='dynamic',
+                                   cascade='all, delete-orphan')
+  #+END_SRC
++ 在这段代码中，followed 和 followers 关系都定义为单独的一对多关系。注意，为了消除外键间的歧义，定义关系时必须使用可选参数foreign_keys 指定外键。而且，db.backref() 参数并不是指定这两个关系之间的引用关系，而是回引 Follow 模型
++ 回引中的 lazy 参数指定为 joined 。这种 lazy 模式可以实现立即从联结查询中加载相关对象。例如，如果某个用户关注了 100 个用户，调用user.followed.all() 后会返回一个列表，其中包含 100 个 Follow实例，每一个实例的 follower 和 followed 回引属性都指向相应的用户。设定为 lazy='joined' 模式，就可在一次数据库查询中完成这些操作。如果把 lazy 设为默认值 select ，那么首次访问 follower 和followed 属性时才会加载对应的用户，而且每个属性都需要一个单独的查询，这就意味着获取全部被关注用户时需要增加 100 次额外的数据库查询
++ 这两个关系中，User 一侧设定的 lazy 参数作用不一样。lazy 参数都在“一”这一侧设定，返回的结果是“多”这一侧中的记录。上述代码使用的是 dynamic ，因此关系属性不会直接返回记录，而是返回查询对象，所以在执行查询之前还可以添加额外的过滤器
++ cascade 参数配置在父对象上执行的操作对相关对象的影响。比如，层叠选项可设定为：将用户添加到数据库会话后，要自动把所有关系的对象都添加到会话中。层叠选项的默认值能满足多数情况的需求，但对这个多对多关系来说却不合适。删除对象时，默认的层叠行为是把对象连接的所有相关对象的外键设为空值。但在关联表中，删除记录后正确的行为应该是把指向该记录的实体也删除，这样才能有效销毁连接。这就是层叠选项值 delete-orphan 的作用
++ cascade 参数的值是一组由逗号分隔的层叠选项，其中 all表示除了 delete-orphan 之外的所有层叠选项，这看起来可能让人有点困惑。设为 all, delete-orphan 的意思是启用所有默认层叠选项，而且还要删除孤儿记录
++ 用现在要处理两个一对多关系，以便实现多对多关系。由于这些操作经常需要重复执行，所以最好在 User 模型中为所有可能的操作定义辅助方法。用于控制关系的 4 个新方法如示例
+  #+BEGIN_SRC python
+  # app/models.py：关注关系的辅助方法
+  class User(db.Model):
+      # ...
+      def follow(self, user):
+          if not self.is_following(user):
+              f = Follow(follower=self, followed=user)
+              db.session.add(f)
+      def unfollow(self, user):
+          f = self.followed.filter_by(followed_id=user.id).first()
+          if f:
+              db.session.delete(f)
+      def is_following(self, user):
+          if user.id is None:
+              return False
+          return self.followed.filter_by(
+              followed_id=user.id).first() is not None
+      def is_followed_by(self, user):
+          if user.id is None:
+              return False
+          return self.followers.filter_by(
+              follower_id=user.id).first() is not None
+  #+END_SRC
++ follow() 方法手动把 Follow 实例插入关联表，从而把关注者和被关注者连接起来，并让应用有机会设定自定义字段。连接在一起的两个用户被手动传入 Follow 类的构造器，创建一个 Follow 新实例，然后像往常一样，把这个实例对象添加到数据库会话中。注意，这里无需手动设定 timestamp 字段，因为定义字段时指定了默认值，即当前日期和时间。unfollow() 方法使用 followed 关系找到连接用户和被关注用户的 Follow 实例。若要销毁这两个用户之间的连接，只需删除这个Follow 对象即可。is_following() 方法和 is_followed_by() 方法分别在左右两边的一对多关系中搜索指定用户，如果找到了就返回True 。发起查询之前，这两个方法都确认了指定的用户有没有 id ，以防创建了用户，但是尚未提交到数据库
+*** 在资料页面中显示关注者
++ 如果用户查看一个尚未关注用户的资料页面，页面中要显示一个“Follow”（关注）按钮，如果查看已关注用户的资料页面则显示“Unfollow”（取消关注）按钮。而且，页面中最好能显示出关注者和被关注者的数量，再列出关注和被关注的用户列表，并在相应的用户资料页面中显示“Follows You”（关注了你）标志。对用户资料页面模板的改动如示例 12-4 所示。添加这些信息后的资料页面
+  #+BEGIN_SRC html
+  <!-- app/templates/user.html：在用户资料页面上部添加关注信息 -->
+  {% if current_user.can(Permission.FOLLOW) and user != current_user %}
+      {% if not current_user.is_following(user) %}
+      <a href="{{ url_for('.follow', username=user.username) }}"
+          class="btn btn-primary">Follow</a>
+      {% else %}
+      <a href="{{ url_for('.unfollow', username=user.username) }}"
+          class="btn btn-default">Unfollow</a>
+      {% endif %}
+  {% endif %}
+  <a href="{{ url_for('.followers', username=user.username) }}">
+      Followers: <span class="badge">{{ user.followers.count() }}</span>
+  </a>
+  <a href="{{ url_for('.followed_by', username=user.username) }}">
+      Following: <span class="badge">{{ user.followed.count() }}</span>
+  </a>
+  {% if current_user.is_authenticated and user != current_user and
+      user.is_following(current_user) %}
+  | <span class="label label-default">Follows you</span>
+  {% endif %}
+  #+END_SRC
++ 用户在其他用户的资料页面中点击“Follow”（关注）按钮后，调用的是 /follow/<username> 路由
+  #+BEGIN_SRC python
+  # app/main/views.py：“关注”路由和视图函数
+  @main.route('/follow/<username>')
+  @login_required
+  @permission_required(Permission.FOLLOW)
+  def follow(username):
+      user = User.query.filter_by(username=username).first()
+      if user is None:
+          flash('Invalid user.')
+          return redirect(url_for('.index'))
+      if current_user.is_following(user):
+          flash('You are already following this user.')
+          return redirect(url_for('.user', username=username))
+      current_user.follow(user)
+      db.session.commit()
+      flash('You are now following %s.' % username)
+      return redirect(url_for('.user', username=username))
+  #+END_SRC
++ 这个视图函数先加载请求的用户，确保用户存在且当前登录用户还没有关注这个用户，然后调用 User 模型中定义的辅助方法 follow() ，连接两个用户。/unfollow/<username> 路由的实现方式类似
++ 用户在其他用户的资料页中点击关注者数量后，将调用/followers/<username> 路由
+  #+BEGIN_SRC python
+  # app/main/views.py：“关注者”路由和视图函数
+  @main.route('/followers/<username>')
+  def followers(username):
+      user = User.query.filter_by(username=username).first()
+      if user is None:
+          flash('Invalid user.')
+          return redirect(url_for('.index'))
+      page = request.args.get('page', 1, type=int)
+      pagination = user.followers.paginate(
+          page, per_page=current_app.config['FLASKY_FOLLOWERS_PER_PAGE'],
+          error_out=False)
+      follows = [{'user': item.follower, 'timestamp': item.timestamp}
+              for item in pagination.items]
+      return render_template('followers.html', user=user, title="Followers of",
+                             endpoint='.followers', pagination=pagination,
+                             follows=follows)
+  #+END_SRC
++ 这个函数加载并验证请求的用户，然后使用第 11 章中介绍的技术分页显示该用户的 followers 关系。由于查询关注者返回的是 Follow 实例列表，为了渲染方便，我们将其转换成一个新列表，列表中的各元素都包含 user 和 timestamp 字段
++ 渲染关注者列表的模板可以写的通用一些，以便能用来渲染关注的用户列表和被关注的用户列表。模板接收的参数包括用户对象、页面的标题、分页链接使用的端点、分页对象和查询结果列表
++ followed_by 端点的实现过程几乎一样，唯一区别在于，用户列表从user.followed 关系中获取。传入模板的参数也要进行相应调整。followers.html 模板使用两列表格实现，左边一列显示用户名和头像，右边一列显示 Flask-Moment 时间戳
+*** 使用数据库联结查询所关注用户的文章
++ 显示所关注用户发布的所有文章，第一步显然先要获取这些用户，然后获取各用户的文章，再按一定顺序排列，写入一个列表。可是这种方式的伸缩性不好，随着数据库不断变大，生成这个列表的工作量也不断增长，而且分页等操作也无法高效完成。这是一个常见的问题，人们称之为“N +1 问题”，因为这里需要发起 N +1 次数据库查询，其中 N 是第一次查询返回的结果数量。高效获取博客文章，而不管数据库有多大，最好的方法是在一次查询中完成所有操作
++ 完成这个操作的数据库操作称为联结 。联结操作用到两个或更多的数据表，在其中查找满足指定条件的记录组合，再把记录组合插入一个临时表中，这个临时表就是联结查询的结果
++ 在此之前见到的查询都是从所查询模型的 query 属性开始的。这里不能这样做，因为查询要返回 posts 记录，所以首先要做的操作是在follows 表上执行过滤器。因此，这里使用了一种更基础的查询方式。为了完全理解上述查询，下面分别说明各部分
+  - db.session.query(Post) 指明这个查询将返回 Post 对象；
+  - select_from(Follow) 的意思是这个查询从 Follow 模型开始；
+  - filter_by(follower_id=self.id) 使用关注用户过滤 follows表；
+  - join(Post, Follow.followed_id == Post.author_id) 联结filter_by() 得到的结果和 Post 对象
++ 调换过滤器和联结的顺序可以简化这个查询
+  #+BEGIN_SRC python
+  return Post.query.join(Follow, Follow.followed_id == Post.author_id)\
+      .filter(Follow.follower_id == self.id)
+  #+END_SRC
+*** 在首页显示所关注用户的文章
++ 用户可以选择在首页显示所有用户的博客文章还是只显示所关注用户的文了章
+  #+BEGIN_SRC python
+  # app/main/views.py：显示所有博客文章或只显示所关注用户的文章
+  @main.route('/', methods = ['GET', 'POST'])
+  def index():
+      # ...
+      show_followed = False
+      if current_user.is_authenticated:
+          show_followed = bool(request.cookies.get('show_followed', ''))
+      if show_followed:
+          query = current_user.followed_posts
+      else:
+          query = Post.query
+      pagination = query.order_by(Post.timestamp.desc()).paginate(
+          page, per_page=current_app.config['FLASKY_POSTS_PER_PAGE'],
+          error_out=False)
+      posts = pagination.items
+      return render_template('index.html', form=form, posts=posts,
+                              show_followed=show_followed, pagination=pagination)
+  #+END_SRC
++ 决定显示所有博客文章还是只显示所关注用户文章的选项存储在名为show_followed 的 cookie 中，如果其值为非空字符串，表示只显示所关注用户的文章。cookie 以 request.cookies 字典的形式存储在请求对象中。这个 cookie 的值会转换成布尔值，根据得到的值设定本地变量query 的值。query 的值决定最终获取所有博客文章的查询，还是获取过滤后的博客文章查询。显示所有用户的文章时，要使用顶级查询Post.query ；如果限制只显示所关注用户的文章，要使用最近添加的User.followed_posts 属性。然后将局部变量 query 中保存的查询进行分页，像往常一样将其传入模板
++ show_followed cookie 在两个新路由中设定
+  #+BEGIN_SRC python
+  # app/main/views.py：查询所有文章还是所关注用户的文章
+  @main.route('/all')
+  @login_required
+  def show_all():
+      resp = make_response(redirect(url_for('.index')))
+      resp.set_cookie('show_followed', '', max_age=30*24*60*60) # 30天
+      return resp
+  @main.route('/followed')
+  @login_required
+  def show_followed():
+      resp = make_response(redirect(url_for('.index')))
+      resp.set_cookie('show_followed', '1', max_age=30*24*60*60) # 30天
+      return resp
+  #+END_SRC
++ 指向这两个路由的链接添加在首页模板中。点击这两个链接后会为show_followed cookie 设定适当的值，然后重定向到首页。cookie 只能在响应对象中设置，因此这两个路由不能依赖 Flask，要使用 make_response() 方法创建响应对象。set_cookie() 函数的前两个参数分别是 cookie 名称和值。可选的max_age 参数设置 cookie 的过期时间，单位为秒。如果不指定max_age 参数，浏览器关闭后 cookie 就会过期。在本例中，最长过期时间为 30 天，所以即便用户几天不访问应用，浏览器也会记住设定的值
+* 应用编程接口
++ Web 应用有种趋势，那就是业务逻辑被越来越多地移到客户端，开创出了一种称为富互联网应用（RIA，rich Internet application）的架构。在 RIA 中，服务器的主要功能（有时是唯一功能）是为客户端提供数据存取服务。在这种模式中，服务器变成了 Web 服务 或应用编程接口 （API，application programming interface）
++ RIA 可采用多种协议与 Web 服务通信。远程过程调用（RPC，remoteprocedure call）协议，例如 XML-RPC，以及由其衍生的简单对象访问协议（SOAP，simplified object access protocol），在几年前比较受欢迎。最近，表现层状态转移（REST，representational state transfer）架构崭露头角，成为 Web 应用的新宠，因为这种架构建立在大家熟识的万维网基础之上
+** REST简介
++ 
