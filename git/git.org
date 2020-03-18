@@ -93,6 +93,12 @@
   git push -u origin master
   
   #+END_SRC
++ 清除本地缓存
+  git rm -r --cached .
++ 忽略文件
+  项目根目录中.gitignore设置忽略的文件及目录，使用相对路径
++ 为空目录创建文件
+  find . -type d -empty -exec touch {}/.gitignore \;
 ** 从GitHub获取最新版本并merge到本地
 + git pull
   #+BEGIN_SRC shell

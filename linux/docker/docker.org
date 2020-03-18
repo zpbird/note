@@ -490,6 +490,7 @@ sudo systemctl enable docker.service
 + service的启动类似docker run，可以指定network和volume，所有可以给service指定network和volume的引用
 + 范例
   #+BEGIN_SRC yaml
+  version: '3'
   services:
       db:
           image: postgres:9.4(从docker hub拉取镜像)
@@ -497,8 +498,6 @@ sudo systemctl enable docker.service
               - "db-data:/var/lib/postgresql/data"
           network:
               - back-tier
-  
-  service:
       worker:
           build: ./worker(本地build镜像)
           links:
@@ -540,17 +539,20 @@ sudo systemctl enable docker.service
 + 按照手册步骤安装
   https://docs.docker.com/compose/install/
   #+BEGIN_SRC shell
-  sudo curl -L "https://github.com/docker/compose/releases/download/1.25.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+  sudo curl -L "https://github.com/docker/compose/releases/download/1.25.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
 
   #国内http://get.daocloud.io/
-  sudo curl -L "https://get.daocloud.io/docker/compose/releases/download/1.25.1/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+  sudo curl -L "https://get.daocloud.io/docker/compose/releases/download/1.25.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
 
 
   #修改权限
   sudo chmod +x /usr/local/bin/docker-compose
+  sudo chmod +x /usr/local/bin/docker-compose
 
   #Note: If the command docker-compose fails after installation, check your path. You can also create a symbolic link to /usr/bin or any other directory in your path
   sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+  sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+
   #+END_SRC
 + 卸载
   #+BEGIN_SRC shell
@@ -689,7 +691,17 @@ docker-compose up --scale servers名称=个数 -d
   iptables -t nat -A POSTROUTING -s 172.17.2.0/24 ! -d 172.17.0.0/16 -j MASQUERADE
 * 容器编排Swarm mode
 用于生产环境部署docker容器，内置于docker
-** 
+** 建立集群
++ docker swarm init --advertise-addr=192.168.1.139
+  在集群的manager节点上运行，指定的是宿主机的ip地址 
++ dokcer swarm init命令的输出信息中有在worker节点加入到集群的命令提示
+** 查看集群节点状态
++ docker node ls
+** service
++ 创建
+  docker service create --name demo image_name
++ 查看已经存在的service
+  docker service ls
 * 容器编排Kubernetes
 ** 安装
 ** Pod最小调度单位
@@ -774,6 +786,7 @@ kubectl expoese
   sudo apt install openssh-server -y
 ** 单机部署多容器时的自定义网络
 zpbr0
+docker network create --subnet=172.70.0.0/24 zpbr0
 ** Nginx
 + 在宿主机上创建相应目录
   - www: 目录将映射为 nginx 容器配置的虚拟目录
@@ -795,9 +808,9 @@ zpbr0
 + 运行容器
   docker run --rm -d -p 7011:7011 --name nginx-test  --net zpbr0 --ip 172.70.0.11\
   -v /store/zpbird/dockerfiles/webserver/nginx/html:/usr/share/nginx/html \
-  -v /store/zpbird/dockerfiles/webserver/nginx/conf.d:/etc/nginx/conf.d \
-  -v /store/zpbird/dockerfiles/webserver/nginx/nginx.conf:/etc/nginx/nginx.conf \
-  -v /store/zpbird/project/app_ttjt/logs/nginx:/var/log/nginx \
+  -v /store/zpbird/dockerfiles/webserver/nginx/conf/conf.d:/etc/nginx/conf.d \
+  -v /store/zpbird/dockerfiles/webserver/nginx/conf/nginx.conf:/etc/nginx/nginx.conf \
+  -v /store/zpbird/project/app_ttjt/logs/nginx/nginx:/var/log/nginx \
   -v /store/zpbird/dockerfiles/webserver/nginx/supervisor/supervisord.conf:/etc/supervisor/supervisord.conf \
   -v /store/zpbird/dockerfiles/webserver/nginx/supervisor/conf.d:/etc/supervisor/conf.d \
   -v /store/zpbird/project/app_ttjt/logs/nginx/supervisor:/var/log/supervisor \
@@ -805,7 +818,7 @@ zpbr0
   zpbird/nginx:0.5
   或
   docker run --rm -d -p 7011:7011 --name nginx-test  --net zpbr0 --ip 172.70.0.11\
-  -v /store/zpbird/project/app_ttjt/logs/nginx:/var/log/nginx \
+  -v /store/zpbird/project/app_ttjt/logs/nginx/nginx:/var/log/nginx \
   -v /store/zpbird/project/app_ttjt/logs/nginx/supervisor:/var/log/supervisor \
   zpbird/nginx:0.5
 ** Flask
@@ -877,23 +890,23 @@ zpbr0
 #+END_SRC
 *** 运行容器
 + 范例
-  docker run --rm -d -p 7012:7012 --name flask-test  --net zpbr0 --ip 172.70.0.12\
+  docker run --rm -d -p 7012:7012 --name flask-test  --net zpbr0 --ip 172.70.0.12 \
   -v /store/zpbird/dockerfiles/webserver/flask/supervisor/supervisord.conf:/etc/supervisor/supervisord.conf \
   -v /store/zpbird/dockerfiles/webserver/flask/supervisor/conf.d:/etc/supervisor/conf.d \
   -v /store/zpbird/project/app_ttjt/logs/flask/supervisor:/var/log/supervisor \
   -v /store/zpbird/dockerfiles/webserver/flask/gunicorn/gunicorn.conf.py:/etc/gunicorn/gunicorn.conf.py \
   -v /store/zpbird/project/app_ttjt/logs/flask/gunicorn:/var/log/gunicorn \
-  -v /store/zpbird/project/app_ttjt:/app \
+  -v /store/zpbird/project/app_ttjt/src:/app \
   -v /etc/localtime:/etc/localtime \
   zpbird/flask:0.5
   或
-  docker run --rm -d -p 7012:7012 --name flask-test  --net zpbr0 --ip 172.70.0.12\
+  docker run --rm -d -p 7012:7012 --name flask-test  --net zpbr0 --ip 172.70.0.12 \
   -v /store/zpbird/project/app_ttjt/logs/flask/supervisor:/var/log/supervisor \
   -v /store/zpbird/project/app_ttjt/logs/flask/gunicorn:/var/log/gunicorn \
-  -v /store/zpbird/project/app_ttjt:/app \
+  -v /store/zpbird/project/app_ttjt/src:/app \
   zpbird/flask:0.5
   或
-  docker run --rm -d -p 7012:7012 --name flask-test  --net zpbr0 --ip 172.70.0.12\
+  docker run --rm -d -p 7012:7012 --name flask-test  --net zpbr0 --ip 172.70.0.12 \
   -v /store/zpbird/project/app_ttjt/logs/flask/supervisor:/var/log/supervisor \
   -v /store/zpbird/project/app_ttjt/logs/flask/gunicorn:/var/log/gunicorn \
   zpbird/flask:0.5
@@ -913,4 +926,27 @@ zpbr0
   # python  app.py 运行测试      
   #+END_SRC
 ** Postgresql
++ 拉取镜像
+  docker pull postgres:12.2
++ 创建容器
+  docker run -d --rm --name postgresql --net zpbr0 --ip 172.70.0.13 -e POSTGRES_PASSWORD=790204 \
+  -v /store/zpbird/project/app_ttjt/database/postgresql/data:/var/lib/postgresql/data \
+  -v /store/zpbird/project/app_ttjt/logs/postgresql/postgresql:/var/log/postgresql \
+  -v /store/zpbird/project/app_ttjt/logs/postgresql/supervisor:/var/log/supervisor \
+  zpbird/postgresql:0.5
+
 ** Redis
++ 拉取镜像
+  docker pull redis:5.0.8-buster
++ 创建容器
+  docker run -d --rm --name redis --net zpbr0 --ip 172.70.0.15 \
+  -v /store/zpbird/project/app_ttjt/database/redis/data:/data \
+  -v /store/zpbird/project/app_ttjt/logs/redis/redis:/var/log/redis \
+  -v /store/zpbird/project/app_ttjt/logs/redis/supervisor:/var/log/supervisor \
+  zpbird/redis:0.5
+** Node 
++ 运行容器
+  docker run -d --rm --name node --net zpbr0 --ip 172.70.0.16 \
+  -v /store/zpbird/project/app_ttjt/logs/node/supervisor:/var/log/supervisor \
+  -v /store/zpbird/project/app_ttjt/vue_src/:/vue_src/ \
+  zpbird/node:0.5  
