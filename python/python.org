@@ -104,66 +104,10 @@
     pip install pylint 
     pip install pylint --upgrade
 
-    sudo pacman -S python-pylint (当使用pyenv时不能使用)
+  ???  sudo pacman -S python-pylint (当使用pyenv时不能使用)
   - 使用customize-group设置flycheck中Flycheck Executables-Flycheck Python Pylint Executable为pylint的安装路径"C:\Users\PC-BGS-WG\AppData\Local\Programs\Python\Python37\Scripts\pylint.exe"
   - 设置.pylintrc文件的位置
 + pylint无法启动时，点击下方flycheck文字，选择切换检查器，选择python-pylint查看报错信息
-+ Elpy配置
-  - 安装
-    
-    sudo pacman -S python-virtualenv
-  - Elpy Configuration
-    Emacs.............: 26.3
-    Elpy..............: 1.32.0
-    Virtualenv........: None
-    Interactive Python: ipython (not found)
-    RPC virtualenv....: rpc-venv (/store/zpbird/software/emacs/emacs_home/.emacs.d/elpy/rpc-venv)
-    Python...........: python 3.8.1 (/store/zpbird/software/emacs/emacs_home/.emacs.d/elpy/rpc-venv/bin/python)
-    Jedi.............: Not found (0.16.0 available)
-    Rope.............: Not found (0.16.0 available)
-    Autopep8.........: Not found (1.5 available)
-    Yapf.............: Not found (0.29.0 available)
-    Black............: Not found (19.10b0 available)
-    Syntax checker....: Not found (flake8)
-    Warnings
-    You have not activated a virtual env. While Elpy supports this, it is often a
-    good idea to work inside a virtual env. You can use M-x pyvenv-activate or M-x
-    pyvenv-workon to activate a virtual env.
-
-    The directory ~/.local/bin/ is not in your PATH. As there is no active
-    virtualenv, installing Python packages locally will place executables in that
-    directory, so Emacs won't find them. If you are missing some commands, do add
-    this directory to your PATH -- and then do `elpy-rpc-restart'.
-    The jedi package is not available. Completion and code navigation will not work.
-    [Install jedi]
-    The autopep8 package is not available. Commands using this will not work.
-    [Install autopep8]
-    The yapf package is not available. Commands using this will not work.
-    [Install yapf]
-    The black package is not available. Commands using this will not work.
-    [Install black]
-    The configured syntax checker could not be found. Elpy uses this program to
-    provide syntax checks of your programs, so you might want to install one. Elpy
-    by default uses flake8.
-    [Install flake8]
-
-    Options
-    `Raised' text indicates buttons; type RET or click mouse-1 on a button to invoke
-    its action.  Invoke [+] to expand a group, and [-] to collapse an expanded
-    group.  Invoke the [Group], [Face], and [Option] buttons below to edit that item
-    in another window.
-    [+]-- Group Elpy
-    [+]-- Group Python
-    [+]-- Group Virtual Environments (Pyvenv)
-    [+]-- Group Completion (Company)
-    [+]-- Group Call Signatures (ElDoc)
-    [+]-- Group Inline Errors (Flymake)
-    [+]-- Group Code folding (hideshow)
-    [+]-- Group Snippets (YASnippet)
-    [+]-- Group Directory Grep (rgrep)
-    [+]-- Group Search as You Type (ido)
-    [+]-- Group Django extension
-    [+]-- Group Autodoc extension
 
 * python解释器
 ** python

@@ -699,9 +699,113 @@ docker-compose up --scale servers名称=个数 -d
 + docker node ls
 ** service
 + 创建
-  docker service create --name demo image_name
+  docker service create --name service_name image_name
+  docker service create --name mysql --env MYSQL_ROOT=root --env MYSQL_DATABASE=wordpress --network net_name --mount type=volume,source=mysql-data,destination=/var/lib/mysql mysql_image
+  类似于本机的docker run
 + 查看已经存在的service
   docker service ls
++ 查看service运行在哪个节点上
+  docker service ps [service_name]
++ 水平扩展
+  docker service scale service_name=3
++ 删除service
+  docker service rm service_name
+** 网络(Routing Mesh)
++ Internal
+  容器之间访问通过overlay网络(VIP虚拟IP)
++ Ingress
+  如果服务有绑定接口，在此服务可以通过任意swarm节点的相应接口访问
++ 使用overlay网络来连接不同主机上docker服务
+  docker network create -d overlay network_name
++ 在docker swarm manager 上创建的overlay网络，worker节点上没有运行对应的service时，使用docker network ls是看不到的
++ docker swarm 使用DNS服务发现使得在不同worker节点上的service可以使用service name进行通信
+** 结合compose file
++ compose file的版本要求是3.4以上
+  version: '3.4'
++ 不能使用dockerfile文件build，而只能使用dockerhub或本地现有的image
++ depend_on:
+    - redis
+      当前service需要Redis服务先行启动
++ my_service
+    secrets:
+      - my-pw
+    environment:
+      WORDPRESS_DB_PASSWORD_FILE: /run/secrets/my-pw
+  secrets:
+    my-pw:
+      file: ./password
+*** deploy
++ endpoint_mode 
+  服务service网络ip方式
+  - vip (默认、常用)
+  - dnsrr
++ labels
+  标签信息
+  key: value
++ mode 
+  可扩展性(scale)
+  - replicated
+    可扩展、默认值
+  - global
+    在整个集群中只存在一个实例
++ placement
+  设置容器的参数和属性
+  - constraints
+    - node.role == manager 
+      此service一定会部署到manager节点上
+  - preference
+    - spread: node.labels.zone
++ replicas
+  设置启动时部署多少个实例
++ resources
+  资源限制
+  - limits
+    cpus
+    memory
+  - reservations
+    cups
+    memory
++ restart_policy
+  condition: on-failure
+  delays: 5s
++ update_config
+*** 使用compose文件
++ 启动
+  docker stack deploy stack_name --compose-file=stack_compose.yml
++ 查看细节
+  docker stack ps stack_name
++ 停止
+  docker stack rm stack_name
+*** 使用可视化节点
++ visualizer:
+    image: dockersamples/visualizer:stable
+    ports:
+      - "8080:8080"
+    stop_grace_period: 1m30s
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    deploy:
+      placement:
+        constraints: [node.role == manager]
+** 安全管理(docker secrets managment)
++ 可以存储内容
+  - 用户名密码
+  - SSH Key
+  - TLS认证
+  - 任何需要保密的数据
++ 要点
+  - 存储在manager节点的raft database中
+  - secret可以assign给一个service，这个service就可以看到这个secret
+  - 在container内部secret看起来是文件，但实际是在内存中
++ 创建secret
+  - 命令行
+    echo "password" | docker secret create my-passwd -
+  - 使用文件
+    docker secret create my-passwd 密码文件名
+    创建完成后删除密码文件
++ 查看secret
+  docker secret ls
+
 * 容器编排Kubernetes
 ** 安装
 ** Pod最小调度单位
@@ -810,16 +914,16 @@ docker network create --subnet=172.70.0.0/24 zpbr0
   -v /store/zpbird/dockerfiles/webserver/nginx/html:/usr/share/nginx/html \
   -v /store/zpbird/dockerfiles/webserver/nginx/conf/conf.d:/etc/nginx/conf.d \
   -v /store/zpbird/dockerfiles/webserver/nginx/conf/nginx.conf:/etc/nginx/nginx.conf \
-  -v /store/zpbird/project/app_ttjt/logs/nginx/nginx:/var/log/nginx \
+  -v /store/project/app_ttjt/logs/nginx/nginx:/var/log/nginx \
   -v /store/zpbird/dockerfiles/webserver/nginx/supervisor/supervisord.conf:/etc/supervisor/supervisord.conf \
   -v /store/zpbird/dockerfiles/webserver/nginx/supervisor/conf.d:/etc/supervisor/conf.d \
-  -v /store/zpbird/project/app_ttjt/logs/nginx/supervisor:/var/log/supervisor \
+  -v /store/project/app_ttjt/logs/nginx/supervisor:/var/log/supervisor \
   -v /etc/localtime:/etc/localtime \
   zpbird/nginx:0.5
   或
   docker run --rm -d -p 7011:7011 --name nginx-test  --net zpbr0 --ip 172.70.0.11\
-  -v /store/zpbird/project/app_ttjt/logs/nginx/nginx:/var/log/nginx \
-  -v /store/zpbird/project/app_ttjt/logs/nginx/supervisor:/var/log/supervisor \
+  -v /store/project/app_ttjt/logs/nginx/nginx:/var/log/nginx \
+  -v /store/project/app_ttjt/logs/nginx/supervisor:/var/log/supervisor \
   zpbird/nginx:0.5
 ** Flask
 *** 相关服务
@@ -893,22 +997,22 @@ docker network create --subnet=172.70.0.0/24 zpbr0
   docker run --rm -d -p 7012:7012 --name flask-test  --net zpbr0 --ip 172.70.0.12 \
   -v /store/zpbird/dockerfiles/webserver/flask/supervisor/supervisord.conf:/etc/supervisor/supervisord.conf \
   -v /store/zpbird/dockerfiles/webserver/flask/supervisor/conf.d:/etc/supervisor/conf.d \
-  -v /store/zpbird/project/app_ttjt/logs/flask/supervisor:/var/log/supervisor \
+  -v /store/project/app_ttjt/logs/flask/supervisor:/var/log/supervisor \
   -v /store/zpbird/dockerfiles/webserver/flask/gunicorn/gunicorn.conf.py:/etc/gunicorn/gunicorn.conf.py \
-  -v /store/zpbird/project/app_ttjt/logs/flask/gunicorn:/var/log/gunicorn \
-  -v /store/zpbird/project/app_ttjt/src:/app \
+  -v /store/project/app_ttjt/logs/flask/gunicorn:/var/log/gunicorn \
+  -v /store/project/app_ttjt/src:/app \
   -v /etc/localtime:/etc/localtime \
   zpbird/flask:0.5
   或
   docker run --rm -d -p 7012:7012 --name flask-test  --net zpbr0 --ip 172.70.0.12 \
-  -v /store/zpbird/project/app_ttjt/logs/flask/supervisor:/var/log/supervisor \
-  -v /store/zpbird/project/app_ttjt/logs/flask/gunicorn:/var/log/gunicorn \
-  -v /store/zpbird/project/app_ttjt/src:/app \
+  -v /store/project/app_ttjt/logs/flask/supervisor:/var/log/supervisor \
+  -v /store/project/app_ttjt/logs/flask/gunicorn:/var/log/gunicorn \
+  -v /store/project/app_ttjt/src:/app \
   zpbird/flask:0.5
   或
   docker run --rm -d -p 7012:7012 --name flask-test  --net zpbr0 --ip 172.70.0.12 \
-  -v /store/zpbird/project/app_ttjt/logs/flask/supervisor:/var/log/supervisor \
-  -v /store/zpbird/project/app_ttjt/logs/flask/gunicorn:/var/log/gunicorn \
+  -v /store/project/app_ttjt/logs/flask/supervisor:/var/log/supervisor \
+  -v /store/project/app_ttjt/logs/flask/gunicorn:/var/log/gunicorn \
   zpbird/flask:0.5
 *** 项目测试文件 
 + 范例
@@ -926,27 +1030,25 @@ docker network create --subnet=172.70.0.0/24 zpbr0
   # python  app.py 运行测试      
   #+END_SRC
 ** Postgresql
-+ 拉取镜像
-  docker pull postgres:12.2
 + 创建容器
   docker run -d --rm --name postgresql --net zpbr0 --ip 172.70.0.13 -e POSTGRES_PASSWORD=790204 \
-  -v /store/zpbird/project/app_ttjt/database/postgresql/data:/var/lib/postgresql/data \
-  -v /store/zpbird/project/app_ttjt/logs/postgresql/postgresql:/var/log/postgresql \
-  -v /store/zpbird/project/app_ttjt/logs/postgresql/supervisor:/var/log/supervisor \
-  zpbird/postgresql:0.5
+  -v /store/project/app_ttjt/database/postgresql/data:/var/lib/postgresql/data \
+  -v /store/project/app_ttjt/logs/postgresql/postgresql:/var/log/postgresql \
+  -v /store/project/app_ttjt/logs/postgresql/supervisor:/var/log/supervisor \
+  zpbird/postgresql:11.7
 
 ** Redis
 + 拉取镜像
   docker pull redis:5.0.8-buster
 + 创建容器
   docker run -d --rm --name redis --net zpbr0 --ip 172.70.0.15 \
-  -v /store/zpbird/project/app_ttjt/database/redis/data:/data \
-  -v /store/zpbird/project/app_ttjt/logs/redis/redis:/var/log/redis \
-  -v /store/zpbird/project/app_ttjt/logs/redis/supervisor:/var/log/supervisor \
+  -v /store/project/app_ttjt/database/redis/data:/data \
+  -v /store/project/app_ttjt/logs/redis/redis:/var/log/redis \
+  -v /store/project/app_ttjt/logs/redis/supervisor:/var/log/supervisor \
   zpbird/redis:0.5
 ** Node 
 + 运行容器
   docker run -d --rm --name node --net zpbr0 --ip 172.70.0.16 \
-  -v /store/zpbird/project/app_ttjt/logs/node/supervisor:/var/log/supervisor \
-  -v /store/zpbird/project/app_ttjt/vue_src/:/vue_src/ \
+  -v /store/project/app_ttjt/logs/node/supervisor:/var/log/supervisor \
+  -v /store/project/app_ttjt/vue_src/:/vue_src/ \
   zpbird/node:0.5  

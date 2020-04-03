@@ -13,10 +13,13 @@
 + 使用
   - 查看所有可供安装的node版本
     nvm ls-remote
+    nvm list available
   - 选择自己想要的版本进行安装
     nvm install v11.11.0
   - 查看本地已安装的node
     nvm ls
+  - 制定使用的版本
+    nvm use v11.11.0
   - 升级npm
     npm install -g npm
 + 完全卸载nvm
@@ -142,11 +145,6 @@ ln -s /usr/bin/nodejs  /usr/bin/node
              }
 }
 #+END_SRC
-** Jshint(淘汰)
-+ 由于Eslint版本目前存在问题，可以使用Jshint替代
-  npm install jshint -g
-+ 配置文件.jshintrc可以存放于emacs的home目录，或电脑当前用户的home目录
-
 ** ESlint
 *** 安装
 sudo npm install eslint -g
