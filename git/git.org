@@ -103,4 +103,9 @@
 + git pull
   #+BEGIN_SRC shell
   git pull origin master
+
+  直接拉取并覆盖本地的所有代码
+  git fetch --all
+  git reset --hard origin/master
+  git pull
   #+END_SRC

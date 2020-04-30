@@ -11,7 +11,7 @@ GOPROXY=https://mirrors.aliyun.com/goproxy/
 + 安装
   yay -S go
 + 设置变量
-  .bashrc
+  编辑 .bashrc
   export GOROOT=/usr/lib/go
   export GOPATH=/store/go_mod
   export GO111MODULE=on
@@ -26,6 +26,10 @@ go env		#查看Go的环境变量
 #+BEGIN_SRC shell
 #安装lsp-mode后端
 go get golang.org/x/tools/gopls@latest 或 GO111MODULE=on go get golang.org/x/tools/gopls@latest 
+# 安装 go REPL
+go get -u github.com/motemen/gore/cmd/gore
+# godef
+go get -u github.com/rogpeppe/godef
 #+END_SRC
 ** 项目初始化
 + go mod init 项目名称(一般与根目录相同)
@@ -33,7 +37,7 @@ go get golang.org/x/tools/gopls@latest 或 GO111MODULE=on go get golang.org/x/to
   require github.com/gin-gonic/gin v1.6.2
 + 在go.mod所在目录执行下载模块
   go mod download
-* 编辑器设置
+* 编辑器及工具软件
 ** vscode
 + 安装Go扩展
   Go 0.13.1
@@ -83,19 +87,37 @@ go get golang.org/x/tools/gopls@latest 或 GO111MODULE=on go get golang.org/x/to
   - 代码片段
     Ctrl+Shift+P
     snippets
-* 常用库
-** 文档操作
-+ execl
-  go get github.com/360EntSecGroup-Skylar/excelize
-  升级 go get -u github.com/360EntSecGroup-Skylar/excelize
-  在文件中直接引用，会在mod文件中自动添加
-  require github.com/360EntSecGroup-Skylar/excelize v1.4.1 // indirect
-* Go语言
+** gore
++ 常用命令
+  :import <package path>  Import package
+  :type <expr>            Print the type of expression
+  :print                  Show current source
+  :write [<filename>]     Write out current source to file
+  :clear                  Clear the codes
+  :doc <expr or pkg>      Show document
+  :help                   List commands
+  :quit                   Quit the session
++ [[file:pic/gore.gif][演示]]
+* Golang
 ** 常用命令
-*** go get
-*** go install
-*** go mod
-*** go build
+*** go 
+**** version
++ 查看go语言版本
+**** env
++ 查看og语言详细环境
+**** list
++ 查看go语言文件目录
+**** clean
++ 清空生成的可执行文件
+**** vet
++ 静态分析文件是否有语法错误等
+**** get
++ 下载go语言第三方库
+**** install
+**** mod
+**** run
+**** test
+**** go build
 + 跨平台编译
   - 默认go build的可执行文件都是当前操作系统可执行的文件
   - 跨平台编译只需要指定目标操作系统的平台和处理器架构即可
@@ -108,7 +130,16 @@ go get golang.org/x/tools/gopls@latest 或 GO111MODULE=on go get golang.org/x/to
     CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build
     CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build
     #+END_SRC
+*** godoc
++ 查看、生成注释与文档工具
 ** 基础知识
+*** 注释
+**** 单行
+//
+**** 多行
+/*
+多行注释
+*/
 *** 标识符、关键字
 **** 标识符
 - 标识符就是程序员定义的具有特殊意义的词，比如变量名、常量名、函数名等等。 Go语言中标识符由字母数字和_(下划线）组成，并且只能以字母和_开头。 举几个例子：abc, _, _123, a123
@@ -131,6 +162,59 @@ go get golang.org/x/tools/gopls@latest 或 GO111MODULE=on go get golang.org/x/to
   Functions:    make  len  cap  new  append  copy  close  delete
                 complex  real  imag
                 panic  recover
+*** 转义字符(verb)
+**** 形式
++ %+特定字母
+  fmt.Printf("%T", "aaa")
++ \+特定字母
+**** 常用转义字符
+| verb     | 含义                       |
+|----------+----------------------------|
+| %d       | 十进制整数                 |
+| %x,%X    | 大小写方式显示十六进制整数 |
+| %o       | 八进制整数                 |
+| %b       | 二进制整数                 |
+| %f,%g,%e | 浮点数                     |
+| %t       | 布尔值                     |
+| %C       | 字符                       |
+| %S       | 字符串                     |
+| %q       | 带双引号字符串             |
+| %v       | 内置格式内容               |
+| %T       | 类型                       |
+| %p       | 内存地址                   |
+| %%	     | 字符%                      |
+| \n       | 换行                       |
+| \t	     | 缩进                       |
+*** 打印输出
+**** PrintXX()
++ PrintXX()把结果打印到控制台,返回内容长度和错误
++ Print()
++ Println()
++ Printf()
+**** FprintXX()
++ 在Go Web中使用比较多,把内容写到响应流中
++ 函数参数中第一个参数是输出流,后面参数是内容,表示把内容写入到输出流中
++ 第一个返回值表示输出内容长度(字节数),第二个返回值表示错误,如果没有错误取值nil
++ Fprint()
++ Fprintln()
++ Fprintf()
+**** SprintXX()
++ SprintXX()把形成结果以字符串返回,并没有打印到控制台
++ 所以从严格意义角度讲SprintXX不是打印输出,而更像字符串转换
++ Sprint()
++ Sprintln()
++ Sprintf()
+*** 接收用户输入
++ 程序运行时,运行到接收用户输入语句,程序阻塞,用户在控制台输入内容后,把内容赋值给对应的变量,程序继续运行
++ Scanln(&变量名,&变量名)的方式接收
+  - 输入的内容必须都在同一行
+  - 每个内容之间使用空格分割
+  - 回车换行后表示停止输入
+  - 如果希望接收3个值,而在控制台只输入2个值,回车后也停止接收
+  - 如果希望接收2个值,而在控制台输入3个,回车后只能接收两个值
++ Scanf()
+  - Scanf("%s\n%s",&a,&b)
+  - 结合上面的转义字符可以实现输入一个值后回车输入第二个值，不需要刻意使用空格，否则与Scanln()的效果相同，也需要使用空格分隔
 *** 变量
 **** 变量类型
 Go语言中的每一个变量都有自己的类型，并且变量必须经过声明才能开始使用
@@ -452,6 +536,1272 @@ var (
 	    fmt.Println(c)
   }
   #+END_SRC
+**** 数组(Array)
+数组是同一种数据类型元素的集合，在Go语言中，数组从声明时就确定，使用时可以修改数组成员，但是数组大小不可变化
+***** 数组定义
+#+BEGIN_SRC go
+var 数组变量名 [元素数量]T
+
+// 定义一个长度为3元素类型为int的数组a
+var a [3]int
+#+END_SRC
++ 数组的长度必须是常量，并且长度是数组类型的一部分。一旦定义，长度不能变。 [5]int和[10]int是不同的类型
+  #+BEGIN_SRC go
+  var a [3]int
+  var b [4]int
+  a = b //不可以这样做，因为此时a和b是不同的类型
+  #+END_SRC
++ 数组可以通过下标进行访问，下标是从0开始，最后一个元素下标是：len-1，访问越界（下标在合法范围之外），则触发访问越界，会panic
+***** 数组的初始化
+数组的初始化也有很多方式
++ 方法一
+  初始化数组时可以使用初始化列表来设置数组元素的值
+  #+BEGIN_SRC go
+  func main() {
+      var testArray [3]int                        //数组会初始化为int类型的零值
+      var numArray = [3]int{1, 2}                 //使用指定的初始值完成初始化
+      var cityArray = [3]string{"北京", "上海", "深圳"} //使用指定的初始值完成初始化
+      fmt.Println(testArray)                      //[0 0 0]
+      fmt.Println(numArray)                       //[1 2 0]
+      fmt.Println(cityArray)                      //[北京 上海 深圳]
+  }
+  #+END_SRC
++ 方法二
+  按照上面的方法每次都要确保提供的初始值和数组长度一致，一般情况下我们可以让编译器根据初始值的个数自行推断数组的长度
+  #+BEGIN_SRC go
+  func main() {
+      var testArray [3]int
+      var numArray = [...]int{1, 2}
+      var cityArray = [...]string{"北京", "上海", "深圳"}
+      fmt.Println(testArray)                          //[0 0 0]
+      fmt.Println(numArray)                           //[1 2]
+      fmt.Printf("type of numArray:%T\n", numArray)   //type of numArray:[2]int
+      fmt.Println(cityArray)                          //[北京 上海 深圳]
+      fmt.Printf("type of cityArray:%T\n", cityArray) //type of cityArray:[3]string
+  }
+  #+END_SRC
++ 方法三
+  可以使用指定索引值的方式来初始化数组
+  #+BEGIN_SRC go
+  func main() {
+      a := [...]int{1: 1, 3: 5}
+      fmt.Println(a)                  // [0 1 0 5]
+      fmt.Printf("type of a:%T\n", a) //type of a:[4]int
+
+  }
+  #+END_SRC
+***** 数组的遍历
+遍历数组有以下两种方法
+#+BEGIN_SRC go
+func main() {
+    var a = [...]string{"北京", "上海", "深圳"}
+    // 方法1：for循环遍历
+    for i := 0; i < len(a); i++ {
+      fmt.Println(a[i])
+    }
+
+    // 方法2：for range遍历
+    for index, value := range a {
+      fmt.Println(index, value)
+    }
+}
+#+END_SRC
+***** 多维数组
++ Go语言是支持多维数组的，我们这里以二维数组为例（数组中又嵌套数组）
++ 二维数组的定义
+  #+BEGIN_SRC go
+  func main() {
+      a := [3][2]string{
+        {"北京", "上海"},
+        {"广州", "深圳"},
+        {"成都", "重庆"},
+      }
+      fmt.Println(a) //[[北京 上海] [广州 深圳] [成都 重庆]]
+      fmt.Println(a[2][1]) //支持索引取值:重庆
+  }
+  #+END_SRC
++ 二维数组的遍历
+  #+BEGIN_SRC go
+  func main() {
+      a := [3][2]string{
+        {"北京", "上海"},
+        {"广州", "深圳"},
+        {"成都", "重庆"},
+      }
+      for _, v1 := range a {
+        for _, v2 := range v1 {
+          fmt.Printf("%s\t", v2)
+        }
+        fmt.Println()
+      }
+  }
+  #+END_SRC
++  多维数组只有第一层可以使用...来让编译器推导数组长度
+  #+BEGIN_SRC go
+    //支持的写法
+    a := [...][2]string{
+      {"北京", "上海"},
+      {"广州", "深圳"},
+      {"成都", "重庆"},
+    }
+    //不支持多维数组的内层使用...
+    b := [3][...]string{
+      {"北京", "上海"},
+      {"广州", "深圳"},
+      {"成都", "重庆"},
+    }
+
+  #+END_SRC
+***** 数组是值类型
++ 数组是值类型，赋值和传参会复制整个数组。因此改变副本的值，不会改变本身的值
+  #+BEGIN_SRC go
+  func modifyArray(x [3]int) {
+      x[0] = 100
+  }
+
+  func modifyArray2(x [3][2]int) {
+      x[2][0] = 100
+  }
+  func main() {
+      a := [3]int{10, 20, 30}
+      modifyArray(a) //在modify中修改的是a的副本x
+      fmt.Println(a) //[10 20 30]
+      b := [3][2]int{
+        {1, 1},
+        {1, 1},
+        {1, 1},
+      }
+      modifyArray2(b) //在modify中修改的是b的副本x
+      fmt.Println(b)  //[[1 1] [1 1] [1 1]]
+  }
+  #+END_SRC
+***** 注意
++ 数组支持 “==“、”!=” 操作符，因为内存总是被初始化过的
++ [n]*T表示指针数组，*[n]T表示数组指针 
+**** 切片(slice)
++ 切片（Slice）是一个拥有相同类型元素的可变长度的序列。它是基于数组类型做的一层封装。它非常灵活，支持自动扩容
++ 切片是一个引用类型，它的内部结构包含地址、长度和容量。切片一般用于快速地操作一块数据集合
++ 切片是引用类型，不支持直接比较，只能和nil比较
+***** 定义
++ 声明切片类型的基本语法
+  #+BEGIN_SRC go
+  var name []T
+  // name:表示变量名
+  // T:表示切片中的元素类型
+  #+END_SRC
+  #+BEGIN_SRC go
+  func main() {
+      // 声明切片类型
+      var a []string              //声明一个字符串切片
+      var b = []int{}             //声明一个整型切片并初始化
+      var c = []bool{false, true} //声明一个布尔切片并初始化
+      var d = []bool{false, true} //声明一个布尔切片并初始化
+      fmt.Println(a)              //[]
+      fmt.Println(b)              //[]
+      fmt.Println(c)              //[false true]
+      fmt.Println(a == nil)       //true
+      fmt.Println(b == nil)       //false
+      fmt.Println(c == nil)       //false
+      // fmt.Println(c == d)   //切片是引用类型，不支持直接比较，只能和nil比较
+  }
+  #+END_SRC
++ 通过数组得到切片
+  #+BEGIN_SRC go
+  var a = [5]int{7, 9, 15, 8, 2}
+  var s = a[1:4]
+  #+END_SRC
++ 再切片
+  #+BEGIN_SRC go
+  var a = [5]int{7, 9, 15, 8, 2}
+  var s = a[1:4]
+  var c = s[0:len(s)]
+  #+END_SRC
+***** 切片的长度和容量
++ 切片拥有自己的长度和容量，我们可以通过使用内置的len()函数求长度，使用内置的cap()函数求切片的容量
+***** 切片表达式
++ 切片表达式从字符串、数组、指向数组或切片的指针构造子字符串或切片。它有两种变体：一种指定low和high两个索引界限值的简单的形式，另一种是除了low和high索引界限值外还指定容量的完整的形式
+****** 简单切片表达式
++ 切片的底层就是一个数组，所以我们可以基于数组通过切片表达式得到切片。 切片表达式中的low和high表示一个索引范围（左包含，右不包含），也就是下面代码中从数组a中选出1<=索引值<4的元素组成切片s，得到的切片长度=high-low，容量等于得到的切片的底层数组的容量
+  #+BEGIN_SRC go
+  func main() {
+      a := [5]int{1, 2, 3, 4, 5}
+      s := a[1:3]  // s := a[low:high]
+      fmt.Printf("s:%v len(s):%v cap(s):%v\n", s, len(s), cap(s))
+  }
+  // 输出
+  s:[2 3] len(s):2 cap(s):4
+  #+END_SRC
++ 为了方便起见，可以省略切片表达式中的任何索引。省略了low则默认为0；省略了high则默认为切片操作数的长度
+  #+BEGIN_SRC go
+  a[2:]  // 等同于 a[2:len(a)]
+  a[:3]  // 等同于 a[0:3]
+  a[:]   // 等同于 a[0:len(a)]
+  #+END_SRC
++ 注意
+  - 对于数组或字符串，如果0 <= low <= high <= len(a)，则索引合法，否则就会索引越界（out of range）
+  - 对切片再执行切片表达式时（切片再切片），high的上限边界是切片的容量cap(a)，而不是长度。常量索引必须是非负的，并且可以用int类型的值表示;对于数组或常量字符串，常量索引也必须在有效范围内。如果low和high两个指标都是常数，它们必须满足low <= high。如果索引在运行时超出范围，就会发生运行时panic
+    #+BEGIN_SRC go
+    func main() {
+        a := [5]int{1, 2, 3, 4, 5}
+        s := a[1:3]  // s := a[low:high]
+        fmt.Printf("s:%v len(s):%v cap(s):%v\n", s, len(s), cap(s))
+        s2 := s[3:4]  // 索引的上限是cap(s)而不是len(s)
+        fmt.Printf("s2:%v len(s2):%v cap(s2):%v\n", s2, len(s2), cap(s2))
+    }
+    // 输出
+    s:[2 3] len(s):2 cap(s):4
+    s2:[5] len(s2):1 cap(s2):1
+    #+END_SRC
+****** 完整切片表达式
++ 对于数组，指向数组的指针，或切片a(注意不能是字符串)支持完整切片表达式
+  #+BEGIN_SRC go
+  a[low : high : max]
+  #+END_SRC
++ 上面的代码会构造与简单切片表达式a[low: high]相同类型、相同长度和元素的切片。另外，它会将得到的结果切片的容量设置为max-low。在完整切片表达式中只有第一个索引值（low）可以省略；它默认为0
+  #+BEGIN_SRC go
+  func main() {
+      a := [5]int{1, 2, 3, 4, 5}
+      t := a[1:3:5]
+      fmt.Printf("t:%v len(t):%v cap(t):%v\n", t, len(t), cap(t))
+  }
+  // 输出结果
+  t:[2 3] len(t):2 cap(t):4
+  #+END_SRC
++ 完整切片表达式需要满足的条件是0 <= low <= high <= max <= cap(a)，其他条件和简单切片表达式相同
+***** 使用make()函数构造切片
++ 上面都是基于数组来创建的切片，如果需要动态的创建一个切片，我们就需要使用内置的make()函数
+  #+BEGIN_SRC go
+  make([]T, size, cap)
+  // T:切片的元素类型
+  // size:切片中元素的数量
+  // cap:切片的容量
+
+  func main() {
+	    a := make([]int, 2, 10)
+	    fmt.Println(a)      //[0 0]
+	    fmt.Println(len(a)) //2
+	    fmt.Println(cap(a)) //10
+  }
+  // 上面代码中a的内部存储空间已经分配了10个，但实际上只用了2个。 容量并不会影响当前元素的个数，所以len(a)返回2，cap(a)则返回该切片的容量
+  #+END_SRC
+***** 切片的本质
++ 切片的本质就是对底层数组的封装，它包含了三个信息：底层数组的指针、切片的长度（len）和切片的容量（cap）[[file:pic/%E5%88%87%E7%89%8701.png][示意图]]
+***** 判断切片是否为空
++ 检查切片是否为空，请始终使用len(s) == 0来判断，而不应该使用s == nil来判断
+***** 切片不能直接比较
++ 切片之间是不能比较的，我们不能使用==操作符来判断两个切片是否含有全部相等元素。 切片唯一合法的比较操作是和nil比较。 一个nil值的切片并没有底层数组，一个nil值的切片的长度和容量都是0。但是我们不能说一个长度和容量都是0的切片一定是nil
++ 要判断一个切片是否是空的，要是用len(s) == 0来判断，不应该使用s == nil来判断
+  #+BEGIN_SRC go
+  var s1 []int         //len(s1)=0;cap(s1)=0;s1==nil
+  s2 := []int{}        //len(s2)=0;cap(s2)=0;s2!=nil
+  s3 := make([]int, 0) //len(s3)=0;cap(s3)=0;s3!=nil
+  #+END_SRC
+***** 切片的赋值拷贝
++ 下面的代码中演示了拷贝前后两个变量共享底层数组，对一个切片的修改会影响另一个切片的内容，这点需要特别注意
+  #+BEGIN_SRC go
+  func main() {
+      s1 := make([]int, 3) //[0 0 0]
+      s2 := s1             //将s1直接赋值给s2，s1和s2共用一个底层数组
+      s2[0] = 100
+      fmt.Println(s1) //[100 0 0]
+      fmt.Println(s2) //[100 0 0]
+  }
+  #+END_SRC
+***** 切片遍历
++ 切片的遍历方式和数组是一致的，支持索引遍历和for range遍历
+  #+BEGIN_SRC go
+  func main() {
+      s := []int{1, 3, 5}
+
+      for i := 0; i < len(s); i++ {
+        fmt.Println(i, s[i])
+      }
+
+      for index, value := range s {
+        fmt.Println(index, value)
+      }
+  }
+  #+END_SRC
+***** append()方法为切片添加元素
++ Go语言的内建函数append()可以为切片动态添加元素。 可以一次添加一个元素，可以添加多个元素，也可以添加另一个切片中的元素（后面加…）
+  #+BEGIN_SRC go
+  func main(){
+      var s []int
+      s = append(s, 1)        // [1]
+      s = append(s, 2, 3, 4)  // [1 2 3 4]
+      s2 := []int{5, 6, 7}  
+      s = append(s, s2...)    // [1 2 3 4 5 6 7]
+  }
+  #+END_SRC
++ 注意
+  - 通过var声明的零值切片可以在append()函数直接使用，无需初始化
+    #+BEGIN_SRC go
+    var s []int
+    s = append(s, 1, 2, 3)
+    #+END_SRC
+  - 没有必要像下面的代码一样初始化一个切片再传入append()函数使用
+    #+BEGIN_SRC go
+    s := []int{}  // 没有必要初始化
+    s = append(s, 1, 2, 3)
+
+    var s = make([]int)  // 没有必要初始化
+    s = append(s, 1, 2, 3)
+    #+END_SRC
+  - 每个切片会指向一个底层数组，这个数组的容量够用就添加新增元素。当底层数组不能容纳新增的元素时，切片就会自动按照一定的策略进行“扩容”，此时该切片指向的底层数组就会更换。“扩容”操作往往发生在append()函数调用时，所以我们通常都需要用原变量接收append函数的返回值
+    #+BEGIN_SRC go
+    func main() {
+        //append()添加元素和切片扩容
+        var numSlice []int
+        for i := 0; i < 10; i++ {
+          numSlice = append(numSlice, i)
+          fmt.Printf("%v  len:%d  cap:%d  ptr:%p\n", numSlice, len(numSlice), cap(numSlice), numSlice)
+        }
+    }
+    // 输出：
+    [0]  len:1  cap:1  ptr:0xc0000a8000
+    [0 1]  len:2  cap:2  ptr:0xc0000a8040
+    [0 1 2]  len:3  cap:4  ptr:0xc0000b2020
+    [0 1 2 3]  len:4  cap:4  ptr:0xc0000b2020
+    [0 1 2 3 4]  len:5  cap:8  ptr:0xc0000b6000
+    [0 1 2 3 4 5]  len:6  cap:8  ptr:0xc0000b6000
+    [0 1 2 3 4 5 6]  len:7  cap:8  ptr:0xc0000b6000
+    [0 1 2 3 4 5 6 7]  len:8  cap:8  ptr:0xc0000b6000
+    [0 1 2 3 4 5 6 7 8]  len:9  cap:16  ptr:0xc0000b8000
+    [0 1 2 3 4 5 6 7 8 9]  len:10  cap:16  ptr:0xc0000b8000
+    #+END_SRC
+  - append()函数将元素追加到切片的最后并返回该切片
+  - 切片numSlice的容量按照1，2，4，8，16这样的规则自动进行扩容，每次扩容后都是扩容前的2倍
+  - append()函数还支持一次性追加多个元素
+    #+BEGIN_SRC go
+    var citySlice []string
+    // 追加一个元素
+    citySlice = append(citySlice, "北京")
+    // 追加多个元素
+    citySlice = append(citySlice, "上海", "广州", "深圳")
+    // 追加切片
+    a := []string{"成都", "重庆"}
+    citySlice = append(citySlice, a...)
+    fmt.Println(citySlice) //[北京 上海 广州 深圳 成都 重庆]
+    #+END_SRC
+***** 切片的扩容策略
++ 首先判断，如果新申请容量（cap）大于2倍的旧容量（old.cap），最终容量（newcap）就是新申请的容量（cap）
++ 否则判断，如果旧切片的长度小于1024，则最终容量(newcap)就是旧容量(old.cap)的两倍，即（newcap=doublecap）
++ 否则判断，如果旧切片长度大于等于1024，则最终容量（newcap）从旧容量（old.cap）开始循环增加原来的1/4，即（newcap=old.cap,for {newcap += newcap/4}）直到最终容量（newcap）大于等于新申请的容量(cap)，即（newcap >= cap）
++ 如果最终容量（cap）计算值溢出，则最终容量（cap）就是新申请容量（cap）
++ 需要注意的是，切片扩容还会根据切片中元素的类型不同而做不同的处理，比如int和string类型的处理方式就不一样
+***** 使用copy()函数复制切片
++ Go语言内建的copy()函数可以迅速地将一个切片的数据复制到另外一个切片空间中，copy()函数的使用格式如下
+  #+BEGIN_SRC go
+  copy(destSlice, srcSlice []T)
+
+  func main() {
+	// copy()复制切片
+	  a := []int{1, 2, 3, 4, 5}
+	  c := make([]int, 5, 5)
+	  copy(c, a)     //使用copy()函数将切片a中的元素复制到切片c
+	  fmt.Println(a) //[1 2 3 4 5]
+	  fmt.Println(c) //[1 2 3 4 5]
+	  c[0] = 1000
+	  fmt.Println(a) //[1 2 3 4 5]
+	  fmt.Println(c) //[1000 2 3 4 5]
+  }
+  #+END_SRC
+***** 从切片中删除元素
++ Go语言中并没有删除切片元素的专用方法，我们可以使用切片本身的特性来删除元素
+  #+BEGIN_SRC go
+  func main() {
+      // 从切片中删除元素
+      a := []int{30, 31, 32, 33, 34, 35, 36, 37}
+      // 要删除索引为2的元素
+      a = append(a[:2], a[3:]...)
+      fmt.Println(a) //[30 31 33 34 35 36 37]
+  }
+  // 要从切片a中删除索引为index的元素，操作方法是a = append(a[:index], a[index+1:]...)
+  #+END_SRC
+**** map
++ Go语言中提供的映射关系容器为map，其内部使用散列表（hash）实现
++ map是一种无序的基于key-value的数据结构，Go语言中的map是引用类型，必须初始化才能使用
+***** map定义
++ 语法
+  #+BEGIN_SRC go
+  map[KeyType]ValueType
+  // KeyType:表示键的类型
+  // ValueType:表示键对应的值的类型
+  #+END_SRC
++ map类型的变量默认初始值为nil，需要使用make()函数来分配内存
+  #+BEGIN_SRC go
+  make(map[KeyType]ValueType, [cap])
+  // 其中cap表示map的容量，该参数虽然不是必须的，但是我们应该在初始化map的时候就为其指定一个合适的容量
+  #+END_SRC
+***** 基本使用
++ map中的数据都是成对出现的，map的基本使用示例代码
+  #+BEGIN_SRC go
+  func main() {
+      scoreMap := make(map[string]int, 8)
+      scoreMap["张三"] = 90
+      scoreMap["小明"] = 100
+      fmt.Println(scoreMap)
+      fmt.Println(scoreMap["小明"])
+      fmt.Printf("type of a:%T\n", scoreMap)
+  }
+  // 输出：
+  map[小明:100 张三:90]
+  100
+  type of a:map[string]int
+  #+END_SRC
++ map也支持在声明的时候填充元素
+  #+BEGIN_SRC go
+  func main() {
+      userInfo := map[string]string{
+        "username": "沙河小王子",
+        "password": "123456",
+      }
+      fmt.Println(userInfo) //
+  }
+  #+END_SRC
+***** 打印格式
++ 可以使用打印控制，显示成习惯的形式
+  fmt.Printf("变量名:%#v\n", 变量名)
+***** 判断某个键是否存在
++ Go语言中有个判断map中键是否存在的特殊写法
+  #+BEGIN_SRC go
+  value, ok := map[key]
+
+  // 示例
+  func main() {
+      scoreMap := make(map[string]int)
+      scoreMap["张三"] = 90
+      scoreMap["小明"] = 100
+      // 如果key存在ok为true,v为对应的值；不存在ok为false,v为值类型的零值
+      v, ok := scoreMap["张三"]
+      if ok {
+        fmt.Println(v)
+      } else {
+        fmt.Println("查无此人")
+      }
+  }
+  #+END_SRC
+***** map的遍历
++ Go语言中使用for range遍历map
+  #+BEGIN_SRC go
+  func main() {
+      scoreMap := make(map[string]int)
+      scoreMap["张三"] = 90
+      scoreMap["小明"] = 100
+      scoreMap["娜扎"] = 60
+      for k, v := range scoreMap {
+        fmt.Println(k, v)
+      }
+  }
+  #+END_SRC
++ 只想遍历key的时候，可以按下面的写法
+  #+BEGIN_SRC go
+  func main() {
+      scoreMap := make(map[string]int)
+      scoreMap["张三"] = 90
+      scoreMap["小明"] = 100
+      scoreMap["娜扎"] = 60
+      for k := range scoreMap {
+        fmt.Println(k)
+      }
+  }
+  #+END_SRC
++ 遍历map时的元素顺序与添加键值对的顺序无关
+***** 使用delete()函数删除键值对
++ 使用delete()内建函数从map中删除一组键值对，delete()函数的格式如下
+  #+BEGIN_SRC go
+  delete(map, key)
+
+  // 示例
+  func main(){
+    	scoreMap := make(map[string]int)
+	    scoreMap["张三"] = 90
+	    scoreMap["小明"] = 100
+	    scoreMap["娜扎"] = 60
+	    delete(scoreMap, "小明")//将小明:100从map中删除
+	    for k,v := range scoreMap{
+		      fmt.Println(k, v)
+	    }
+  }
+  #+END_SRC
+***** 按照指定顺序遍历map
++ 示例
+  #+BEGIN_SRC go
+  func main() {
+      rand.Seed(time.Now().UnixNano()) //初始化随机数种子
+
+      var scoreMap = make(map[string]int, 200)
+
+      for i := 0; i < 100; i++ {
+        key := fmt.Sprintf("stu%02d", i) //生成stu开头的字符串
+        value := rand.Intn(100)          //生成0~99的随机整数
+        scoreMap[key] = value
+      }
+      //取出map中的所有key存入切片keys
+      var keys = make([]string, 0, 200)
+      for key := range scoreMap {
+        keys = append(keys, key)
+      }
+      //对切片进行排序
+      sort.Strings(keys)
+      //按照排序后的key遍历map
+      for _, key := range keys {
+        fmt.Println(key, scoreMap[key])
+      }
+  }
+  #+END_SRC
+***** 元素为map类型的切片
++ 切片中的元素为map类型时的操作
+  #+BEGIN_SRC go
+  func main() {
+      var mapSlice = make([]map[string]string, 3)
+      for index, value := range mapSlice {
+        fmt.Printf("index:%d value:%v\n", index, value)
+      }
+      fmt.Println("after init")
+      // 对切片中的map元素进行初始化
+      mapSlice[0] = make(map[string]string, 10)
+      mapSlice[0]["name"] = "小王子"
+      mapSlice[0]["password"] = "123456"
+      mapSlice[0]["address"] = "沙河"
+      for index, value := range mapSlice {
+        fmt.Printf("index:%d value:%v\n", index, value)
+      }
+  }
+
+  #+END_SRC
+***** 值为切片类型的map
++ map中值为切片类型的操作
+  #+BEGIN_SRC go
+  func main() {
+      var sliceMap = make(map[string][]string, 3)
+      fmt.Println(sliceMap)
+      fmt.Println("after init")
+      key := "中国"
+      value, ok := sliceMap[key]
+      if !ok {
+        value = make([]string, 0, 2)
+      }
+      value = append(value, "北京", "上海")
+      sliceMap[key] = value
+      fmt.Println(sliceMap)
+  }
+  #+END_SRC
+**** 指针
+***** Go语言中的指针
++ 任何程序数据载入内存后，在内存都有他们的地址，这就是指针。而为了保存一个数据在内存中的地址，我们就需要指针变量
++ 比如，“永远不要高估自己”这句话是我的座右铭，我想把它写入程序中，程序一启动这句话是要加载到内存（假设内存地址0x123456），我在程序中把这段话赋值给变量A，把内存地址赋值给变量B。这时候变量B就是一个指针变量。通过变量A和变量B都能找到我的座右铭
++ Go语言中的指针不能进行偏移和运算，因此Go语言中的指针操作非常简单，我们只需要记住两个符号：&（取地址）和*（根据地址取值）
+***** 指针地址和指针类型
++ 每个变量在运行时都拥有一个地址，这个地址代表变量在内存中的位置。Go语言中使用&字符放在变量前面对变量进行“取地址”操作。 Go语言中的值类型（int、float、bool、string、array、struct）都有对应的指针类型，如：*int、*int64、*string等
++ 取变量指针的语法
+  #+BEGIN_SRC go
+  ptr := &v    // v的类型为T
+  // v:代表被取地址的变量，类型为T
+  // ptr:用于接收地址的变量，ptr的类型就为*T，称做T的指针类型。*代表指针
+
+  func main() {
+    	a := 10
+	    b := &a
+	    fmt.Printf("a:%d ptr:%p\n", a, &a) // a:10 ptr:0xc00001a078
+	    fmt.Printf("b:%p type:%T\n", b, b) // b:0xc00001a078 type:*int
+	    fmt.Println(&b)                    // 0xc00000e018
+  }
+  #+END_SRC
++ b := &a的[[file:pic/%E6%8C%87%E9%92%88%E5%9B%BE%E7%A4%BA.png][图例]]
+***** 指针取值
++ 在对普通变量使用&操作符取地址后会获得这个变量的指针，然后可以对指针使用*操作，也就是指针取值
+  #+BEGIN_SRC go
+  func main() {
+      //指针取值
+      a := 10
+      b := &a // 取变量a的地址，将指针保存到b中
+      fmt.Printf("type of b:%T\n", b)
+      c := *b // 指针取值（根据指针去内存取值）
+      fmt.Printf("type of c:%T\n", c)
+      fmt.Printf("value of c:%v\n", c)
+  }
+  // 输出如下
+  type of b:*int
+  type of c:int
+  value of c:10
+  #+END_SRC
++ 取地址操作符&和取值操作符*是一对互补操作符，&取出地址，*根据地址取出地址指向的值
++ 变量、指针地址、指针变量、取地址、取值的相互关系和特性如下
+  - 对变量进行取地址（&）操作，可以获得这个变量的指针变量
+  - 指针变量的值是指针地址
+  - 对指针变量进行取值（*）操作，可以获得指针变量指向的原变量的值
++ 指针传值示例
+  #+BEGIN_SRC go
+  func modify1(x int) {
+      x = 100
+  }
+
+  func modify2(x *int) {
+      ,*x = 100
+  }
+
+  func main() {
+      a := 10
+      modify1(a)
+      fmt.Println(a) // 10
+      modify2(&a)
+      fmt.Println(a) // 100
+  }
+
+  #+END_SRC
+***** new和make
++ 执行下面的代码会引发panic，为什么呢？ 在Go语言中对于引用类型的变量，我们在使用的时候不仅要声明它，还要为它分配内存空间，否则我们的值就没办法存储。而对于值类型的声明不需要分配内存空间，是因为它们在声明的时候已经默认分配好了内存空间。要分配内存，就引出来今天的new和make。 Go语言中new和make是内建的两个函数，主要用来分配内存
+  #+BEGIN_SRC go
+  func main() {
+      var a *int
+      ,*a = 100
+      fmt.Println(*a)
+
+      var b map[string]int
+      b["沙河娜扎"] = 100
+      fmt.Println(b)
+  }
+  #+END_SRC
+****** new
++ new是一个内置的函数，它的函数签名如下
+  #+BEGIN_SRC go
+  func new(Type) *Type
+  // Type表示类型，new函数只接受一个参数，这个参数是一个类型
+  // *Type表示类型指针，new函数返回一个指向该类型内存地址的指针。
+  #+END_SRC
++ new函数不太常用，使用new函数得到的是一个类型的指针，并且该指针对应的值为该类型的零值
+  #+BEGIN_SRC go
+  func main() {
+      a := new(int)
+      b := new(bool)
+      fmt.Printf("%T\n", a) // *int
+      fmt.Printf("%T\n", b) // *bool
+      fmt.Println(*a)       // 0
+      fmt.Println(*b)       // false
+  }	
+
+  #+END_SRC
++ 示例代码中var a *int只是声明了一个指针变量a但是没有初始化，指针作为引用类型需要初始化后才会拥有内存空间，才可以给它赋值。应该按照如下方式使用内置的new函数对a进行初始化之后就可以正常对其赋值了
+  #+BEGIN_SRC go
+  func main() {
+      var a *int
+      a = new(int)
+      ,*a = 10
+      fmt.Println(*a)
+    }
+
+  #+END_SRC
+****** make
++ make也是用于内存分配的，区别于new，它只用于slice、map以及chan的内存创建，而且它返回的类型就是这三个类型本身，而不是他们的指针类型，因为这三种类型就是引用类型，所以就没有必要返回他们的指针了。make函数的函数签名如下
+  #+BEGIN_SRC go
+  func make(t Type, size ...IntegerType) Type
+  #+END_SRC
++ make函数是无可替代的，我们在使用slice、map以及channel的时候，都需要使用make进行初始化，然后才可以对它们进行操作
++ 示例中var b map[string]int只是声明变量b是一个map类型的变量，需要像下面的示例代码一样使用make函数进行初始化操作之后，才能对其进行键值对赋值
+  #+BEGIN_SRC go
+  func main() {
+      var b map[string]int
+      b = make(map[string]int, 10)
+      b["沙河娜扎"] = 100
+      fmt.Println(b)
+  }
+  #+END_SRC
+****** new与make的区别
++ 二者都是用来做内存分配的
++ make只用于slice、map以及channel的初始化，返回的还是这三个引用类型本身
++ 而new用于类型的内存分配，并且内存对应的值为类型零值，返回的是指向类型的指针
+**** 结构体（struct）
++ Go语言中没有“类”的概念，也不支持“类”的继承等面向对象的概念。Go语言中通过结构体的内嵌再配合接口比面向对象具有更高的扩展性和灵活性
++ 常用打印结构体结构和结构的语句
+  fmt.Printf("%#v\n", 结构体变量)
+***** 类型别名和自定义类型
+****** 自定义类型
++ 在Go语言中有一些基本的数据类型，如string、整型、浮点型、布尔等数据类型， Go语言中可以使用type关键字来定义自定义类型
++ 自定义类型是定义了一个全新的类型。我们可以基于内置的基本类型定义，也可以通过struct定义
+  #+BEGIN_SRC go
+  //将MyInt定义为int类型
+  type MyInt int
+  // 通过type关键字的定义，MyInt就是一种新的类型，它具有int的特性
+  #+END_SRC
+****** 类型别名
++ 类型别名规定：TypeAlias只是Type的别名，本质上TypeAlias与Type是同一个类型。就像一个孩子小时候有小名
+  #+BEGIN_SRC go
+  type TypeAlias = Type
+
+  type byte = uint8
+  type rune = int32
+  #+END_SRC
+****** 自定义类型和类型别名的区别
++ 类型别名与自定义类型表面上看只有一个等号的差异，我们通过下面的这段代码来理解它们之间的区别
++ 自定义类型可以添加的方法并在其他包中引用，类型别名不能
++ 自定义类型 输出类型是属于一个全新的类型 而类型别名输出的是一个源头的类型，类型别名可以同相同类型进行计算，自定义类型则不能
++ 类型声明与类型别名最大区别在于: 类型别名和原类型是相同的, 而类型声明和原类型则是完全不同的两个东西, 只不过, 类型声明的新类型拥有与原类型相同的字段结构, 但, 不拥有任何原类型的方法
+  #+BEGIN_SRC go
+  //自定义类型
+  type NewInt int
+
+  //类型别名
+  type MyInt = int
+
+  func main() {
+      var a NewInt
+      var b MyInt
+	
+      fmt.Printf("type of a:%T\n", a) //type of a:main.NewInt
+      fmt.Printf("type of b:%T\n", b) //type of b:int
+  }
+
+  #+END_SRC
+***** 结构体
+Go语言中的基础数据类型可以表示一些事物的基本属性，但是当我们想表达一个事物的全部或部分属性时，这时候再用单一的基本数据类型明显就无法满足需求了，Go语言提供了一种自定义数据类型，可以封装多个基本数据类型，这种数据类型叫结构体，英文名称struct。 也就是我们可以通过struct来定义自己的类型
+****** 结构体的定义
++ 使用type和struct关键字来定义结构体
+  #+BEGIN_SRC go
+  type 类型名 struct {
+        字段名 字段类型
+        字段名 字段类型
+        …
+  }
+  #+END_SRC
+  - 类型名：标识自定义结构体的名称，在同一个包内不能重复
+  - 字段名：表示结构体字段名。结构体中的字段名必须唯一
+  - 字段类型：表示结构体字段的具体类型
++ 示例，我们定义一个Person（人）结构体
+  #+BEGIN_SRC go
+  type person struct {
+	    name string
+	    city string
+	    age  int8
+  }
+  // 同样类型的字段也可以写在一行
+  type person1 struct {
+	    name, city string
+	    age        int8
+  }
+  // 这样我们就拥有了一个person的自定义类型，它有name、city、age三个字段，分别表示姓名、城市和年龄。这样我们使用这个person结构体就能够很方便的在程序中表示和存储人信息了
+  #+END_SRC
+****** 结构体实例化
++ 只有当结构体实例化时，才会真正地分配内存。也就是必须实例化后才能使用结构体的字段
++ 结构体本身也是一种类型，我们可以像声明内置类型一样使用var关键字声明结构体类型
+  #+BEGIN_SRC go
+  var 结构体实例 结构体类型
+  #+END_SRC
+******* 基本实例化
++ 示例
+  #+BEGIN_SRC go
+  type person struct {
+      name string
+      city string
+      age  int8
+  }
+
+  func main() {
+      var p1 person
+      p1.name = "沙河娜扎"
+      p1.city = "北京"
+      p1.age = 18
+      fmt.Printf("p1=%v\n", p1)  //p1={沙河娜扎 北京 18}
+      fmt.Printf("p1=%#v\n", p1) //p1=main.person{name:"沙河娜扎", city:"北京", age:18}
+  }
+
+  #+END_SRC
+******* 匿名结构体
++ 在定义一些临时数据结构等场景下还可以使用匿名结构体
+  #+BEGIN_SRC go
+  package main
+     
+  import (
+        "fmt"
+  )
+     
+  func main() {
+        var user struct{Name string; Age int}
+        user.Name = "小王子"
+        user.Age = 18
+        fmt.Printf("%#v\n", user)
+  }
+
+  #+END_SRC
+******* 创建指针类型结构体
++ 可以通过使用new关键字对结构体进行实例化，得到的是结构体的地址
+  #+BEGIN_SRC go
+  var p2 = new(person)
+  fmt.Printf("%T\n", p2)     //*main.person
+  fmt.Printf("p2=%#v\n", p2) //p2=&main.person{name:"", city:"", age:0}
+  #+END_SRC
++ 在Go语言中支持对结构体指针直接使用.来访问结构体的成员
+  #+BEGIN_SRC go
+  var p2 = new(person)
+  p2.name = "小王子"
+  p2.age = 28
+  p2.city = "上海"
+  fmt.Printf("p2=%#v\n", p2) //p2=&main.person{name:"小王子", city:"上海", age:28}
+  #+END_SRC
+******* 取结构体的地址实化例
++ 使用&对结构体进行取地址操作相当于对该结构体类型进行了一次new实例化操作
+  #+BEGIN_SRC go
+  p3 := &person{}
+  fmt.Printf("%T\n", p3)     //*main.person
+  fmt.Printf("p3=%#v\n", p3) //p3=&main.person{name:"", city:"", age:0}
+  p3.name = "七米"
+  p3.age = 30
+  p3.city = "成都"
+  fmt.Printf("p3=%#v\n", p3) //p3=&main.person{name:"七米", city:"成都", age:30}
+  // p3.name = "七米"其实在底层是(*p3).name = "七米"，这是Go语言帮我们实现的语法糖
+  #+END_SRC
+******* 结构体初始化
++ 没有初始化的结构体，其成员变量都是对应其类型的零值
+  #+BEGIN_SRC go
+  type person struct {
+      name string
+      city string
+      age  int8
+  }
+
+  func main() {
+      var p4 person
+      fmt.Printf("p4=%#v\n", p4) //p4=main.person{name:"", city:"", age:0}
+  }
+
+  #+END_SRC
+******* 使用键值对初始化
++ 使用键值对对结构体进行初始化时，键对应结构体的字段，值对应该字段的初始值
+  #+BEGIN_SRC go
+  p5 := person{
+	    name: "小王子",
+	    city: "北京",
+	    age:  18,
+      }
+  fmt.Printf("p5=%#v\n", p5) //p5=main.person{name:"小王子", city:"北京", age:18}
+  #+END_SRC
++ 也可以对结构体指针进行键值对初始化
+  #+BEGIN_SRC go
+  p6 := &person{
+	    name: "小王子",
+	    city: "北京",
+	    age:  18,
+      }
+  fmt.Printf("p6=%#v\n", p6) //p6=&main.person{name:"小王子", city:"北京", age:18}
+  #+END_SRC
++ 当某些字段没有初始值的时候，该字段可以不写。此时，没有指定初始值的字段的值就是该字段类型的零值
+  #+BEGIN_SRC go
+  p7 := &person{
+	    city: "北京",
+      }
+  fmt.Printf("p7=%#v\n", p7) //p7=&main.person{name:"", city:"北京", age:0}
+  #+END_SRC
+******* 使用值的列表初始化
++ 初始化结构体的时候可以简写，也就是初始化的时候不写键，直接写值
+  #+BEGIN_SRC go
+  p8 := &person{
+	    "沙河娜扎",
+	    "北京",
+	    28,
+      }
+  fmt.Printf("p8=%#v\n", p8) //p8=&main.person{name:"沙河娜扎", city:"北京", age:28}
+  #+END_SRC
++ 使用这种格式初始化时，注意
+  - 必须初始化结构体的所有字段
+  - 初始值的填充顺序必须与字段在结构体中的声明顺序一致
+  - 该方式不能和键值初始化方式混用
+******* 结构体内存布局
++ 结构体占用一块连续的内存
+  #+BEGIN_SRC go
+  type test struct {
+	    a int8
+	    b int8
+	    c int8
+	    d int8
+      }
+  n := test{
+    	1, 2, 3, 4,
+  }
+  fmt.Printf("n.a %p\n", &n.a)
+  fmt.Printf("n.b %p\n", &n.b)
+  fmt.Printf("n.c %p\n", &n.c)
+  fmt.Printf("n.d %p\n", &n.d)
+  // 输出：
+  n.a 0xc0000a0060
+  n.b 0xc0000a0061
+  n.c 0xc0000a0062
+  n.d 0xc0000a0063
+  #+END_SRC
+******* 空结构体
++ 空结构体是不占用空间的
+  #+BEGIN_SRC go
+  var v struct{}
+  fmt.Println(unsafe.Sizeof(v))  // 0
+  #+END_SRC
+******* 构造函数
++ Go语言的结构体没有构造函数，我们可以自己实现。 例如，下方的代码就实现了一个person的构造函数。 因为struct是值类型，如果结构体比较复杂的话，值拷贝性能开销会比较大，所以该构造函数返回的是结构体指针类型
+  #+BEGIN_SRC go
+  func newPerson(name, city string, age int8) *person {
+      return &person{
+        name: name,
+        city: city,
+        age:  age,
+      }
+  }
+
+  #+END_SRC
++ 调用构造函数
+  #+BEGIN_SRC go
+  p9 := newPerson("张三", "沙河", 90)
+  fmt.Printf("%#v\n", p9) //&main.person{name:"张三", city:"沙河", age:90}
+  #+END_SRC
+****** 方法(method)
+******* 方法
++ Go语言中的方法（Method）是一种作用于特定类型变量的函数。这种特定类型变量叫做接收者（Receiver）。接收者的概念就类似于其他语言中的this或者 self，可以理解为此方法从属于某个特定的结构类型，即该结构类型的方法
++ 方法的定义格式如下
+  #+BEGIN_SRC go
+  func (接收者变量 接收者类型) 方法名(参数列表) (返回参数) {
+      函数体
+  }
+  #+END_SRC
++ 接收者变量：接收者中的参数变量名在命名时，官方建议使用接收者类型名称首字母的小写，而不是self、this之类的命名。例如，Person类型的接收者变量应该命名为 p，Connector类型的接收者变量应该命名为c等
++ 接收者类型：接收者类型和参数类似，可以是指针类型和非指针类型
++ 方法名、参数列表、返回参数：具体格式与函数定义相同
++ 方法与函数的区别是，函数不属于任何类型，方法属于特定的类型
++ 示例
+  #+BEGIN_SRC go
+  //Person 结构体
+  type Person struct {
+      name string
+      age  int8
+  }
+
+  //NewPerson 构造函数
+  func NewPerson(name string, age int8) *Person {
+      return &Person{
+        name: name,
+        age:  age,
+      }
+  }
+
+  //Dream Person做梦的方法
+  func (p Person) Dream() {
+      fmt.Printf("%s的梦想是学好Go语言！\n", p.name)
+  }
+
+  func main() {
+      p1 := NewPerson("小王子", 25)
+     (*p1).Dream()
+      p1.Dream()
+  }
+
+  #+END_SRC
+******* 指针类型的接收者
++ 指针类型的接收者由一个结构体的指针组成，由于指针的特性，调用方法时修改接收者指针的任意成员变量，在方法结束后，修改都是有效的。这种方式就十分接近于其他语言中面向对象中的this或者self。 例如我们为Person添加一个SetAge方法，来修改实例变量的年龄
+  #+BEGIN_SRC go
+  // SetAge 设置p的年龄
+  // 使用指针接收者
+  func (p *Person) SetAge(newAge int8) {
+	    p.age = newAge
+  }
+  
+  // 调用
+  func main() {
+    	p1 := NewPerson("小王子", 25)
+	    fmt.Println(p1.age) // 25
+	    p1.SetAge(30)
+	    fmt.Println(p1.age) // 30
+  }
+  #+END_SRC
+******* 值类型的接收者
++ 当方法作用于值类型接收者时，Go语言会在代码运行时将接收者的值复制一份。在值类型接收者的方法中可以获取接收者的成员值，但修改操作只是针对副本，无法修改接收者变量本身
+  #+BEGIN_SRC go
+  // SetAge2 设置p的年龄
+  // 使用值接收者
+  func (p Person) SetAge2(newAge int8) {
+      p.age = newAge
+  }
+
+  func main() {
+      p1 := NewPerson("小王子", 25)
+      p1.Dream()
+      fmt.Println(p1.age) // 25
+      p1.SetAge2(30) // (*p1).SetAge2(30)
+      fmt.Println(p1.age) // 25
+  }
+
+  #+END_SRC
+******* 什么时候应该使用指针类型接收者
++ 要修改接收者中的值
++ 接收者是拷贝代价比较大的大对象
++ 保证一致性，如果有某个方法使用了指针接收者，那么其他的方法也应该使用指针接收者
+******* 任意类型添加方法
++ 在Go语言中，接收者的类型可以是任何类型，不仅仅是结构体，任何类型都可以拥有方法。 举个例子，我们基于内置的int类型使用type关键字可以定义新的自定义类型，然后为我们的自定义类型添加方法
+  #+BEGIN_SRC go
+  //MyInt 将int定义为自定义MyInt类型
+  type MyInt int
+
+  //SayHello 为MyInt添加一个SayHello的方法
+  func (m MyInt) SayHello() {
+      fmt.Println("Hello, 我是一个int。")
+  }
+  func main() {
+      var m1 MyInt
+      m1.SayHello() //Hello, 我是一个int。
+      m1 = 100
+      fmt.Printf("%#v  %T\n", m1, m1) //100  main.MyInt
+  }
+
+  #+END_SRC
+
++ 非本地类型不能定义方法，也就是说我们不能给别的包的类型定义方法
+****** 结构体的匿名字段
++ 结构体允许其成员字段在声明时没有字段名而只有类型，这种没有名字的字段就称为匿名字段
++ 匿名字段默认采用类型名作为字段名，结构体要求字段名称必须唯一，因此一个结构体中同种类型的匿名字段只能有一个
+  #+BEGIN_SRC go
+  //Person 结构体Person类型
+  type Person struct {
+      string
+      int
+  }
+
+  func main() {
+      p1 := Person{
+        "小王子",
+        18,
+      }
+      fmt.Printf("%#v\n", p1)        //main.Person{string:"北京", int:18}
+      fmt.Println(p1.string, p1.int) //北京 18
+  }
+
+  #+END_SRC
+****** 嵌套结构体
++ 一个结构体中可以嵌套包含另一个结构体或结构体指针
+  #+BEGIN_SRC go
+  //Address 地址结构体
+  type Address struct {
+      Province string
+      City     string
+  }
+
+  //User 用户结构体
+  type User struct {
+      Name    string
+      Gender  string
+      Address Address
+  }
+
+  func main() {
+      user1 := User{
+        Name:   "小王子",
+        Gender: "男",
+        Address: Address{
+          Province: "山东",
+          City:     "威海",
+        },
+      }
+      fmt.Printf("user1=%#v\n", user1)//user1=main.User{Name:"小王子", Gender:"男", Address:main.Address{Province:"山东", City:"威海"}}
+  }
+  #+END_SRC
+****** 嵌套匿名结构体
++ 当访问结构体成员时会先在结构体中查找该字段，找不到再去匿名结构体中查找
+  #+BEGIN_SRC go
+  //Address 地址结构体
+  type Address struct {
+      Province string
+      City     string
+  }
+
+  //User 用户结构体
+  type User struct {
+      Name    string
+      Gender  string
+      Address //匿名结构体
+  }
+
+  func main() {
+      var user2 User
+      user2.Name = "小王子"
+      user2.Gender = "男"
+      user2.Address.Province = "山东"    //通过匿名结构体.字段名访问
+      user2.City = "威海"                //直接访问匿名结构体的字段名
+      fmt.Printf("user2=%#v\n", user2) //user2=main.User{Name:"小王子", Gender:"男", Address:main.Address{Province:"山东", City:"威海"}}
+  }
+
+  #+END_SRC
+****** 嵌套结构体的字段名冲突
++ 嵌套结构体内部可能存在相同的字段名。这个时候为了避免歧义需要指定具体的内嵌结构体的字段
+  #+BEGIN_SRC go
+  //Address 地址结构体
+  type Address struct {
+      Province   string
+      City       string
+      CreateTime string
+  }
+
+  //Email 邮箱结构体
+  type Email struct {
+      Account    string
+      CreateTime string
+  }
+
+  //User 用户结构体
+  type User struct {
+      Name   string
+      Gender string
+      Address
+      Email
+  }
+
+  func main() {
+      var user3 User
+      user3.Name = "沙河娜扎"
+      user3.Gender = "男"
+      // user3.CreateTime = "2019" //ambiguous selector user3.CreateTime
+      user3.Address.CreateTime = "2000" //指定Address结构体中的CreateTime
+      user3.Email.CreateTime = "2005"   //指定Email结构体中的CreateTime
+  }
+
+  #+END_SRC
+****** 结构体的“继承”
++ Go语言中使用结构体也可以实现其他编程语言中面向对象的继承
+  #+BEGIN_SRC go
+  //Animal 动物
+  type Animal struct {
+      name string
+  }
+
+  func (a *Animal) move() {
+      fmt.Printf("%s会动！\n", a.name)
+  }
+
+  //Dog 狗
+  type Dog struct {
+      Feet    int8
+      ,*Animal //通过嵌套匿名结构体实现继承
+  }
+
+  func (d *Dog) wang() {
+      fmt.Printf("%s会汪汪汪~\n", d.name)
+  }
+
+  func main() {
+      d1 := &Dog{
+        Feet: 4,
+        Animal: &Animal{ //注意嵌套的是结构体指针
+          name: "乐乐",
+        },
+      }
+      d1.wang() //乐乐会汪汪汪~
+      d1.move() //乐乐会动！
+  }
+
+  #+END_SRC
+****** 结构体字段的可见性
++ 结构体中字段大写开头表示可公开访问，小写表示私有（仅在定义当前结构体的包中可访问）
+****** 结构体与JSON序列化
++ JSON(JavaScript Object Notation) 是一种轻量级的数据交换格式。易于人阅读和编写。同时也易于机器解析和生成。JSON键值对是用来保存JS对象的一种方式，键/值对组合中的键名写在前面并用双引号""包裹，使用冒号:分隔，然后紧接着值；多个键值之间使用英文,分隔
+  #+BEGIN_SRC go
+  //Student 学生
+  type Student struct {
+      ID     int
+      Gender string
+      Name   string
+  }
+
+  //Class 班级
+  type Class struct {
+      Title    string
+      Students []*Student
+  }
+
+  func main() {
+      c := &Class{
+        Title:    "101",
+        Students: make([]*Student, 0, 200),
+      }
+      for i := 0; i < 10; i++ {
+        stu := &Student{
+          Name:   fmt.Sprintf("stu%02d", i),
+          Gender: "男",
+          ID:     i,
+        }
+        c.Students = append(c.Students, stu)
+      }
+      //JSON序列化：结构体-->JSON格式的字符串
+      data, err := json.Marshal(c)
+      if err != nil {
+        fmt.Println("json marshal failed")
+        return
+      }
+      fmt.Printf("json:%s\n", data)
+      //JSON反序列化：JSON格式的字符串-->结构体
+      str := `{"Title":"101","Students":[{"ID":0,"Gender":"男","Name":"stu00"},{"ID":1,"Gender":"男","Name":"stu01"},{"ID":2,"Gender":"男","Name":"stu02"},{"ID":3,"Gender":"男","Name":"stu03"},{"ID":4,"Gender":"男","Name":"stu04"},{"ID":5,"Gender":"男","Name":"stu05"},{"ID":6,"Gender":"男","Name":"stu06"},{"ID":7,"Gender":"男","Name":"stu07"},{"ID":8,"Gender":"男","Name":"stu08"},{"ID":9,"Gender":"男","Name":"stu09"}]}`
+      c1 := &Class{}
+      err = json.Unmarshal([]byte(str), c1)
+      if err != nil {
+        fmt.Println("json unmarshal failed!")
+        return
+      }
+      fmt.Printf("%#v\n", c1)
+  }
+
+  #+END_SRC
+****** 结构体标签（Tag）
++ Tag是结构体的元信息，key通常是指调用该结构体字段的包名称，value指给字段名指定的新名称，可以在运行的时候通过反射的机制读取出来。 Tag在结构体字段的后方定义，由一对反引号包裹起来，具体的格式如下
+  #+BEGIN_SRC go
+  `key1:"value1" key2:"value2"`
+  #+END_SRC
++ 结构体标签由一个或多个键值对组成。键与值使用冒号分隔，值用双引号括起来。同一个结构体字段可以设置多个键值对标签（Tag），不同的键值对标签之间使用空格分隔
++ 为结构体编写Tag时，必须严格遵守键值对的规则。结构体标签的解析代码的容错能力很差，一旦格式写错，编译和运行时都不会提示任何错误，通过反射也无法正确取值。例如不要在key和value之间添加空格
++ 例如我们为Student结构体的每个字段定义json序列化时使用的Tag
+  #+BEGIN_SRC go
+  //Student 学生
+  type Student struct {
+      ID     int    `json:"id"` //通过指定tag实现json序列化该字段时的key
+      Gender string //json序列化是默认使用字段名作为key
+      name   string //私有不能被json包访问
+  }
+
+  func main() {
+      s1 := Student{
+        ID:     1,
+        Gender: "男",
+        name:   "沙河娜扎",
+      }
+      data, err := json.Marshal(s1)
+      if err != nil {
+        fmt.Println("json marshal failed!")
+        return
+      }
+      fmt.Printf("json str:%s\n", data) //json str:{"id":1,"Gender":"男"}
+  }
+
+  #+END_SRC
+****** 结构体和方法补充知识点
++ 因为slice和map这两种数据类型都包含了指向底层数据的指针，因此我们在需要复制它们时要特别注意
+  #+BEGIN_SRC go
+  type Person struct {
+      name   string
+      age    int8
+      dreams []string
+  }
+
+  func (p *Person) SetDreams(dreams []string) {
+      p.dreams = dreams
+    }
+
+    func main() {
+      p1 := Person{name: "小王子", age: 18}
+      data := []string{"吃饭", "睡觉", "打豆豆"}
+      p1.SetDreams(data)
+
+      // 你真的想要修改 p1.dreams 吗？
+      data[1] = "不睡觉"
+      fmt.Println(p1.dreams)  // ?
+  }
+  // 正确的做法是在方法中使用传入的slice的拷贝进行结构体赋值
+  func (p *Person) SetDreams(dreams []string) {
+	    p.dreams = make([]string, len(dreams))
+	    copy(p.dreams, dreams)
+  }
+  // 同样的问题也存在于返回值slice和map的情况，在实际编码过程中一定要注意这个问题
+  #+END_SRC
 *** 运算符
 + 算术运算符
   ++（自增）和--（自减）在Go语言中是单独的语句，并不是运算符
@@ -722,544 +2072,12 @@ Go 语言中的所有循环类型均可以使用for关键字来完成
       }
   }
   #+END_SRC
-*** 数组(Array)
-数组是同一种数据类型元素的集合，在Go语言中，数组从声明时就确定，使用时可以修改数组成员，但是数组大小不可变化
-**** 数组定义
-#+BEGIN_SRC go
-var 数组变量名 [元素数量]T
-
-// 定义一个长度为3元素类型为int的数组a
-var a [3]int
-#+END_SRC
-+ 数组的长度必须是常量，并且长度是数组类型的一部分。一旦定义，长度不能变。 [5]int和[10]int是不同的类型
-  #+BEGIN_SRC go
-  var a [3]int
-  var b [4]int
-  a = b //不可以这样做，因为此时a和b是不同的类型
-  #+END_SRC
-+ 数组可以通过下标进行访问，下标是从0开始，最后一个元素下标是：len-1，访问越界（下标在合法范围之外），则触发访问越界，会panic
-**** 数组的初始化
-数组的初始化也有很多方式
-+ 方法一
-  初始化数组时可以使用初始化列表来设置数组元素的值
-  #+BEGIN_SRC go
-  func main() {
-      var testArray [3]int                        //数组会初始化为int类型的零值
-      var numArray = [3]int{1, 2}                 //使用指定的初始值完成初始化
-      var cityArray = [3]string{"北京", "上海", "深圳"} //使用指定的初始值完成初始化
-      fmt.Println(testArray)                      //[0 0 0]
-      fmt.Println(numArray)                       //[1 2 0]
-      fmt.Println(cityArray)                      //[北京 上海 深圳]
-  }
-  #+END_SRC
-+ 方法二
-  按照上面的方法每次都要确保提供的初始值和数组长度一致，一般情况下我们可以让编译器根据初始值的个数自行推断数组的长度
-  #+BEGIN_SRC go
-  func main() {
-      var testArray [3]int
-      var numArray = [...]int{1, 2}
-      var cityArray = [...]string{"北京", "上海", "深圳"}
-      fmt.Println(testArray)                          //[0 0 0]
-      fmt.Println(numArray)                           //[1 2]
-      fmt.Printf("type of numArray:%T\n", numArray)   //type of numArray:[2]int
-      fmt.Println(cityArray)                          //[北京 上海 深圳]
-      fmt.Printf("type of cityArray:%T\n", cityArray) //type of cityArray:[3]string
-  }
-  #+END_SRC
-+ 方法三
-  可以使用指定索引值的方式来初始化数组
-  #+BEGIN_SRC go
-  func main() {
-      a := [...]int{1: 1, 3: 5}
-      fmt.Println(a)                  // [0 1 0 5]
-      fmt.Printf("type of a:%T\n", a) //type of a:[4]int
-  }
-  #+END_SRC
-**** 数组的遍历
-遍历数组有以下两种方法
-#+BEGIN_SRC go
-func main() {
-    var a = [...]string{"北京", "上海", "深圳"}
-    // 方法1：for循环遍历
-    for i := 0; i < len(a); i++ {
-      fmt.Println(a[i])
-    }
-
-    // 方法2：for range遍历
-    for index, value := range a {
-      fmt.Println(index, value)
-    }
-}
-#+END_SRC
-**** 多维数组
-+ Go语言是支持多维数组的，我们这里以二维数组为例（数组中又嵌套数组）
-+ 二维数组的定义
-  #+BEGIN_SRC go
-  func main() {
-      a := [3][2]string{
-        {"北京", "上海"},
-        {"广州", "深圳"},
-        {"成都", "重庆"},
-      }
-      fmt.Println(a) //[[北京 上海] [广州 深圳] [成都 重庆]]
-      fmt.Println(a[2][1]) //支持索引取值:重庆
-  }
-  #+END_SRC
-+ 二维数组的遍历
-  #+BEGIN_SRC go
-  func main() {
-      a := [3][2]string{
-        {"北京", "上海"},
-        {"广州", "深圳"},
-        {"成都", "重庆"},
-      }
-      for _, v1 := range a {
-        for _, v2 := range v1 {
-          fmt.Printf("%s\t", v2)
-        }
-        fmt.Println()
-      }
-  }
-  #+END_SRC
-+  多维数组只有第一层可以使用...来让编译器推导数组长度
-  #+BEGIN_SRC go
-    //支持的写法
-    a := [...][2]string{
-      {"北京", "上海"},
-      {"广州", "深圳"},
-      {"成都", "重庆"},
-    }
-    //不支持多维数组的内层使用...
-    b := [3][...]string{
-      {"北京", "上海"},
-      {"广州", "深圳"},
-      {"成都", "重庆"},
-    }
-
-  #+END_SRC
-**** 数组是值类型
-+ 数组是值类型，赋值和传参会复制整个数组。因此改变副本的值，不会改变本身的值
-  #+BEGIN_SRC go
-  func modifyArray(x [3]int) {
-      x[0] = 100
-  }
-
-  func modifyArray2(x [3][2]int) {
-      x[2][0] = 100
-  }
-  func main() {
-      a := [3]int{10, 20, 30}
-      modifyArray(a) //在modify中修改的是a的副本x
-      fmt.Println(a) //[10 20 30]
-      b := [3][2]int{
-        {1, 1},
-        {1, 1},
-        {1, 1},
-      }
-      modifyArray2(b) //在modify中修改的是b的副本x
-      fmt.Println(b)  //[[1 1] [1 1] [1 1]]
-  }
-  #+END_SRC
-**** 注意
-+ 数组支持 “==“、”!=” 操作符，因为内存总是被初始化过的
-+ [n]*T表示指针数组，*[n]T表示数组指针 
-*** 切片(slice)
-+ 切片（Slice）是一个拥有相同类型元素的可变长度的序列。它是基于数组类型做的一层封装。它非常灵活，支持自动扩容
-+ 切片是一个引用类型，它的内部结构包含地址、长度和容量。切片一般用于快速地操作一块数据集合
-+ 切片是引用类型，不支持直接比较，只能和nil比较
-**** 定义
-+ 声明切片类型的基本语法
-  #+BEGIN_SRC go
-  var name []T
-  // name:表示变量名
-  // T:表示切片中的元素类型
-  #+END_SRC
-  #+BEGIN_SRC go
-  func main() {
-      // 声明切片类型
-      var a []string              //声明一个字符串切片
-      var b = []int{}             //声明一个整型切片并初始化
-      var c = []bool{false, true} //声明一个布尔切片并初始化
-      var d = []bool{false, true} //声明一个布尔切片并初始化
-      fmt.Println(a)              //[]
-      fmt.Println(b)              //[]
-      fmt.Println(c)              //[false true]
-      fmt.Println(a == nil)       //true
-      fmt.Println(b == nil)       //false
-      fmt.Println(c == nil)       //false
-      // fmt.Println(c == d)   //切片是引用类型，不支持直接比较，只能和nil比较
-  }
-  #+END_SRC
-**** 切片的长度和容量
-+ 切片拥有自己的长度和容量，我们可以通过使用内置的len()函数求长度，使用内置的cap()函数求切片的容量
-**** 切片表达式
-+ 切片表达式从字符串、数组、指向数组或切片的指针构造子字符串或切片。它有两种变体：一种指定low和high两个索引界限值的简单的形式，另一种是除了low和high索引界限值外还指定容量的完整的形式
-***** 简单切片表达式
-+ 切片的底层就是一个数组，所以我们可以基于数组通过切片表达式得到切片。 切片表达式中的low和high表示一个索引范围（左包含，右不包含），也就是下面代码中从数组a中选出1<=索引值<4的元素组成切片s，得到的切片长度=high-low，容量等于得到的切片的底层数组的容量
-  #+BEGIN_SRC go
-  func main() {
-      a := [5]int{1, 2, 3, 4, 5}
-      s := a[1:3]  // s := a[low:high]
-      fmt.Printf("s:%v len(s):%v cap(s):%v\n", s, len(s), cap(s))
-  }
-  // 输出
-  s:[2 3] len(s):2 cap(s):4
-  #+END_SRC
-+ 为了方便起见，可以省略切片表达式中的任何索引。省略了low则默认为0；省略了high则默认为切片操作数的长度
-  #+BEGIN_SRC go
-  a[2:]  // 等同于 a[2:len(a)]
-  a[:3]  // 等同于 a[0:3]
-  a[:]   // 等同于 a[0:len(a)]
-  #+END_SRC
-+ 注意
-  - 对于数组或字符串，如果0 <= low <= high <= len(a)，则索引合法，否则就会索引越界（out of range）
-  - 对切片再执行切片表达式时（切片再切片），high的上限边界是切片的容量cap(a)，而不是长度。常量索引必须是非负的，并且可以用int类型的值表示;对于数组或常量字符串，常量索引也必须在有效范围内。如果low和high两个指标都是常数，它们必须满足low <= high。如果索引在运行时超出范围，就会发生运行时panic
-    #+BEGIN_SRC go
-    func main() {
-        a := [5]int{1, 2, 3, 4, 5}
-        s := a[1:3]  // s := a[low:high]
-        fmt.Printf("s:%v len(s):%v cap(s):%v\n", s, len(s), cap(s))
-        s2 := s[3:4]  // 索引的上限是cap(s)而不是len(s)
-        fmt.Printf("s2:%v len(s2):%v cap(s2):%v\n", s2, len(s2), cap(s2))
-    }
-    // 输出
-    s:[2 3] len(s):2 cap(s):4
-    s2:[5] len(s2):1 cap(s2):1
-    #+END_SRC
-***** 完整切片表达式
-+ 对于数组，指向数组的指针，或切片a(注意不能是字符串)支持完整切片表达式
-  #+BEGIN_SRC go
-  a[low : high : max]
-  #+END_SRC
-+ 上面的代码会构造与简单切片表达式a[low: high]相同类型、相同长度和元素的切片。另外，它会将得到的结果切片的容量设置为max-low。在完整切片表达式中只有第一个索引值（low）可以省略；它默认为0
-  #+BEGIN_SRC go
-  func main() {
-      a := [5]int{1, 2, 3, 4, 5}
-      t := a[1:3:5]
-      fmt.Printf("t:%v len(t):%v cap(t):%v\n", t, len(t), cap(t))
-  }
-  // 输出结果
-  t:[2 3] len(t):2 cap(t):4
-  #+END_SRC
-+ 完整切片表达式需要满足的条件是0 <= low <= high <= max <= cap(a)，其他条件和简单切片表达式相同
-**** 使用make()函数构造切片
-+ 上面都是基于数组来创建的切片，如果需要动态的创建一个切片，我们就需要使用内置的make()函数
-  #+BEGIN_SRC go
-  make([]T, size, cap)
-  // T:切片的元素类型
-  // size:切片中元素的数量
-  // cap:切片的容量
-
-  func main() {
-	    a := make([]int, 2, 10)
-	    fmt.Println(a)      //[0 0]
-	    fmt.Println(len(a)) //2
-	    fmt.Println(cap(a)) //10
-  }
-  // 上面代码中a的内部存储空间已经分配了10个，但实际上只用了2个。 容量并不会影响当前元素的个数，所以len(a)返回2，cap(a)则返回该切片的容量
-  #+END_SRC
-**** 切片的本质
-+ 切片的本质就是对底层数组的封装，它包含了三个信息：底层数组的指针、切片的长度（len）和切片的容量（cap）[[file:pic/%E5%88%87%E7%89%8701.png][示意图]]
-**** 判断切片是否为空
-+ 检查切片是否为空，请始终使用len(s) == 0来判断，而不应该使用s == nil来判断
-**** 切片不能直接比较
-+ 切片之间是不能比较的，我们不能使用==操作符来判断两个切片是否含有全部相等元素。 切片唯一合法的比较操作是和nil比较。 一个nil值的切片并没有底层数组，一个nil值的切片的长度和容量都是0。但是我们不能说一个长度和容量都是0的切片一定是nil
-+ 要判断一个切片是否是空的，要是用len(s) == 0来判断，不应该使用s == nil来判断
-  #+BEGIN_SRC go
-  var s1 []int         //len(s1)=0;cap(s1)=0;s1==nil
-  s2 := []int{}        //len(s2)=0;cap(s2)=0;s2!=nil
-  s3 := make([]int, 0) //len(s3)=0;cap(s3)=0;s3!=nil
-  #+END_SRC
-**** 切片的赋值拷贝
-+ 下面的代码中演示了拷贝前后两个变量共享底层数组，对一个切片的修改会影响另一个切片的内容，这点需要特别注意
-  #+BEGIN_SRC go
-  func main() {
-      s1 := make([]int, 3) //[0 0 0]
-      s2 := s1             //将s1直接赋值给s2，s1和s2共用一个底层数组
-      s2[0] = 100
-      fmt.Println(s1) //[100 0 0]
-      fmt.Println(s2) //[100 0 0]
-  }
-  #+END_SRC
-**** 切片遍历
-+ 切片的遍历方式和数组是一致的，支持索引遍历和for range遍历
-  #+BEGIN_SRC go
-  func main() {
-      s := []int{1, 3, 5}
-
-      for i := 0; i < len(s); i++ {
-        fmt.Println(i, s[i])
-      }
-
-      for index, value := range s {
-        fmt.Println(index, value)
-      }
-  }
-  #+END_SRC
-**** append()方法为切片添加元素
-+ Go语言的内建函数append()可以为切片动态添加元素。 可以一次添加一个元素，可以添加多个元素，也可以添加另一个切片中的元素（后面加…）
-  #+BEGIN_SRC go
-  func main(){
-      var s []int
-      s = append(s, 1)        // [1]
-      s = append(s, 2, 3, 4)  // [1 2 3 4]
-      s2 := []int{5, 6, 7}  
-      s = append(s, s2...)    // [1 2 3 4 5 6 7]
-  }
-  #+END_SRC
-+ 注意
-  - 通过var声明的零值切片可以在append()函数直接使用，无需初始化
-    #+BEGIN_SRC go
-    var s []int
-    s = append(s, 1, 2, 3)
-    #+END_SRC
-  - 没有必要像下面的代码一样初始化一个切片再传入append()函数使用
-    #+BEGIN_SRC go
-    s := []int{}  // 没有必要初始化
-    s = append(s, 1, 2, 3)
-
-    var s = make([]int)  // 没有必要初始化
-    s = append(s, 1, 2, 3)
-    #+END_SRC
-  - 每个切片会指向一个底层数组，这个数组的容量够用就添加新增元素。当底层数组不能容纳新增的元素时，切片就会自动按照一定的策略进行“扩容”，此时该切片指向的底层数组就会更换。“扩容”操作往往发生在append()函数调用时，所以我们通常都需要用原变量接收append函数的返回值
-    #+BEGIN_SRC go
-    func main() {
-        //append()添加元素和切片扩容
-        var numSlice []int
-        for i := 0; i < 10; i++ {
-          numSlice = append(numSlice, i)
-          fmt.Printf("%v  len:%d  cap:%d  ptr:%p\n", numSlice, len(numSlice), cap(numSlice), numSlice)
-        }
-    }
-    // 输出：
-    [0]  len:1  cap:1  ptr:0xc0000a8000
-    [0 1]  len:2  cap:2  ptr:0xc0000a8040
-    [0 1 2]  len:3  cap:4  ptr:0xc0000b2020
-    [0 1 2 3]  len:4  cap:4  ptr:0xc0000b2020
-    [0 1 2 3 4]  len:5  cap:8  ptr:0xc0000b6000
-    [0 1 2 3 4 5]  len:6  cap:8  ptr:0xc0000b6000
-    [0 1 2 3 4 5 6]  len:7  cap:8  ptr:0xc0000b6000
-    [0 1 2 3 4 5 6 7]  len:8  cap:8  ptr:0xc0000b6000
-    [0 1 2 3 4 5 6 7 8]  len:9  cap:16  ptr:0xc0000b8000
-    [0 1 2 3 4 5 6 7 8 9]  len:10  cap:16  ptr:0xc0000b8000
-    #+END_SRC
-  - append()函数将元素追加到切片的最后并返回该切片
-  - 切片numSlice的容量按照1，2，4，8，16这样的规则自动进行扩容，每次扩容后都是扩容前的2倍
-  - append()函数还支持一次性追加多个元素
-    #+BEGIN_SRC go
-    var citySlice []string
-    // 追加一个元素
-    citySlice = append(citySlice, "北京")
-    // 追加多个元素
-    citySlice = append(citySlice, "上海", "广州", "深圳")
-    // 追加切片
-    a := []string{"成都", "重庆"}
-    citySlice = append(citySlice, a...)
-    fmt.Println(citySlice) //[北京 上海 广州 深圳 成都 重庆]
-    #+END_SRC
-**** 切片的扩容策略
-+ 首先判断，如果新申请容量（cap）大于2倍的旧容量（old.cap），最终容量（newcap）就是新申请的容量（cap）
-+ 否则判断，如果旧切片的长度小于1024，则最终容量(newcap)就是旧容量(old.cap)的两倍，即（newcap=doublecap）
-+ 否则判断，如果旧切片长度大于等于1024，则最终容量（newcap）从旧容量（old.cap）开始循环增加原来的1/4，即（newcap=old.cap,for {newcap += newcap/4}）直到最终容量（newcap）大于等于新申请的容量(cap)，即（newcap >= cap）
-+ 如果最终容量（cap）计算值溢出，则最终容量（cap）就是新申请容量（cap）
-+ 需要注意的是，切片扩容还会根据切片中元素的类型不同而做不同的处理，比如int和string类型的处理方式就不一样
-**** 使用copy()函数复制切片
-+ Go语言内建的copy()函数可以迅速地将一个切片的数据复制到另外一个切片空间中，copy()函数的使用格式如下
-  #+BEGIN_SRC go
-  copy(destSlice, srcSlice []T)
-
-  func main() {
-	// copy()复制切片
-	  a := []int{1, 2, 3, 4, 5}
-	  c := make([]int, 5, 5)
-	  copy(c, a)     //使用copy()函数将切片a中的元素复制到切片c
-	  fmt.Println(a) //[1 2 3 4 5]
-	  fmt.Println(c) //[1 2 3 4 5]
-	  c[0] = 1000
-	  fmt.Println(a) //[1 2 3 4 5]
-	  fmt.Println(c) //[1000 2 3 4 5]
-  }
-  #+END_SRC
-**** 从切片中删除元素
-+ Go语言中并没有删除切片元素的专用方法，我们可以使用切片本身的特性来删除元素
-  #+BEGIN_SRC go
-  func main() {
-      // 从切片中删除元素
-      a := []int{30, 31, 32, 33, 34, 35, 36, 37}
-      // 要删除索引为2的元素
-      a = append(a[:2], a[3:]...)
-      fmt.Println(a) //[30 31 33 34 35 36 37]
-  }
-  // 要从切片a中删除索引为index的元素，操作方法是a = append(a[:index], a[index+1:]...)
-  #+END_SRC
-*** map
-+ Go语言中提供的映射关系容器为map，其内部使用散列表（hash）实现
-+ map是一种无序的基于key-value的数据结构，Go语言中的map是引用类型，必须初始化才能使用
-**** map定义
-+ 语法
-  #+BEGIN_SRC go
-  map[KeyType]ValueType
-  // KeyType:表示键的类型
-  // ValueType:表示键对应的值的类型
-  #+END_SRC
-+ map类型的变量默认初始值为nil，需要使用make()函数来分配内存
-  #+BEGIN_SRC go
-  make(map[KeyType]ValueType, [cap])
-  // 其中cap表示map的容量，该参数虽然不是必须的，但是我们应该在初始化map的时候就为其指定一个合适的容量
-  #+END_SRC
-**** 基本使用
-+ map中的数据都是成对出现的，map的基本使用示例代码
-  #+BEGIN_SRC go
-  func main() {
-      scoreMap := make(map[string]int, 8)
-      scoreMap["张三"] = 90
-      scoreMap["小明"] = 100
-      fmt.Println(scoreMap)
-      fmt.Println(scoreMap["小明"])
-      fmt.Printf("type of a:%T\n", scoreMap)
-  }
-  // 输出：
-  map[小明:100 张三:90]
-  100
-  type of a:map[string]int
-  #+END_SRC
-+ map也支持在声明的时候填充元素
-  #+BEGIN_SRC go
-  func main() {
-      userInfo := map[string]string{
-        "username": "沙河小王子",
-        "password": "123456",
-      }
-      fmt.Println(userInfo) //
-  }
-  #+END_SRC
-**** 判断某个键是否存在
-+ Go语言中有个判断map中键是否存在的特殊写法
-  #+BEGIN_SRC go
-  value, ok := map[key]
-
-  // 示例
-  func main() {
-      scoreMap := make(map[string]int)
-      scoreMap["张三"] = 90
-      scoreMap["小明"] = 100
-      // 如果key存在ok为true,v为对应的值；不存在ok为false,v为值类型的零值
-      v, ok := scoreMap["张三"]
-      if ok {
-        fmt.Println(v)
-      } else {
-        fmt.Println("查无此人")
-      }
-  }
-  #+END_SRC
-**** map的遍历
-+ Go语言中使用for range遍历map
-  #+BEGIN_SRC go
-  func main() {
-      scoreMap := make(map[string]int)
-      scoreMap["张三"] = 90
-      scoreMap["小明"] = 100
-      scoreMap["娜扎"] = 60
-      for k, v := range scoreMap {
-        fmt.Println(k, v)
-      }
-  }
-  #+END_SRC
-+ 只想遍历key的时候，可以按下面的写法
-  #+BEGIN_SRC go
-  func main() {
-      scoreMap := make(map[string]int)
-      scoreMap["张三"] = 90
-      scoreMap["小明"] = 100
-      scoreMap["娜扎"] = 60
-      for k := range scoreMap {
-        fmt.Println(k)
-      }
-  }
-  #+END_SRC
-+ 遍历map时的元素顺序与添加键值对的顺序无关
-**** 使用delete()函数删除键值对
-+ 使用delete()内建函数从map中删除一组键值对，delete()函数的格式如下
-  #+BEGIN_SRC go
-  delete(map, key)
-
-  // 示例
-  func main(){
-    	scoreMap := make(map[string]int)
-	    scoreMap["张三"] = 90
-	    scoreMap["小明"] = 100
-	    scoreMap["娜扎"] = 60
-	    delete(scoreMap, "小明")//将小明:100从map中删除
-	    for k,v := range scoreMap{
-		      fmt.Println(k, v)
-	    }
-  }
-  #+END_SRC
-**** 按照指定顺序遍历map
-+ 示例
-  #+BEGIN_SRC go
-  func main() {
-      rand.Seed(time.Now().UnixNano()) //初始化随机数种子
-
-      var scoreMap = make(map[string]int, 200)
-
-      for i := 0; i < 100; i++ {
-        key := fmt.Sprintf("stu%02d", i) //生成stu开头的字符串
-        value := rand.Intn(100)          //生成0~99的随机整数
-        scoreMap[key] = value
-      }
-      //取出map中的所有key存入切片keys
-      var keys = make([]string, 0, 200)
-      for key := range scoreMap {
-        keys = append(keys, key)
-      }
-      //对切片进行排序
-      sort.Strings(keys)
-      //按照排序后的key遍历map
-      for _, key := range keys {
-        fmt.Println(key, scoreMap[key])
-      }
-  }
-  #+END_SRC
-**** 元素为map类型的切片
-+ 切片中的元素为map类型时的操作
-  #+BEGIN_SRC go
-  func main() {
-      var mapSlice = make([]map[string]string, 3)
-      for index, value := range mapSlice {
-        fmt.Printf("index:%d value:%v\n", index, value)
-      }
-      fmt.Println("after init")
-      // 对切片中的map元素进行初始化
-      mapSlice[0] = make(map[string]string, 10)
-      mapSlice[0]["name"] = "小王子"
-      mapSlice[0]["password"] = "123456"
-      mapSlice[0]["address"] = "沙河"
-      for index, value := range mapSlice {
-        fmt.Printf("index:%d value:%v\n", index, value)
-      }
-  }
-
-  #+END_SRC
-**** 值为切片类型的map
-+ map中值为切片类型的操作
-  #+BEGIN_SRC go
-  func main() {
-      var sliceMap = make(map[string][]string, 3)
-      fmt.Println(sliceMap)
-      fmt.Println("after init")
-      key := "中国"
-      value, ok := sliceMap[key]
-      if !ok {
-        value = make([]string, 0, 2)
-      }
-      value = append(value, "北京", "上海")
-      sliceMap[key] = value
-      fmt.Println(sliceMap)
-  }
-  #+END_SRC
 *** 函数
-Go语言中支持函数、匿名函数和闭包，并且函数在Go语言中属于“一等公民”
+**** go函数特点
++ Go语言中支持函数、匿名函数和闭包，并且函数在Go语言中属于“一等公民”
++ 无需声明原型、支持不定长度变参、多返回值、命名返回值参数、匿名函数、闭包
++ 不支持嵌套、重载和默认参数
++ 函数也可以作为一种类型使用
 **** 定义
 + 定义函数使用func关键字
   #+BEGIN_SRC go
@@ -1491,7 +2309,7 @@ Go语言中支持函数、匿名函数和闭包，并且函数在Go语言中属�
   #+END_SRC
 **** 匿名函数和闭包
 ***** 匿名函数
-+ 函数当然还可以作为返回值，但是在Go语言中函数内部不能再像之前那样定义函数了，只能定义匿名函数。匿名函数就是没有函数名的函数，匿名函数的定义格式如下
++ 函数当然还可以作为返回值，但是在Go语言中函数内部不能再像之前那样定义函数了，只能定义匿名函数。匿名函数就是没有函数名的函数，多用于实现回调函数和闭包
   #+BEGIN_SRC go
   func(参数)(返回值){
       函数体
@@ -1514,7 +2332,7 @@ Go语言中支持函数、匿名函数和闭包，并且函数在Go语言中属�
   #+END_SRC
 + 匿名函数多用于实现回调函数和闭包
 ***** 闭包
-+ 闭包指的是一个函数和与其相关的引用环境组合而成的实体。简单来说，闭包=函数+引用环境
++ 闭包指的是一个函数和与其相关的引用环境组合而成的实体。简单来说，闭包=函数+引用环境(引用外层的变量)
   #+BEGIN_SRC go
   func adder() func(int) int {
       var x int
@@ -1595,6 +2413,13 @@ Go语言中支持函数、匿名函数和闭包，并且函数在Go语言中属�
   }
   #+END_SRC
 **** defer语句
+***** 介绍
++ defer的执行方式类似其他语言中的析构函数，在函数体执行结束后按照调用顺序的相反顺序逐个执行
++ 即使函数发生严重错误也会执行
++ 支持匿名函数的调用
++ 常用于资源清理、文件关闭、解锁以及记录时间等操作
++ 通过与匿名函数配合可以在return之后修改计算结果
++ 如果函数体内某个变量作为defer时匿名函数的参数，则在定义defer时即已获得了拷贝，否则则是引用某个变量的地址
 ***** 基础
 + Go语言中的defer语句会将其后面跟随的语句进行延迟处理。在defer归属的函数即将返回时，将延迟处理的语句按defer定义的逆序进行执行，也就是说，先被defer的语句最后被执行，最后被defer的语句，最先被执行
   #+BEGIN_SRC go
@@ -1721,715 +2546,6 @@ Go语言中支持函数、匿名函数和闭包，并且函数在Go语言中属�
     #+END_SRC
   - recover()必须搭配defer使用
   - defer一定要在可能引发panic的语句之前定义
-*** 指针
-**** Go语言中的指针
-+ 任何程序数据载入内存后，在内存都有他们的地址，这就是指针。而为了保存一个数据在内存中的地址，我们就需要指针变量
-+ 比如，“永远不要高估自己”这句话是我的座右铭，我想把它写入程序中，程序一启动这句话是要加载到内存（假设内存地址0x123456），我在程序中把这段话赋值给变量A，把内存地址赋值给变量B。这时候变量B就是一个指针变量。通过变量A和变量B都能找到我的座右铭
-+ Go语言中的指针不能进行偏移和运算，因此Go语言中的指针操作非常简单，我们只需要记住两个符号：&（取地址）和*（根据地址取值）
-**** 指针地址和指针类型
-+ 每个变量在运行时都拥有一个地址，这个地址代表变量在内存中的位置。Go语言中使用&字符放在变量前面对变量进行“取地址”操作。 Go语言中的值类型（int、float、bool、string、array、struct）都有对应的指针类型，如：*int、*int64、*string等
-+ 取变量指针的语法
-  #+BEGIN_SRC go
-  ptr := &v    // v的类型为T
-  // v:代表被取地址的变量，类型为T
-  // ptr:用于接收地址的变量，ptr的类型就为*T，称做T的指针类型。*代表指针
-
-  func main() {
-    	a := 10
-	    b := &a
-	    fmt.Printf("a:%d ptr:%p\n", a, &a) // a:10 ptr:0xc00001a078
-	    fmt.Printf("b:%p type:%T\n", b, b) // b:0xc00001a078 type:*int
-	    fmt.Println(&b)                    // 0xc00000e018
-  }
-  #+END_SRC
-+ b := &a的[[file:pic/%E6%8C%87%E9%92%88%E5%9B%BE%E7%A4%BA.png][图例]]
-**** 指针取值
-+ 在对普通变量使用&操作符取地址后会获得这个变量的指针，然后可以对指针使用*操作，也就是指针取值
-  #+BEGIN_SRC go
-  func main() {
-      //指针取值
-      a := 10
-      b := &a // 取变量a的地址，将指针保存到b中
-      fmt.Printf("type of b:%T\n", b)
-      c := *b // 指针取值（根据指针去内存取值）
-      fmt.Printf("type of c:%T\n", c)
-      fmt.Printf("value of c:%v\n", c)
-  }
-  // 输出如下
-  type of b:*int
-  type of c:int
-  value of c:10
-  #+END_SRC
-+ 取地址操作符&和取值操作符*是一对互补操作符，&取出地址，*根据地址取出地址指向的值
-+ 变量、指针地址、指针变量、取地址、取值的相互关系和特性如下
-  - 对变量进行取地址（&）操作，可以获得这个变量的指针变量
-  - 指针变量的值是指针地址
-  - 对指针变量进行取值（*）操作，可以获得指针变量指向的原变量的值
-+ 指针传值示例
-  #+BEGIN_SRC go
-  func modify1(x int) {
-      x = 100
-  }
-
-  func modify2(x *int) {
-      ,*x = 100
-  }
-
-  func main() {
-      a := 10
-      modify1(a)
-      fmt.Println(a) // 10
-      modify2(&a)
-      fmt.Println(a) // 100
-  }
-
-  #+END_SRC
-**** new和make
-+ 执行下面的代码会引发panic，为什么呢？ 在Go语言中对于引用类型的变量，我们在使用的时候不仅要声明它，还要为它分配内存空间，否则我们的值就没办法存储。而对于值类型的声明不需要分配内存空间，是因为它们在声明的时候已经默认分配好了内存空间。要分配内存，就引出来今天的new和make。 Go语言中new和make是内建的两个函数，主要用来分配内存
-  #+BEGIN_SRC go
-  func main() {
-      var a *int
-      ,*a = 100
-      fmt.Println(*a)
-
-      var b map[string]int
-      b["沙河娜扎"] = 100
-      fmt.Println(b)
-  }
-  #+END_SRC
-***** new
-+ new是一个内置的函数，它的函数签名如下
-  #+BEGIN_SRC go
-  func new(Type) *Type
-  // Type表示类型，new函数只接受一个参数，这个参数是一个类型
-  // *Type表示类型指针，new函数返回一个指向该类型内存地址的指针。
-  #+END_SRC
-+ new函数不太常用，使用new函数得到的是一个类型的指针，并且该指针对应的值为该类型的零值
-  #+BEGIN_SRC go
-  func main() {
-      a := new(int)
-      b := new(bool)
-      fmt.Printf("%T\n", a) // *int
-      fmt.Printf("%T\n", b) // *bool
-      fmt.Println(*a)       // 0
-      fmt.Println(*b)       // false
-  }	
-
-  #+END_SRC
-+ 示例代码中var a *int只是声明了一个指针变量a但是没有初始化，指针作为引用类型需要初始化后才会拥有内存空间，才可以给它赋值。应该按照如下方式使用内置的new函数对a进行初始化之后就可以正常对其赋值了
-  #+BEGIN_SRC go
-  func main() {
-      var a *int
-      a = new(int)
-      ,*a = 10
-      fmt.Println(*a)
-    }
-
-  #+END_SRC
-***** make
-+ make也是用于内存分配的，区别于new，它只用于slice、map以及chan的内存创建，而且它返回的类型就是这三个类型本身，而不是他们的指针类型，因为这三种类型就是引用类型，所以就没有必要返回他们的指针了。make函数的函数签名如下
-  #+BEGIN_SRC go
-  func make(t Type, size ...IntegerType) Type
-  #+END_SRC
-+ make函数是无可替代的，我们在使用slice、map以及channel的时候，都需要使用make进行初始化，然后才可以对它们进行操作
-+ 示例中var b map[string]int只是声明变量b是一个map类型的变量，需要像下面的示例代码一样使用make函数进行初始化操作之后，才能对其进行键值对赋值
-  #+BEGIN_SRC go
-  func main() {
-      var b map[string]int
-      b = make(map[string]int, 10)
-      b["沙河娜扎"] = 100
-      fmt.Println(b)
-  }
-  #+END_SRC
-***** new与make的区别
-+ 二者都是用来做内存分配的
-+ make只用于slice、map以及channel的初始化，返回的还是这三个引用类型本身
-+ 而new用于类型的内存分配，并且内存对应的值为类型零值，返回的是指向类型的指针
-*** 结构体（struct）
-Go语言中没有“类”的概念，也不支持“类”的继承等面向对象的概念。Go语言中通过结构体的内嵌再配合接口比面向对象具有更高的扩展性和灵活性
-**** 类型别名和自定义类型
-***** 自定义类型
-+ 在Go语言中有一些基本的数据类型，如string、整型、浮点型、布尔等数据类型， Go语言中可以使用type关键字来定义自定义类型
-+ 自定义类型是定义了一个全新的类型。我们可以基于内置的基本类型定义，也可以通过struct定义
-  #+BEGIN_SRC go
-  //将MyInt定义为int类型
-  type MyInt int
-  // 通过type关键字的定义，MyInt就是一种新的类型，它具有int的特性
-  #+END_SRC
-***** 类型别名
-+ 类型别名规定：TypeAlias只是Type的别名，本质上TypeAlias与Type是同一个类型。就像一个孩子小时候有小名
-  #+BEGIN_SRC go
-  type TypeAlias = Type
-
-  type byte = uint8
-  type rune = int32
-  #+END_SRC
-***** 自定义类型和类型别名的区别
-+ 类型别名与自定义类型表面上看只有一个等号的差异，我们通过下面的这段代码来理解它们之间的区别
-  #+BEGIN_SRC go
-  //自定义类型
-  type NewInt int
-
-  //类型别名
-  type MyInt = int
-
-  func main() {
-      var a NewInt
-      var b MyInt
-	
-      fmt.Printf("type of a:%T\n", a) //type of a:main.NewInt
-      fmt.Printf("type of b:%T\n", b) //type of b:int
-  }
-
-  #+END_SRC
-**** 结构体
-Go语言中的基础数据类型可以表示一些事物的基本属性，但是当我们想表达一个事物的全部或部分属性时，这时候再用单一的基本数据类型明显就无法满足需求了，Go语言提供了一种自定义数据类型，可以封装多个基本数据类型，这种数据类型叫结构体，英文名称struct。 也就是我们可以通过struct来定义自己的类型
-***** 结构体的定义
-+ 使用type和struct关键字来定义结构体
-  #+BEGIN_SRC go
-  type 类型名 struct {
-        字段名 字段类型
-        字段名 字段类型
-        …
-  }
-  #+END_SRC
-  - 类型名：标识自定义结构体的名称，在同一个包内不能重复
-  - 字段名：表示结构体字段名。结构体中的字段名必须唯一
-  - 字段类型：表示结构体字段的具体类型
-+ 示例，我们定义一个Person（人）结构体
-  #+BEGIN_SRC go
-  type person struct {
-	    name string
-	    city string
-	    age  int8
-  }
-  // 同样类型的字段也可以写在一行
-  type person1 struct {
-	    name, city string
-	    age        int8
-  }
-  // 这样我们就拥有了一个person的自定义类型，它有name、city、age三个字段，分别表示姓名、城市和年龄。这样我们使用这个person结构体就能够很方便的在程序中表示和存储人信息了
-  #+END_SRC
-***** 结构体实例化
-+ 只有当结构体实例化时，才会真正地分配内存。也就是必须实例化后才能使用结构体的字段
-+ 结构体本身也是一种类型，我们可以像声明内置类型一样使用var关键字声明结构体类型
-  #+BEGIN_SRC go
-  var 结构体实例 结构体类型
-  #+END_SRC
-****** 基本实例化
-+ 示例
-  #+BEGIN_SRC go
-  type person struct {
-      name string
-      city string
-      age  int8
-  }
-
-  func main() {
-      var p1 person
-      p1.name = "沙河娜扎"
-      p1.city = "北京"
-      p1.age = 18
-      fmt.Printf("p1=%v\n", p1)  //p1={沙河娜扎 北京 18}
-      fmt.Printf("p1=%#v\n", p1) //p1=main.person{name:"沙河娜扎", city:"北京", age:18}
-  }
-
-  #+END_SRC
-****** 匿名结构体
-+ 在定义一些临时数据结构等场景下还可以使用匿名结构体
-  #+BEGIN_SRC go
-  package main
-     
-  import (
-        "fmt"
-  )
-     
-  func main() {
-        var user struct{Name string; Age int}
-        user.Name = "小王子"
-        user.Age = 18
-        fmt.Printf("%#v\n", user)
-  }
-
-  #+END_SRC
-****** 创建指针类型结构体
-+ 可以通过使用new关键字对结构体进行实例化，得到的是结构体的地址
-  #+BEGIN_SRC go
-  var p2 = new(person)
-  fmt.Printf("%T\n", p2)     //*main.person
-  fmt.Printf("p2=%#v\n", p2) //p2=&main.person{name:"", city:"", age:0}
-  #+END_SRC
-+ 在Go语言中支持对结构体指针直接使用.来访问结构体的成员
-  #+BEGIN_SRC go
-  var p2 = new(person)
-  p2.name = "小王子"
-  p2.age = 28
-  p2.city = "上海"
-  fmt.Printf("p2=%#v\n", p2) //p2=&main.person{name:"小王子", city:"上海", age:28}
-  #+END_SRC
-****** 取结构体的地址实化例
-+ 使用&对结构体进行取地址操作相当于对该结构体类型进行了一次new实例化操作
-  #+BEGIN_SRC go
-  p3 := &person{}
-  fmt.Printf("%T\n", p3)     //*main.person
-  fmt.Printf("p3=%#v\n", p3) //p3=&main.person{name:"", city:"", age:0}
-  p3.name = "七米"
-  p3.age = 30
-  p3.city = "成都"
-  fmt.Printf("p3=%#v\n", p3) //p3=&main.person{name:"七米", city:"成都", age:30}
-  // p3.name = "七米"其实在底层是(*p3).name = "七米"，这是Go语言帮我们实现的语法糖
-  #+END_SRC
-****** 结构体初始化
-+ 没有初始化的结构体，其成员变量都是对应其类型的零值
-  #+BEGIN_SRC go
-  type person struct {
-      name string
-      city string
-      age  int8
-  }
-
-  func main() {
-      var p4 person
-      fmt.Printf("p4=%#v\n", p4) //p4=main.person{name:"", city:"", age:0}
-  }
-
-  #+END_SRC
-****** 使用键值对初始化
-+ 使用键值对对结构体进行初始化时，键对应结构体的字段，值对应该字段的初始值
-  #+BEGIN_SRC go
-  p5 := person{
-	    name: "小王子",
-	    city: "北京",
-	    age:  18,
-      }
-  fmt.Printf("p5=%#v\n", p5) //p5=main.person{name:"小王子", city:"北京", age:18}
-  #+END_SRC
-+ 也可以对结构体指针进行键值对初始化
-  #+BEGIN_SRC go
-  p6 := &person{
-	    name: "小王子",
-	    city: "北京",
-	    age:  18,
-      }
-  fmt.Printf("p6=%#v\n", p6) //p6=&main.person{name:"小王子", city:"北京", age:18}
-  #+END_SRC
-+ 当某些字段没有初始值的时候，该字段可以不写。此时，没有指定初始值的字段的值就是该字段类型的零值
-  #+BEGIN_SRC go
-  p7 := &person{
-	    city: "北京",
-      }
-  fmt.Printf("p7=%#v\n", p7) //p7=&main.person{name:"", city:"北京", age:0}
-  #+END_SRC
-****** 使用值的列表初始化
-+ 初始化结构体的时候可以简写，也就是初始化的时候不写键，直接写值
-  #+BEGIN_SRC go
-  p8 := &person{
-	    "沙河娜扎",
-	    "北京",
-	    28,
-      }
-  fmt.Printf("p8=%#v\n", p8) //p8=&main.person{name:"沙河娜扎", city:"北京", age:28}
-  #+END_SRC
-+ 使用这种格式初始化时，注意
-  - 必须初始化结构体的所有字段
-  - 初始值的填充顺序必须与字段在结构体中的声明顺序一致
-  - 该方式不能和键值初始化方式混用
-****** 结构体内存布局
-+ 结构体占用一块连续的内存
-  #+BEGIN_SRC go
-  type test struct {
-	    a int8
-	    b int8
-	    c int8
-	    d int8
-      }
-  n := test{
-    	1, 2, 3, 4,
-  }
-  fmt.Printf("n.a %p\n", &n.a)
-  fmt.Printf("n.b %p\n", &n.b)
-  fmt.Printf("n.c %p\n", &n.c)
-  fmt.Printf("n.d %p\n", &n.d)
-  // 输出：
-  n.a 0xc0000a0060
-  n.b 0xc0000a0061
-  n.c 0xc0000a0062
-  n.d 0xc0000a0063
-  #+END_SRC
-****** 空结构体
-+ 空结构体是不占用空间的
-  #+BEGIN_SRC go
-  var v struct{}
-  fmt.Println(unsafe.Sizeof(v))  // 0
-  #+END_SRC
-****** 构造函数
-+ Go语言的结构体没有构造函数，我们可以自己实现。 例如，下方的代码就实现了一个person的构造函数。 因为struct是值类型，如果结构体比较复杂的话，值拷贝性能开销会比较大，所以该构造函数返回的是结构体指针类型
-  #+BEGIN_SRC go
-  func newPerson(name, city string, age int8) *person {
-      return &person{
-        name: name,
-        city: city,
-        age:  age,
-      }
-  }
-
-  #+END_SRC
-+ 调用构造函数
-  #+BEGIN_SRC go
-  p9 := newPerson("张三", "沙河", 90)
-  fmt.Printf("%#v\n", p9) //&main.person{name:"张三", city:"沙河", age:90}
-  #+END_SRC
-***** 方法和接收者
-****** 方法
-+ Go语言中的方法（Method）是一种作用于特定类型变量的函数。这种特定类型变量叫做接收者（Receiver）。接收者的概念就类似于其他语言中的this或者 self
-+ 方法的定义格式如下
-  #+BEGIN_SRC go
-  func (接收者变量 接收者类型) 方法名(参数列表) (返回参数) {
-      函数体
-  }
-  #+END_SRC
-+ 接收者变量：接收者中的参数变量名在命名时，官方建议使用接收者类型名称首字母的小写，而不是self、this之类的命名。例如，Person类型的接收者变量应该命名为 p，Connector类型的接收者变量应该命名为c等
-+ 接收者类型：接收者类型和参数类似，可以是指针类型和非指针类型
-+ 方法名、参数列表、返回参数：具体格式与函数定义相同
-+ 方法与函数的区别是，函数不属于任何类型，方法属于特定的类型
-+ 示例
-  #+BEGIN_SRC go
-  //Person 结构体
-  type Person struct {
-      name string
-      age  int8
-  }
-
-  //NewPerson 构造函数
-  func NewPerson(name string, age int8) *Person {
-      return &Person{
-        name: name,
-        age:  age,
-      }
-  }
-
-  //Dream Person做梦的方法
-  func (p Person) Dream() {
-      fmt.Printf("%s的梦想是学好Go语言！\n", p.name)
-  }
-
-  func main() {
-      p1 := NewPerson("小王子", 25)
-      p1.Dream()
-  }
-
-  #+END_SRC
-****** 指针类型的接收者
-+ 指针类型的接收者由一个结构体的指针组成，由于指针的特性，调用方法时修改接收者指针的任意成员变量，在方法结束后，修改都是有效的。这种方式就十分接近于其他语言中面向对象中的this或者self。 例如我们为Person添加一个SetAge方法，来修改实例变量的年龄
-  #+BEGIN_SRC go
-  // SetAge 设置p的年龄
-  // 使用指针接收者
-  func (p *Person) SetAge(newAge int8) {
-	    p.age = newAge
-  }
-  
-  // 调用
-  func main() {
-    	p1 := NewPerson("小王子", 25)
-	    fmt.Println(p1.age) // 25
-	    p1.SetAge(30)
-	    fmt.Println(p1.age) // 30
-  }
-  #+END_SRC
-****** 值类型的接收者
-+ 当方法作用于值类型接收者时，Go语言会在代码运行时将接收者的值复制一份。在值类型接收者的方法中可以获取接收者的成员值，但修改操作只是针对副本，无法修改接收者变量本身
-  #+BEGIN_SRC go
-  // SetAge2 设置p的年龄
-  // 使用值接收者
-  func (p Person) SetAge2(newAge int8) {
-      p.age = newAge
-  }
-
-  func main() {
-      p1 := NewPerson("小王子", 25)
-      p1.Dream()
-      fmt.Println(p1.age) // 25
-      p1.SetAge2(30) // (*p1).SetAge2(30)
-      fmt.Println(p1.age) // 25
-  }
-
-  #+END_SRC
-****** 什么时候应该使用指针类型接收者
-+ 要修改接收者中的值
-+ 接收者是拷贝代价比较大的大对象
-+ 保证一致性，如果有某个方法使用了指针接收者，那么其他的方法也应该使用指针接收者
-****** 任意类型添加方法
-+ 在Go语言中，接收者的类型可以是任何类型，不仅仅是结构体，任何类型都可以拥有方法。 举个例子，我们基于内置的int类型使用type关键字可以定义新的自定义类型，然后为我们的自定义类型添加方法
-  #+BEGIN_SRC go
-  //MyInt 将int定义为自定义MyInt类型
-  type MyInt int
-
-  //SayHello 为MyInt添加一个SayHello的方法
-  func (m MyInt) SayHello() {
-      fmt.Println("Hello, 我是一个int。")
-  }
-  func main() {
-      var m1 MyInt
-      m1.SayHello() //Hello, 我是一个int。
-      m1 = 100
-      fmt.Printf("%#v  %T\n", m1, m1) //100  main.MyInt
-  }
-
-  #+END_SRC
-
-+ 非本地类型不能定义方法，也就是说我们不能给别的包的类型定义方法
-***** 结构体的匿名字段
-+ 结构体允许其成员字段在声明时没有字段名而只有类型，这种没有名字的字段就称为匿名字段
-+ 匿名字段默认采用类型名作为字段名，结构体要求字段名称必须唯一，因此一个结构体中同种类型的匿名字段只能有一个
-  #+BEGIN_SRC go
-  //Person 结构体Person类型
-  type Person struct {
-      string
-      int
-  }
-
-  func main() {
-      p1 := Person{
-        "小王子",
-        18,
-      }
-      fmt.Printf("%#v\n", p1)        //main.Person{string:"北京", int:18}
-      fmt.Println(p1.string, p1.int) //北京 18
-  }
-
-  #+END_SRC
-***** 嵌套结构体
-+ 一个结构体中可以嵌套包含另一个结构体或结构体指针
-  #+BEGIN_SRC go
-  //Address 地址结构体
-  type Address struct {
-      Province string
-      City     string
-  }
-
-  //User 用户结构体
-  type User struct {
-      Name    string
-      Gender  string
-      Address Address
-  }
-
-  func main() {
-      user1 := User{
-        Name:   "小王子",
-        Gender: "男",
-        Address: Address{
-          Province: "山东",
-          City:     "威海",
-        },
-      }
-      fmt.Printf("user1=%#v\n", user1)//user1=main.User{Name:"小王子", Gender:"男", Address:main.Address{Province:"山东", City:"威海"}}
-  }
-  #+END_SRC
-***** 嵌套匿名结构体
-+ 当访问结构体成员时会先在结构体中查找该字段，找不到再去匿名结构体中查找
-  #+BEGIN_SRC go
-  //Address 地址结构体
-  type Address struct {
-      Province string
-      City     string
-  }
-
-  //User 用户结构体
-  type User struct {
-      Name    string
-      Gender  string
-      Address //匿名结构体
-  }
-
-  func main() {
-      var user2 User
-      user2.Name = "小王子"
-      user2.Gender = "男"
-      user2.Address.Province = "山东"    //通过匿名结构体.字段名访问
-      user2.City = "威海"                //直接访问匿名结构体的字段名
-      fmt.Printf("user2=%#v\n", user2) //user2=main.User{Name:"小王子", Gender:"男", Address:main.Address{Province:"山东", City:"威海"}}
-  }
-
-  #+END_SRC
-***** 嵌套结构体的字段名冲突
-+ 嵌套结构体内部可能存在相同的字段名。这个时候为了避免歧义需要指定具体的内嵌结构体的字段
-  #+BEGIN_SRC go
-  //Address 地址结构体
-  type Address struct {
-      Province   string
-      City       string
-      CreateTime string
-  }
-
-  //Email 邮箱结构体
-  type Email struct {
-      Account    string
-      CreateTime string
-  }
-
-  //User 用户结构体
-  type User struct {
-      Name   string
-      Gender string
-      Address
-      Email
-  }
-
-  func main() {
-      var user3 User
-      user3.Name = "沙河娜扎"
-      user3.Gender = "男"
-      // user3.CreateTime = "2019" //ambiguous selector user3.CreateTime
-      user3.Address.CreateTime = "2000" //指定Address结构体中的CreateTime
-      user3.Email.CreateTime = "2000"   //指定Email结构体中的CreateTime
-  }
-
-  #+END_SRC
-***** 结构体的“继承”
-+ Go语言中使用结构体也可以实现其他编程语言中面向对象的继承
-  #+BEGIN_SRC go
-  //Animal 动物
-  type Animal struct {
-      name string
-  }
-
-  func (a *Animal) move() {
-      fmt.Printf("%s会动！\n", a.name)
-  }
-
-  //Dog 狗
-  type Dog struct {
-      Feet    int8
-      ,*Animal //通过嵌套匿名结构体实现继承
-  }
-
-  func (d *Dog) wang() {
-      fmt.Printf("%s会汪汪汪~\n", d.name)
-  }
-
-  func main() {
-      d1 := &Dog{
-        Feet: 4,
-        Animal: &Animal{ //注意嵌套的是结构体指针
-          name: "乐乐",
-        },
-      }
-      d1.wang() //乐乐会汪汪汪~
-      d1.move() //乐乐会动！
-  }
-
-  #+END_SRC
-***** 结构体字段的可见性
-+ 结构体中字段大写开头表示可公开访问，小写表示私有（仅在定义当前结构体的包中可访问）
-***** 结构体与JSON序列化
-+ JSON(JavaScript Object Notation) 是一种轻量级的数据交换格式。易于人阅读和编写。同时也易于机器解析和生成。JSON键值对是用来保存JS对象的一种方式，键/值对组合中的键名写在前面并用双引号""包裹，使用冒号:分隔，然后紧接着值；多个键值之间使用英文,分隔
-  #+BEGIN_SRC go
-  //Student 学生
-  type Student struct {
-      ID     int
-      Gender string
-      Name   string
-  }
-
-  //Class 班级
-  type Class struct {
-      Title    string
-      Students []*Student
-  }
-
-  func main() {
-      c := &Class{
-        Title:    "101",
-        Students: make([]*Student, 0, 200),
-      }
-      for i := 0; i < 10; i++ {
-        stu := &Student{
-          Name:   fmt.Sprintf("stu%02d", i),
-          Gender: "男",
-          ID:     i,
-        }
-        c.Students = append(c.Students, stu)
-      }
-      //JSON序列化：结构体-->JSON格式的字符串
-      data, err := json.Marshal(c)
-      if err != nil {
-        fmt.Println("json marshal failed")
-        return
-      }
-      fmt.Printf("json:%s\n", data)
-      //JSON反序列化：JSON格式的字符串-->结构体
-      str := `{"Title":"101","Students":[{"ID":0,"Gender":"男","Name":"stu00"},{"ID":1,"Gender":"男","Name":"stu01"},{"ID":2,"Gender":"男","Name":"stu02"},{"ID":3,"Gender":"男","Name":"stu03"},{"ID":4,"Gender":"男","Name":"stu04"},{"ID":5,"Gender":"男","Name":"stu05"},{"ID":6,"Gender":"男","Name":"stu06"},{"ID":7,"Gender":"男","Name":"stu07"},{"ID":8,"Gender":"男","Name":"stu08"},{"ID":9,"Gender":"男","Name":"stu09"}]}`
-      c1 := &Class{}
-      err = json.Unmarshal([]byte(str), c1)
-      if err != nil {
-        fmt.Println("json unmarshal failed!")
-        return
-      }
-      fmt.Printf("%#v\n", c1)
-  }
-
-  #+END_SRC
-***** 结构体标签（Tag）
-+ Tag是结构体的元信息，可以在运行的时候通过反射的机制读取出来。 Tag在结构体字段的后方定义，由一对反引号包裹起来，具体的格式如下
-  #+BEGIN_SRC go
-  `key1:"value1" key2:"value2"`
-  #+END_SRC
-+ 结构体标签由一个或多个键值对组成。键与值使用冒号分隔，值用双引号括起来。同一个结构体字段可以设置多个键值对标签（Tag），不同的键值对标签之间使用空格分隔
-+ 为结构体编写Tag时，必须严格遵守键值对的规则。结构体标签的解析代码的容错能力很差，一旦格式写错，编译和运行时都不会提示任何错误，通过反射也无法正确取值。例如不要在key和value之间添加空格
-+ 例如我们为Student结构体的每个字段定义json序列化时使用的Tag
-  #+BEGIN_SRC go
-  //Student 学生
-  type Student struct {
-      ID     int    `json:"id"` //通过指定tag实现json序列化该字段时的key
-      Gender string //json序列化是默认使用字段名作为key
-      name   string //私有不能被json包访问
-  }
-
-  func main() {
-      s1 := Student{
-        ID:     1,
-        Gender: "男",
-        name:   "沙河娜扎",
-      }
-      data, err := json.Marshal(s1)
-      if err != nil {
-        fmt.Println("json marshal failed!")
-        return
-      }
-      fmt.Printf("json str:%s\n", data) //json str:{"id":1,"Gender":"男"}
-  }
-
-  #+END_SRC
-***** 结构体和方法补充知识点
-+ 因为slice和map这两种数据类型都包含了指向底层数据的指针，因此我们在需要复制它们时要特别注意
-  #+BEGIN_SRC go
-  type Person struct {
-      name   string
-      age    int8
-      dreams []string
-  }
-
-  func (p *Person) SetDreams(dreams []string) {
-      p.dreams = dreams
-    }
-
-    func main() {
-      p1 := Person{name: "小王子", age: 18}
-      data := []string{"吃饭", "睡觉", "打豆豆"}
-      p1.SetDreams(data)
-
-      // 你真的想要修改 p1.dreams 吗？
-      data[1] = "不睡觉"
-      fmt.Println(p1.dreams)  // ?
-  }
-  // 正确的做法是在方法中使用传入的slice的拷贝进行结构体赋值
-  func (p *Person) SetDreams(dreams []string) {
-	    p.dreams = make([]string, len(dreams))
-	    copy(p.dreams, dreams)
-  }
-  // 同样的问题也存在于返回值slice和map的情况，在实际编码过程中一定要注意这个问题
-  #+END_SRC
 *** 包（package）
 **** 介绍
 + 在工程化的Go语言开发项目中，Go语言的源码复用是建立在包（package）基础之上的
@@ -2550,7 +2666,18 @@ Go语言中的基础数据类型可以表示一些事物的基本属性，但是
   - Go语言包会从main包开始检查其导入的所有包，每个包中又可能导入了其他的包。Go编译器由此构建出一个树状的包引用关系，再根据引用顺序决定编译顺序，依次编译这些包的代码
   - 在运行时，被最后导入的包会最先初始化并调用其init()函数[[file:pic/%E5%AF%BC%E5%85%A5%E5%8C%85%E9%A1%BA%E5%BA%8F.png][图例]]
 *** 接口（interface）
-接口定义了一个对象的行为规范，只定义规范不实现，由具体的对象来实现规范的细节,关于接口需要注意的是，只有当有两个或两个以上的具体类型必须以相同的方式进行处理时才需要定义接口。不要为了接口而写接口，那样只会增加不必要的抽象，导致不必要的运行时损耗
+**** 介绍
++ 接口定义了一个对象的行为规范，只定义规范不实现，由具体的对象来实现规范的细节,关于接口需要注意的是，只有当有两个或两个以上的具体类型必须以相同的方式进行处理时才需要定义接口。不要为了接口而写接口，那样只会增加不必要的抽象，导致不必要的运行时损耗
++ 接口是一个方法或多个方法签名的集合
++ 只要某个类型拥有该接口的所有方法签名，即算实现该接口，无需显示声明实现了哪个接口，这称为Structural Type
++ 接口只有方法声明，没有实现，没有数据字段
++ 接口可以匿名嵌入其他接口，或嵌入到结构体中
++ 将对象赋值给接口时，会发生拷贝，而接口内部存储的是指向这个复制品的指针，即无法修改复制品的状态，也无法获取指针
++ 只有当接口存储的类型和对象都为nil时，接口才等于nil
++ 接口调用不会做receiver的自动转换
++ 接口同样支持匿名字段方法
++ 接口可以实现类似OOP中的多态
++ 空接口可以作为任何类型数据的容器
 **** 接口类型
 + 在Go语言中接口（interface）是一种类型，一种抽象的类型
 + 接口是一组method的集合，是duck-type programming的一种体现。接口做的事情就像是定义一个协议（规则），只要一台机器有洗衣服和甩干的功能，我就称它为洗衣机。不关心属性（数据），只关心行为（方法）
@@ -4777,4 +4904,2440 @@ Go语言内置的log包实现了简单的日志服务
 *** strconv
 strconv包实现了基本数据类型和其字符串表示的相互转换
 **** string与int类型转换
-+ 
++ Atoi()
+  - Atoi()函数用于将字符串类型的整数转换为int类型
+    #+BEGIN_SRC go
+    func Atoi(s string) (i int, err error)
+    #+END_SRC
+  - 如果传入的字符串参数无法转换为int类型，就会返回错误
+    #+BEGIN_SRC go
+    s1 := "100"
+    i1, err := strconv.Atoi(s1)
+    if err != nil {
+    fmt.Println("can't convert to int")
+    } else {
+        fmt.Printf("type:%T value:%#v\n", i1, i1) //type:int value:100
+    }
+    #+END_SRC
++ Itoa()
+  Itoa()函数用于将int类型数据转换为对应的字符串表示
+  #+BEGIN_SRC go
+  func Itoa(i int) string
+
+  i2 := 200
+  s2 := strconv.Itoa(i2)
+  fmt.Printf("type:%T value:%#v\n", s2, s2) //type:string value:"200"
+  #+END_SRC
+**** Parse系列函数
+Parse类函数用于转换字符串为给定类型的值：ParseBool()、ParseFloat()、ParseInt()、ParseUint()
++ ParseBool()
+  #+BEGIN_SRC go
+  func ParseBool(str string) (value bool, err error)
+  // 返回字符串表示的bool值。它接受1、0、t、f、T、F、true、false、True、False、TRUE、FALSE；否则返回错误
+  #+END_SRC
++ ParseInt()
+  #+BEGIN_SRC go
+  func ParseInt(s string, base int, bitSize int) (i int64, err error)
+  
+  // 返回字符串表示的整数值，接受正负号。
+  // base指定进制（2到36），如果base为0，则会从字符串前置判断，”0x”是16进制，”0”是8进制，否则是10进制；
+  // bitSize指定结果必须能无溢出赋值的整数类型，0、8、16、32、64 分别代表 int、int8、int16、int32、int64；
+  // 返回的err是*NumErr类型的，如果语法有误，err.Error = ErrSyntax；如果结果超出类型范围err.Error = ErrRange。
+  #+END_SRC
++ ParseUnit()
+  #+BEGIN_SRC go
+  func ParseUint(s string, base int, bitSize int) (n uint64, err error)
+  
+  // ParseUint类似ParseInt但不接受正负号，用于无符号整型
+  #+END_SRC
++ ParseFloat()
+  #+BEGIN_SRC go
+  func ParseFloat(s string, bitSize int) (f float64, err error)
+
+  // 解析一个表示浮点数的字符串并返回其值。
+  // 如果s合乎语法规则，函数会返回最为接近s表示值的一个浮点数（使用IEEE754规范舍入）。
+  // bitSize指定了期望的接收类型，32是float32（返回值可以不改变精确值的赋值给float32），64是float64；
+  // 返回值err是*NumErr类型的，语法有误的，err.Error=ErrSyntax；结果超出表示范围的，返回值f为±Inf，err.Error= ErrRange。
+
+  b, err := strconv.ParseBool("true")
+  f, err := strconv.ParseFloat("3.1415", 64)
+  i, err := strconv.ParseInt("-2", 10, 64)
+  u, err := strconv.ParseUint("2", 10, 64)
+  // 这些函数都有两个返回值，第一个返回值是转换后的值，第二个返回值为转化失败的错误信息
+  #+END_SRC
+**** Format系列函数
+Format系列函数实现了将给定类型数据格式化为string类型数据的功能
++ FormatBool()
+  #+BEGIN_SRC go
+  func FormatBool(b bool) string
+  // 根据b的值返回”true”或”false”。
+  #+END_SRC
++ FormatInt()
+  #+BEGIN_SRC go
+  func FormatInt(i int64, base int) string
+
+  // 返回i的base进制的字符串表示。base 必须在2到36之间，结果中会使用小写字母’a’到’z’表示大于10的数字
+  #+END_SRC
++ FormatUint()
+  #+BEGIN_SRC go
+  func FormatUint(i uint64, base int) string
+  // 是FormatInt的无符号整数版本
+  #+END_SRC
++ FormatFloat()
+  #+BEGIN_SRC go
+  func FormatFloat(f float64, fmt byte, prec, bitSize int) string
+  // 函数将浮点数表示为字符串并返回。
+  // bitSize表示f的来源类型（32：float32、64：float64），会据此进行舍入。
+  // fmt表示格式：’f’（-ddd.dddd）、’b’（-ddddp±ddd，指数为二进制）、’e’（-d.dddde±dd，十进制指数）、’E’（-d.ddddE±dd，十进制指数）、’g’（指数很大时用’e’格式，否则’f’格式）、’G’（指数很大时用’E’格式，否则’f’格式）。
+  // prec控制精度（排除指数部分）：对’f’、’e’、’E’，它表示小数点后的数字个数；对’g’、’G’，它控制总的数字个数。如果prec 为-1，则代表使用最少数量的、但又必需的数字来表示f
+  s1 := strconv.FormatBool(true)
+  s2 := strconv.FormatFloat(3.1415, 'E', -1, 64)
+  s3 := strconv.FormatInt(-2, 16)
+  s4 := strconv.FormatUint(2, 16)
+  #+END_SRC
+**** 其他
++ isPrint()
+  #+BEGIN_SRC go
+  func IsPrint(r rune) bool
+  // 返回一个字符是否是可打印的，和unicode.IsPrint一样，r必须是：字母（广义）、数字、标点、符号、ASCII空格
+  #+END_SRC
++ CanBackquote()
+  #+BEGIN_SRC go
+  func CanBackquote(s string) bool
+  // 返回字符串s是否可以不被修改的表示为一个单行的、没有空格和tab之外控制字符的反引号字符串
+  #+END_SRC
+*** net/http
+Go语言内置的net/http包十分的优秀，提供了HTTP客户端和服务端的实现
+**** HTTP客户端
+***** 基本的HTTP/HTTPS请求
++ Get、Head、Post和PostForm函数发出HTTP/HTTPS请求
+  #+BEGIN_SRC go
+  resp, err := http.Get("http://example.com/")
+  ...
+  resp, err := http.Post("http://example.com/upload", "image/jpeg", &buf)
+  ...
+  resp, err := http.PostForm("http://example.com/form",
+	    url.Values{"key": {"Value"}, "id": {"123"}})
+  #+END_SRC
++ 程序在使用完response后必须关闭回复的主体
+  #+BEGIN_SRC go
+  resp, err := http.Get("http://example.com/")
+    if err != nil {
+      // handle error
+  }
+  defer resp.Body.Close()
+  body, err := ioutil.ReadAll(resp.Body)
+  // ...
+
+  #+END_SRC
+***** GET请求示例
++ 使用net/http包编写一个简单的发送HTTP请求的Client端，代码如下
+  #+BEGIN_SRC go
+  package main
+
+  import (
+      "fmt"
+      "io/ioutil"
+      "net/http"
+  )
+
+  func main() {
+      resp, err := http.Get("https://www.liwenzhou.com/")
+      if err != nil {
+        fmt.Println("get failed, err:", err)
+        return
+      }
+      defer resp.Body.Close()
+      body, err := ioutil.ReadAll(resp.Body)
+      if err != nil {
+        fmt.Println("read from resp.Body failed,err:", err)
+        return
+      }
+      fmt.Print(string(body))
+  }
+  // 将上面的代码保存之后编译成可执行文件，执行之后就能在终端打印liwenzhou.com网站首页的内容了，我们的浏览器其实就是一个发送和接收HTTP协议数据的客户端，我们平时通过浏览器访问网页其实就是从网站的服务器接收HTTP数据，然后浏览器会按照HTML、CSS等规则将网页渲染展示出来
+  #+END_SRC
+***** 带参数的GET请求示例
++ 关于GET请求的参数需要使用Go语言内置的net/url这个标准库来处理
+  #+BEGIN_SRC go
+  func main() {
+      apiUrl := "http://127.0.0.1:9090/get"
+      // URL param
+      data := url.Values{}
+      data.Set("name", "小王子")
+      data.Set("age", "18")
+      u, err := url.ParseRequestURI(apiUrl)
+      if err != nil {
+        fmt.Printf("parse url requestUrl failed,err:%v\n", err)
+      }
+      u.RawQuery = data.Encode() // URL encode
+      fmt.Println(u.String())
+      resp, err := http.Get(u.String())
+      if err != nil {
+        fmt.Println("post failed, err:%v\n", err)
+        return
+      }
+      defer resp.Body.Close()
+      b, err := ioutil.ReadAll(resp.Body)
+      if err != nil {
+        fmt.Println("get resp failed,err:%v\n", err)
+        return
+      }
+      fmt.Println(string(b))
+  }
+
+  #+END_SRC
++ 对应的Server端HandlerFunc如下
+  #+BEGIN_SRC go
+  func getHandler(w http.ResponseWriter, r *http.Request) {
+      defer r.Body.Close()
+      data := r.URL.Query()
+      fmt.Println(data.Get("name"))
+      fmt.Println(data.Get("age"))
+      answer := `{"status": "ok"}`
+      w.Write([]byte(answer))
+  }
+  #+END_SRC
+***** Post请求示例
++ 发送POST请求的示例代码如下
+  #+BEGIN_SRC go
+  package main
+
+  import (
+      "fmt"
+      "io/ioutil"
+      "net/http"
+      "strings"
+  )
+
+  // net/http post demo
+
+  func main() {
+      url := "http://127.0.0.1:9090/post"
+      // 表单数据
+      //contentType := "application/x-www-form-urlencoded"
+      //data := "name=小王子&age=18"
+      // json
+      contentType := "application/json"
+      data := `{"name":"小王子","age":18}`
+      resp, err := http.Post(url, contentType, strings.NewReader(data))
+      if err != nil {
+        fmt.Println("post failed, err:%v\n", err)
+        return
+      }
+      defer resp.Body.Close()
+      b, err := ioutil.ReadAll(resp.Body)
+      if err != nil {
+        fmt.Println("get resp failed,err:%v\n", err)
+        return
+      }
+      fmt.Println(string(b))
+  }
+
+  #+END_SRC
++ 对应的Server端HandlerFunc如下
+  #+BEGIN_SRC go
+  func postHandler(w http.ResponseWriter, r *http.Request) {
+      defer r.Body.Close()
+      // 1. 请求类型是application/x-www-form-urlencoded时解析form数据
+      r.ParseForm()
+      fmt.Println(r.PostForm) // 打印form数据
+      fmt.Println(r.PostForm.Get("name"), r.PostForm.Get("age"))
+      // 2. 请求类型是application/json时从r.Body读取数据
+      b, err := ioutil.ReadAll(r.Body)
+      if err != nil {
+        fmt.Println("read request.Body failed, err:%v\n", err)
+        return
+      }
+      fmt.Println(string(b))
+      answer := `{"status": "ok"}`
+      w.Write([]byte(answer))
+  }
+
+  #+END_SRC
+***** 自定义Client
++ 要管理HTTP客户端的头域、重定向策略和其他设置，创建一个Client
+  #+BEGIN_SRC go
+  client := &http.Client{
+      CheckRedirect: redirectPolicyFunc,
+  }
+  resp, err := client.Get("http://example.com")
+  // ...
+  req, err := http.NewRequest("GET", "http://example.com", nil)
+  // ...
+  req.Header.Add("If-None-Match", `W/"wyzzy"`)
+  resp, err := client.Do(req)
+  // ...
+
+  #+END_SRC
+***** 自定义Transport
++ 要管理代理、TLS配置、keep-alive、压缩和其他设置，创建一个Transport
+  #+BEGIN_SRC go
+  tr := &http.Transport{
+      TLSClientConfig:    &tls.Config{RootCAs: pool},
+      DisableCompression: true,
+  }
+  client := &http.Client{Transport: tr}
+  resp, err := client.Get("https://example.com")
+  // Client和Transport类型都可以安全的被多个goroutine同时使用。出于效率考虑，应该一次建立、尽量重用
+  #+END_SRC
+**** 服务端
+***** 默认的Server
++ ListenAndServe使用指定的监听地址和处理器启动一个HTTP服务端。处理器参数通常是nil，这表示采用包变量DefaultServeMux作为处理器
++ Handle和HandleFunc函数可以向DefaultServeMux添加处理器
+  #+BEGIN_SRC go
+  http.Handle("/foo", fooHandler)
+  http.HandleFunc("/bar", func(w http.ResponseWriter, r *http.Request) {
+      fmt.Fprintf(w, "Hello, %q", html.EscapeString(r.URL.Path))
+  })
+  log.Fatal(http.ListenAndServe(":8080", nil))
+
+  #+END_SRC
+***** 默认的Server示例
++ 使用Go语言中的net/http包来编写一个简单的接收HTTP请求的Server端示例，net/http包是对net包的进一步封装，专门用来处理HTTP协议的数据。具体的代码如下
+  #+BEGIN_SRC go
+  // http server
+
+  func sayHello(w http.ResponseWriter, r *http.Request) {
+      fmt.Fprintln(w, "Hello 沙河！")
+  }
+
+  func main() {
+      http.HandleFunc("/", sayHello)
+      err := http.ListenAndServe(":9090", nil)
+      if err != nil {
+        fmt.Printf("http server failed, err:%v\n", err)
+        return
+      }
+  }
+
+  #+END_SRC
+***** 自定义Server
++ 要管理服务端的行为，可以创建一个自定义的Server
+  #+BEGIN_SRC go
+  s := &http.Server{
+      Addr:           ":8080",
+      Handler:        myHandler,
+      ReadTimeout:    10 * time.Second,
+      WriteTimeout:   10 * time.Second,
+      MaxHeaderBytes: 1 << 20,
+  }
+  log.Fatal(s.ListenAndServe())
+
+  #+END_SRC
+*** Context
+**** 介绍
++ Go1.7加入了一个新的标准库context，它定义了Context类型，专门用来简化 对于处理单个请求的多个 goroutine 之间与请求域的数据、取消信号、截止时间等相关操作，这些操作可能涉及多个 API 调用
++ 对服务器传入的请求应该创建上下文，而对服务器的传出调用应该接受上下文。它们之间的函数调用链必须传递上下文，或者可以使用WithCancel、WithDeadline、WithTimeout或WithValue创建的派生上下文。当一个上下文被取消时，它派生的所有上下文也被取消
+**** 接口
++ context.Context是一个接口，该接口定义了四个需要实现的方法。具体签名如下
+  #+BEGIN_SRC go
+  type Context interface {
+    Deadline() (deadline time.Time, ok bool)
+    Done() <-chan struct{}
+    Err() error
+    Value(key interface{}) interface{}
+  }
+  #+END_SRC
++ Deadline方法需要返回当前Context被取消的时间，也就是完成工作的截止时间（deadline）；
++ Done方法需要返回一个Channel，这个Channel会在当前工作完成或者上下文被取消之后关闭，多次调用Done方法会返回同一个Channel；
++ Err方法会返回当前Context结束的原因，它只会在Done返回的Channel被关闭时才会返回非空的值；
++ 如果当前Context被取消就会返回Canceled错误；
++ 如果当前Context超时就会返回DeadlineExceeded错误；
++ Value方法会从Context中返回键对应的值，对于同一个上下文来说，多次调用Value 并传入相同的Key会返回相同的结果，该方法仅用于传递跨API和进程间跟请求域的数据
+**** Background()和TODO()
++ Go内置两个函数：Background()和TODO()，这两个函数分别返回一个实现了Context接口的background和todo。我们代码中最开始都是以这两个内置的上下文对象作为最顶层的partent context，衍生出更多的子上下文对象
++ Background()主要用于main函数、初始化以及测试代码中，作为Context这个树结构的最顶层的Context，也就是根Context
++ TODO()，它目前还不知道具体的使用场景，如果我们不知道该使用什么Context的时候，可以使用这个
++ background和todo本质上都是emptyCtx结构体类型，是一个不可取消，没有设置截止时间，没有携带任何值的Context
+**** With系列函数
+***** WithCancel
++ WithCancel的函数签名如下
+  #+BEGIN_SRC go
+  func WithCancel(parent Context) (ctx Context, cancel CancelFunc)
+  #+END_SRC
++ WithCancel返回带有新Done通道的父节点的副本。当调用返回的cancel函数或当关闭父上下文的Done通道时，将关闭返回上下文的Done通道，无论先发生什么情况
++ 取消此上下文将释放与其关联的资源，因此代码应该在此上下文中运行的操作完成后立即调用cancel
+  #+BEGIN_SRC go
+  func gen(ctx context.Context) <-chan int {
+        dst := make(chan int)
+        n := 1
+        go func() {
+          for {
+            select {
+            case <-ctx.Done():
+              return // return结束该goroutine，防止泄露
+            case dst <- n:
+              n++
+            }
+          }
+        }()
+        return dst
+  }
+  func main() {
+      ctx, cancel := context.WithCancel(context.Background())
+      defer cancel() // 当我们取完需要的整数后调用cancel
+
+      for n := range gen(ctx) {
+        fmt.Println(n)
+        if n == 5 {
+          break
+        }
+      }
+  }
+  // 上面的示例代码中，gen函数在单独的goroutine中生成整数并将它们发送到返回的通道。 gen的调用者在使用生成的整数之后需要取消上下文，以免gen启动的内部goroutine发生泄漏
+  #+END_SRC
+***** WithDeadline
++ WithDeadline的函数签名如下
+  #+BEGIN_SRC go
+  func WithDeadline(parent Context, deadline time.Time) (Context, CancelFunc)
+  #+END_SRC
++ 返回父上下文的副本，并将deadline调整为不迟于d。如果父上下文的deadline已经早于d，则WithDeadline(parent, d)在语义上等同于父上下文。当截止日过期时，当调用返回的cancel函数时，或者当父上下文的Done通道关闭时，返回上下文的Done通道将被关闭，以最先发生的情况为准
++ 取消此上下文将释放与其关联的资源，因此代码应该在此上下文中运行的操作完成后立即调用cancel
+  #+BEGIN_SRC go
+  func main() {
+      d := time.Now().Add(50 * time.Millisecond)
+      ctx, cancel := context.WithDeadline(context.Background(), d)
+
+      // 尽管ctx会过期，但在任何情况下调用它的cancel函数都是很好的实践。
+      // 如果不这样做，可能会使上下文及其父类存活的时间超过必要的时间。
+      defer cancel()
+
+      select {
+      case <-time.After(1 * time.Second):
+        fmt.Println("overslept")
+      case <-ctx.Done():
+        fmt.Println(ctx.Err())
+      }
+  }
+  
+  #+END_SRC
++ 上面的代码中，定义了一个50毫秒之后过期的deadline，然后我们调用context.WithDeadline(context.Background(), d)得到一个上下文（ctx）和一个取消函数（cancel），然后使用一个select让主程序陷入等待：等待1秒后打印overslept退出或者等待ctx过期后退出。 因为ctx50秒后就过期，所以ctx.Done()会先接收到值，上面的代码会打印ctx.Err()取消原因
+***** WithTimeout
++ WithTimeout的函数签名如下
+  #+BEGIN_SRC go
+  func WithTimeout(parent Context, timeout time.Duration) (Context, CancelFunc)
+  #+END_SRC
++ WithTimeout返回WithDeadline(parent, time.Now().Add(timeout))
++ 取消此上下文将释放与其相关的资源，因此代码应该在此上下文中运行的操作完成后立即调用cancel，通常用于数据库或者网络连接的超时控制。具体示例如下
+  #+BEGIN_SRC go
+  package main
+
+  import (
+      "context"
+      "fmt"
+      "sync"
+
+      "time"
+  )
+
+  // context.WithTimeout
+  
+  var wg sync.WaitGroup
+  
+  func worker(ctx context.Context) {
+    LOOP:
+      for {
+        fmt.Println("db connecting ...")
+        time.Sleep(time.Millisecond * 10) // 假设正常连接数据库耗时10毫秒
+        select {
+        case <-ctx.Done(): // 50毫秒后自动调用
+          break LOOP
+        default:
+        }
+      }
+      fmt.Println("worker done!")
+      wg.Done()
+  }
+
+  func main() {
+      // 设置一个50毫秒的超时
+      ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*50)
+      wg.Add(1)
+      go worker(ctx)
+      time.Sleep(time.Second * 5)
+      cancel() // 通知子goroutine结束
+      wg.Wait()
+      fmt.Println("over")
+  }
+
+  #+END_SRC
+***** WithValue
++ WithValue函数能够将请求作用域的数据与 Context 对象建立关系。声明如下：
+  #+BEGIN_SRC go
+  func WithValue(parent Context, key, val interface{}) Context
+  #+END_SRC
++ WithValue返回父节点的副本，其中与key关联的值为val
++ 仅对API和进程间传递请求域的数据使用上下文值，而不是使用它来传递可选参数给函数
++ 所提供的键必须是可比较的，并且不应该是string类型或任何其他内置类型，以避免使用上下文在包之间发生冲突。WithValue的用户应该为键定义自己的类型。为了避免在分配给interface{}时进行分配，上下文键通常具有具体类型struct{}。或者，导出的上下文关键变量的静态类型应该是指针或接口
+  #+BEGIN_SRC go
+  package main
+
+  import (
+      "context"
+      "fmt"
+      "sync"
+
+      "time"
+  )
+
+  // context.WithValue
+  
+  type TraceCode string
+
+  var wg sync.WaitGroup
+
+  func worker(ctx context.Context) {
+      key := TraceCode("TRACE_CODE")
+      traceCode, ok := ctx.Value(key).(string) // 在子goroutine中获取trace code
+      if !ok {
+        fmt.Println("invalid trace code")
+      }
+    LOOP:
+      for {
+        fmt.Printf("worker, trace code:%s\n", traceCode)
+        time.Sleep(time.Millisecond * 10) // 假设正常连接数据库耗时10毫秒
+        select {
+        case <-ctx.Done(): // 50毫秒后自动调用
+          break LOOP
+        default:
+        }
+      }
+      fmt.Println("worker done!")
+      wg.Done()
+  }
+
+  func main() {
+      // 设置一个50毫秒的超时
+      ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*50)
+      // 在系统的入口中设置trace code传递给后续启动的goroutine实现日志数据聚合
+      ctx = context.WithValue(ctx, TraceCode("TRACE_CODE"), "12512312234")
+      wg.Add(1)
+      go worker(ctx)
+      time.Sleep(time.Second * 5)
+      cancel() // 通知子goroutine结束
+      wg.Wait()
+      fmt.Println("over")
+  }
+  
+  #+END_SRC
+***** 注意事项
++ 推荐以参数的方式显示传递Context
++ 以Context作为参数的函数方法，应该把Context作为第一个参数。
++ 给一个函数方法传递Context的时候，不要传递nil，如果不知道传递什么，就使用context.TODO()
++ Context的Value相关方法应该传递请求域的必要数据，不应该用于传递可选参数
++ Context是线程安全的，可以放心的在多个goroutine中传递
+***** 客户端超时取消示例
+****** server端
+#+BEGIN_SRC go
+// context_timeout/server/main.go
+package main
+
+import (
+    "fmt"
+    "math/rand"
+    "net/http"
+
+    "time"
+)
+
+// server端，随机出现慢响应
+
+func indexHandler(w http.ResponseWriter, r *http.Request) {
+    number := rand.Intn(2)
+    if number == 0 {
+      time.Sleep(time.Second * 10) // 耗时10秒的慢响应
+      fmt.Fprintf(w, "slow response")
+      return
+    }
+    fmt.Fprint(w, "quick response")
+}
+
+func main() {
+    http.HandleFunc("/", indexHandler)
+    err := http.ListenAndServe(":8000", nil)
+    if err != nil {
+      panic(err)
+    }
+}
+
+#+END_SRC
+****** client端
+#+BEGIN_SRC go
+// context_timeout/client/main.go
+package main
+
+import (
+    "context"
+    "fmt"
+    "io/ioutil"
+    "net/http"
+    "sync"
+    "time"
+)
+
+// 客户端
+
+type respData struct {
+    resp *http.Response
+    err  error
+}
+
+func doCall(ctx context.Context) {
+    transport := http.Transport{
+       // 请求频繁可定义全局的client对象并启用长链接
+       // 请求不频繁使用短链接
+       DisableKeepAlives: true, 	}
+    client := http.Client{
+      Transport: &transport,
+    }
+
+    respChan := make(chan *respData, 1)
+    req, err := http.NewRequest("GET", "http://127.0.0.1:8000/", nil)
+    if err != nil {
+      fmt.Printf("new requestg failed, err:%v\n", err)
+      return
+    }
+    req = req.WithContext(ctx) // 使用带超时的ctx创建一个新的client request
+    var wg sync.WaitGroup
+    wg.Add(1)
+    defer wg.Wait()
+    go func() {
+      resp, err := client.Do(req)
+      fmt.Printf("client.do resp:%v, err:%v\n", resp, err)
+      rd := &respData{
+        resp: resp,
+        err:  err,
+      }
+      respChan <- rd
+      wg.Done()
+    }()
+
+    select {
+    case <-ctx.Done():
+      //transport.CancelRequest(req)
+      fmt.Println("call api timeout")
+    case result := <-respChan:
+      fmt.Println("call server api success")
+      if result.err != nil {
+        fmt.Printf("call server api failed, err:%v\n", result.err)
+        return
+      }
+      defer result.resp.Body.Close()
+      data, _ := ioutil.ReadAll(result.resp.Body)
+      fmt.Printf("resp:%v\n", string(data))
+    }
+}
+
+func main() {
+    // 定义一个100毫秒的超时
+    ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*100)
+    defer cancel() // 调用cancel释放子goroutine资源
+    doCall(ctx)
+}
+
+#+END_SRC
+** 依赖管理
+*** package
++ 软件是由代码组成的。为了复用代码，代码的组织出现了不同层次的抽象和实现，如 Module（模块），包（Package）
++ golang 的所有文件都需要指定其所在的包（package），包有两种类型，一种是 main 包，使用 package main 在代码的最前面声明。另外一种就是 非main 包，使用 package + 包名
+**** main包
++ main 包的可以有唯一的一个 main 函数，这个函数也是程序的入口。也只有 main 包可以编译成可执行的文件
++ 虽然 main 包的文件名也是 main.go，其实包名和文件名没有直接关系
+**** 自定义 package
++ 在项目中自定义package时，可以建立多个子目录存放.go文件
++ 但在同一目录中所有的自定义package的.go文件中package name必须是一致的，在main包中调用时，使用package name即"str.func()"可以调用此目录中所有.go文件中定义的函数和属性
++ package name与.go文件的名字无关，调用时只关心package name
++ 如果引用了第三方模块，应该使用go mod init package_name定义引用？？？不确定
+**** 导入规则
++ 本地包在导入时，需要使用别名的形式，后面的路径中第一级别为项目根目录的模块名即go.mod中的module name
+  #+BEGIN_SRC go
+  import (
+    	num "testgo/api/num"
+	    str "testgo/api/string"
+  )
+  #+END_SRC
++ import 语句内，通过相对路径导入了包。对于*nix系统，相对路径 . 通常是可以省略的
+*** go module
+go module是Go1.11版本之后官方推出的版本管理工具，并且从Go1.13版本开始，go module将是Go语言默认的依赖管理工具
+**** GO111MODULE
++ 要启用go module支持首先要设置环境变量GO111MODULE，通过它可以开启或关闭模块支持，它有三个可选值：off、on、auto，默认值是auto
++ GO111MODULE=off禁用模块支持，编译时会从GOPATH和vendor文件夹中查找包。
++ GO111MODULE=on启用模块支持，编译时会忽略GOPATH和vendor文件夹，只根据 go.mod下载依赖。
++ GO111MODULE=auto，当项目在$GOPATH/src外且项目根目录有go.mod文件时，开启模块支持
++ 设置GO111MODULE=on之后就可以使用go module了，以后就没有必要在GOPATH中创建项目了，并且还能够很好的管理项目依赖的第三方包信息
++ 使用 go module 管理依赖后会在项目根目录下生成两个文件go.mod和go.sum
+**** GOPROXY
++ Go1.11之后设置GOPROXY命令为
+  #+BEGIN_SRC shell
+  export GOPROXY=https://goproxy.cn
+  #+END_SRC
++ Go1.13之后GOPROXY默认值为https://proxy.golang.org，在国内是无法访问的，所以十分建议大家设置GOPROXY，这里我推荐使用goproxy.cn
+  #+BEGIN_SRC shell
+  go env -w GOPROXY=https://goproxy.cn,direct
+  #+END_SRC
+**** go mod命令
+常用的go mod命令
++ go mod download    下载依赖的module到本地cache（默认为$GOPATH/pkg/mod目录）
++ go mod edit        编辑go.mod文件
++ go mod graph       打印模块依赖图
++ go mod init        初始化当前文件夹, 创建go.mod文件
++ go mod tidy        增加缺少的module，删除无用的module
++ go mod vendor      将依赖复制到vendor下
++ go mod verify      校验依赖
++ go mod why         解释为什么需要依赖
+**** go.mod
++ go.mod文件记录了项目所有的依赖信息，其结构大致如下
+  #+BEGIN_SRC go
+  module github.com/Q1mi/studygo/blogger
+
+  go 1.12
+
+  require (
+      github.com/DeanThompson/ginpprof v0.0.0-20190408063150-3be636683586
+      github.com/gin-gonic/gin v1.4.0
+      github.com/go-sql-driver/mysql v1.4.1
+      github.com/jmoiron/sqlx v1.2.0
+      github.com/satori/go.uuid v1.2.0
+      google.golang.org/appengine v1.6.1 // indirect
+  )
+  
+  // module用来定义包名
+  // require用来定义依赖包及版本
+  // indirect表示间接引用
+  #+END_SRC
+**** 依赖的版本
++ go mod支持语义化版本号，比如go get foo@v1.2.3，也可以跟git的分支或tag，比如go get foo@master，当然也可以跟git提交哈希，比如go get foo@e3702bed2。关于依赖的版本支持以下几种格式
+  #+BEGIN_SRC go
+  gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7
+  gopkg.in/vmihailenco/msgpack.v2 v2.9.1
+  gopkg.in/yaml.v2 <=v2.2.1
+  github.com/tatsushid/go-fastping v0.0.0-20160109021039-d7bb493dee3e
+  latest
+  #+END_SRC
+**** replace
++ 在国内访问golang.org/x的各个包都需要翻墙，你可以在go.mod中使用replace替换成github上对应的库
+  #+BEGIN_SRC go
+  replace (
+      golang.org/x/crypto v0.0.0-20180820150726-614d502a4dac => github.com/golang/crypto v0.0.0-20180820150726-614d502a4dac
+      golang.org/x/net v0.0.0-20180821023952-922f4815f713 => github.com/golang/net v0.0.0-20180826012351-8a410e7b638d
+      golang.org/x/text v0.3.0 => github.com/golang/text v0.3.0
+  )
+
+  #+END_SRC
+**** go get
++ 在项目中执行go get命令可以下载依赖包，并且还可以指定下载的版本
++ 运行go get -u将会升级到最新的次要版本或者修订版本(x.y.z, z是修订版本号， y是次要版本号)
++ 运行go get -u=patch将会升级到最新的修订版本
++ 运行go get package@version将会升级到指定的版本号version
++ 如果下载所有依赖可以使用go mod download命令
+**** 整理依赖
++ 我们在代码中删除依赖代码后，相关的依赖库并不会在go.mod文件中自动移除。这种情况下我们可以使用go mod tidy命令更新go.mod中的依赖关系
+**** go mod edit
++ 格式化
+  因为我们可以手动修改go.mod文件，所以有些时候需要格式化该文件
+  #+BEGIN_SRC shell
+  go mod edit -fmt
+  #+END_SRC
++ 添加依赖项
+  #+BEGIN_SRC shell
+  go mod edit -require=golang.org/x/text
+  #+END_SRC
++ 移除依赖项
+  如果只是想修改go.mod文件中的内容，那么可以运行go mod edit -droprequire=package path，比如要在go.mod中移除golang.org/x/text包，可以使用如下命令
+  #+BEGIN_SRC shell
+  go mod edit -droprequire=golang.org/x/text
+  #+END_SRC
+**** 在项目中使用go module
++ 既有项目
+  如果需要对一个已经存在的项目启用go module，可以按照以下步骤操作
+  - 在项目目录下执行go mod init，生成一个go.mod文件
+  - 执行go get，查找并记录当前项目的依赖，同时生成一个go.sum记录每个依赖库的版本和哈希值
++ 新项目
+  对于一个新创建的项目，我们可以在项目文件夹下按照以下步骤操作
+  - 执行go mod init 项目名命令，在当前项目文件夹下创建一个go.mod文件
+  - 动编辑go.mod中的require依赖项或执行go get自动发现、维护依赖
+**** 使用go module导入本地包
+***** 在同一个项目下
++ 在一个项目（project）可以定义多个包（package）
++ 目录结构
+  moduledemo
+  ├── go.mod
+  ├── main.go
+  └── mypackage
+      └── mypackage.go
++ 导入包
+  #+BEGIN_SRC go
+  package main
+
+  import (
+      "fmt"
+      "moduledemo/mypackage"  // 导入同一项目下的mypackage包
+  )
+  func main() {
+      mypackage.New()
+      fmt.Println("main")
+  }
+
+  #+END_SRC
+***** 不在同一个项目下
++ 目录结构
+  ├── moduledemo
+  │   ├── go.mod
+  │   └── main.go
+  └── mypackage
+      ├── go.mod
+      └── mypackage.go
++ 导入包
+  - 这个时候，mypackage也需要进行module初始化，即拥有一个属于自己的go.mod文件，内容如下
+    #+BEGIN_SRC go
+    module mypackage
+
+    go 1.14
+    #+END_SRC
+
+  - 在moduledemo/main.go中按如下方式导入
+    #+BEGIN_SRC go
+    import (
+        "fmt"
+        "mypackage"
+    )
+    func main() {
+        mypackage.New()
+        fmt.Println("main")
+    }
+
+    #+END_SRC
+  - 因为这两个包不在同一个项目路径下，你想要导入本地包，并且这些包也没有发布到远程的github或其他代码仓库地址。这个时候我们就需要在go.mod文件中使用replace指令
+  - 在调用方也就是packagedemo/go.mod中按如下方式指定使用相对路径来寻找mypackage这个包
+    #+BEGIN_SRC go
+    module moduledemo
+
+    go 1.14
+
+    require "mypackage" v0.0.0
+    replace "mypackage" => "../mypackage"
+
+    #+END_SRC
+* 库
+** 标准库
+*** 输入输出 (Input/Output)
+**** io 
+***** 介绍
++ 为IO原语I/O primitives提供基本的接口
++ 在 io 包中最重要的是两个接口：Reader 和 Writer 接口。本章所提到的各种 IO 包，都跟这两个接口有关，也就是说，只要满足这两个接口，它就可以使用 IO 包的功能
+***** Reader 接口
++ 定义
+  #+BEGIN_SRC go
+  type Reader interface {
+      Read(p []byte) (n int, err error)
+  }
+  #+END_SRC
++ 示例
+  #+BEGIN_SRC go
+  func ReadFrom(reader io.Reader, num int) ([]byte, error) {
+    p := make([]byte, num)
+    n, err := reader.Read(p)
+    if n > 0 {
+        return p[:n], nil
+    }
+    return p, err
+  }
+
+  // ReadFrom 函数将 io.Reader 作为参数，也就是说，ReadFrom 可以从任意的地方读取数据，只要来源实现了 io.Reader 接口。比如，我们可以从标准输入、文件、字符串等读取数据
+  // 从标准输入读取
+  data, err = ReadFrom(os.Stdin, 11)
+  // 从普通文件读取，其中 file 是 os.File 的实例
+  data, err = ReadFrom(file, 9)
+  // 从字符串读取
+  data, err = ReadFrom(strings.NewReader("from string"), 12)
+  #+END_SRC
+***** Writer 接口
++ 定义
+  #+BEGIN_SRC go
+  type Writer interface {
+      Write(p []byte) (n int, err error)
+  }
+  #+END_SRC
++ 示例
+  #+BEGIN_SRC go
+  func Println(a ...interface{}) (n int, err error) {
+      return Fprintln(os.Stdout, a...)
+  }
+
+  // 所有实现了Write方法的类型都实现了 io.Writer 接口
+  // 在fmt标准库中，有一组函数：Fprint/Fprintf/Fprintln，它们接收一个 io.Wrtier 类型参数（第一个参数），也就是说它们将数据格式化输出到 io.Writer 中
+  #+END_SRC
+***** Closer 接口
++ 定义
+  #+BEGIN_SRC go
+  type Closer interface {
+      Close() error
+  }
+  #+END_SRC
++ 文件 (os.File)、归档（压缩包）、数据库连接、Socket 等需要手动关闭的资源都实现了 Closer 接口。实际编程中，经常将 Close 方法的调用放在 defer 语句中
++ 示例
+  #+BEGIN_SRC go
+  // 初学者容易写出这样的代码：
+  file, err := os.Open("studygolang.txt")
+  defer file.Close()
+  if err != nil {
+        ...
+  }
+  // 当文件 studygolang.txt 不存在或找不到时，file.Close() 会 panic，因为 file 是 nil。因此，应该将 defer file.Close() 放在错误检查之后
+  
+  #+END_SRC
+**** io/ioutil 
+封装一些实用的 I/O 函数
+**** fmt 
+实现格式化 I/O
+**** bufio 
+实现带缓冲I/O
+** 第三方库
+*** execl
+**** wps常用函数
+***** 路径相关
++ CELL("filename",A1)
+  显示文件的绝对路径及文件名
++ LEFT(CELL("filename",A1),FIND("[",CELL("filename",A1))-1)
+  显示文件的绝对路径
+  例如：INDIRECT("'"&LEFT(CELL("filename",A1),FIND("汇总数据\2020",CELL("filename",A1))-1)&"data\2020\04\"&"[b.xlsx]Sheet1'!$A$1")
+**** Excelize
+***** 安装
++ 安装更新
+  #+BEGIN_SRC shell
+  # 安装命令
+  go get github.com/360EntSecGroup-Skylar/excelize
+  # 更新命令
+  go get -u github.com/360EntSecGroup-Skylar/excelize
+  #+END_SRC
+***** 简单示例
++ 创建 Excel 文档
+  #+BEGIN_SRC go
+  package main
+
+  import "github.com/360EntSecGroup-Skylar/excelize"
+
+  func main() {
+        f := excelize.NewFile()
+        // 创建一个工作表
+        index := f.NewSheet("Sheet2")
+        // 设置单元格的值
+        f.SetCellValue("Sheet2", "A2", "Hello world.")
+        f.SetCellValue("Sheet1", "B2", 100)
+        // 设置工作簿的默认工作表
+        f.SetActiveSheet(index)
+        // 根据指定路径保存文件
+        if err := f.SaveAs("Book1.xlsx"); err != nil {
+            println(err.Error())
+        }
+  }
+
+  #+END_SRC
++ 读取 Excel 文档
+  #+BEGIN_SRC go
+  package main
+
+  import "github.com/360EntSecGroup-Skylar/excelize"
+
+  func main() {
+        f, err := excelize.OpenFile("Book1.xlsx")
+        if err != nil {
+            println(err.Error())
+            return
+        }
+        // 获取工作表中指定单元格的值
+        cell, err := f.GetCellValue("Sheet1", "B2")
+        if err != nil {
+            println(err.Error())
+            return
+        }
+        println(cell)
+        // 获取 Sheet1 上所有单元格
+        rows, err := f.GetRows("Sheet1")
+        for _, row := range rows {
+            for _, colCell := range row {
+                print(colCell, "\t")
+            }
+            println()
+        }
+  }
+
+  #+END_SRC
+***** 工作簿
+****** 创建工作簿
++ 使用 NewFile 新建 Excel 工作薄，新创建的工作簿中会默认包含一个名为 Sheet1 的工作表
+  #+BEGIN_SRC go
+  func NewFile() *File
+  #+END_SRC
+****** 打开工作簿
++ 使用 OpenFile 打开已有 Excel 文档
+  #+BEGIN_SRC go
+  func OpenFile(filename string) (*File, error)
+  #+END_SRC
+****** 保存工作簿
++ 使用 Save 保存对 Excel 文档的编辑
+  #+BEGIN_SRC go
+  func (f *File) Save() error
+  #+END_SRC
+****** 另存为
++ 使用 SaveAs 保存 Excel 文档为指定文件
+  #+BEGIN_SRC go
+  func (f *File) SaveAs(name string) error
+  #+END_SRC
+****** 新建工作表
++ 根据给定的工作表名称添加新的工作表，并返回工作表索引。新创建的工作簿将会包含一个名为 Sheet1 的默认工作簿
+  #+BEGIN_SRC go
+  func (f *File) NewSheet(name string) int
+  #+END_SRC
+****** 删除工作表
++ 根据给定的工作表名称删除指定工作表，谨慎使用此方法，这将会影响到与被删除工作表相关联的公式、引用、图表等元素。如果有其他组件引用了被删除工作表上的值，将会引发错误提示，甚至将会导致打开工作簿失败。当工作簿中仅包含一个工作表时，调用此方法无效
+  #+BEGIN_SRC go
+  func (f *File) DeleteSheet(name string)
+  #+END_SRC
+****** 复制工作表
++ 根据给定的被复制工作表与目标工作表索引复制工作表，目标工作表索引需要开发者自行确认是否已经存在。目前支持仅包含单元格值和公式的工作表间的复制，不支持包含表格、图片、图表和透视表等元素的工作表之间的复制
+  #+BEGIN_SRC go
+  func (f *File) CopySheet(from, to int) error
+
+  // 名称为 Sheet1 的工作表已经存在 ...
+  index := f.NewSheet("Sheet2")
+  err := f.CopySheet(1, index)
+  return err
+  #+END_SRC
+****** 设置默认工作表
++ 根据给定的索引值设置默认工作表，索引的值应该大于 0 且小于工作簿所包含的累积工作表总数
+  #+BEGIN_SRC go
+  func (f *File) SetActiveSheet(index int)
+  #+END_SRC
+****** 获取默认工作表索引
++ 获取默认工作表的索引，如果没有找到默认工作表将返回 0
+  #+BEGIN_SRC go
+  func (f *File) GetActiveSheetIndex() int
+  #+END_SRC
+****** 设置工作表可见性
++ 根据给定的工作表名称和可见性参数设置工作表的可见性。一个工作簿中至少包含一个可见工作表。如果给定的工作表为默认工作表，则对其可见性设置无效。工作表可见性状态可参考工作表状态枚举
+  #+BEGIN_SRC go
+  func (f *File) SetSheetVisible(name string, visible bool) error
+
+  // 例如，隐藏名为 Sheet1 的工作表:
+  err := f.SetSheetVisible("Sheet1", false)
+  #+END_SRC
++ 工作表状态枚举
+  visible
+  hidden
+  veryHidden
+****** 获取工作表可见性
++ 根据给定的工作表名称获取工作表可见性设置。例如，获取名为 Sheet1 的工作表可见性设置
+  #+BEGIN_SRC go
+  func (f *File) GetSheetVisible(name string) bool
+
+  f.GetSheetVisible("Sheet1")
+  #+END_SRC
+****** 设置工作表视图属性
++ 根据给定的工作表名称、视图索引和视图参数设置工作表视图属性，viewIndex 可以是负数，如果是这样，则向后计数（-1 代表最后一个视图）
+  #+BEGIN_SRC go
+  func (f *File) SetSheetViewOptions(name string, viewIndex int, opts ...SheetViewOption) error
+
+  // 例1:
+  err = f.SetSheetViewOptions("Sheet1", -1, ShowGridLines(false))
+  // 例2:
+  f := excelize.NewFile()
+  const sheet = "Sheet1"
+
+  if err := f.SetSheetViewOptions(sheet, 0,
+      excelize.DefaultGridColor(false),
+      excelize.RightToLeft(false),
+      excelize.ShowFormulas(true),
+      excelize.ShowGridLines(true),
+      excelize.ShowRowColHeaders(true),
+      excelize.ZoomScale(80),
+      excelize.TopLeftCell("C3"),
+  ); err != nil {
+      println(err.Error())
+  }
+
+  var zoomScale excelize.ZoomScale
+  fmt.Println("Default:")
+  fmt.Println("- zoomScale: 80")
+
+  if err := f.SetSheetViewOptions(sheet, 0, excelize.ZoomScale(500)); err != nil {
+      println(err.Error())
+  }
+  
+  if err := f.GetSheetViewOptions(sheet, 0, &zoomScale); err != nil {
+      println(err.Error())
+  }
+
+  fmt.Println("Used out of range value:")
+  fmt.Println("- zoomScale:", zoomScale)
+
+  if err := f.SetSheetViewOptions(sheet, 0, excelize.ZoomScale(123)); err != nil {
+      println(err.Error())
+  }
+
+  if err := f.GetSheetViewOptions(sheet, 0, &zoomScale); err != nil {
+      println(err.Error())
+  }
+
+  fmt.Println("Used correct value:")
+  fmt.Println("- zoomScale:", zoomScale)
+
+  // 得到输出：
+  Default:
+  - zoomScale: 80
+  Used out of range value:
+  - zoomScale: 80
+  Used correct value:
+  - zoomScale: 123
+  #+END_SRC
++ 可选视图参数
+  | 可选视图参数      | 类型    |
+  |-------------------+---------|
+  | DefaultGridColor  | bool    |
+  | RightToLeft       | bool    |
+  | ShowFormulas      | bool    |
+  | ShowGridLines     | bool    |
+  | ShowRowColHeaders | bool    |
+  | ZoomScale         | float64 |
+  | TopLeftCell       | string  |
+****** 获取工作表视图属性
++ 根据给定的工作表名称、视图索引和视图参数获取工作表视图属性，viewIndex 可以是负数，如果是这样，则向后计数（-1 代表最后一个视图）
+  #+BEGIN_SRC go
+  func (f *File) GetSheetViewOptions(name string, viewIndex int, opts ...SheetViewOptionPtr) error
+  #+END_SRC
+****** 设置页眉和页脚
++ 根据给定的工作表名称和控制字符设置工作表的页眉和页脚
+  #+BEGIN_SRC go
+  func (f *File) SetHeaderFooter(sheet string, settings *FormatHeaderFooter) error
+  #+END_SRC
++ 页眉和页脚包含如下字段
+  | 字段             | 描述                           |
+  |------------------+--------------------------------|
+  | AlignWithMargins | 设定页眉页脚页边距与页边距对齐 |
+  | DifferentFirst   | 设定第一页页眉和页脚           |
+  | DifferentOddEven | 设定奇数和偶数页页眉和页脚     |
+  | ScaleWithDoc     | 设定页眉和页脚跟随文档缩放     |
+  | OddFooter        | 奇数页页脚控制字符             |
+  | OddHeader        | 奇数页页眉控制字符             |
+  | EvenFooter       | 偶数页页脚控制字符             |
+  | EvenHeader       | 偶数页页眉控制字符             |
+  | FirstFooter      | 首页页脚控制字符               |
+  | FirstHeader      | 首页页眉控制字符               |
++ 下表中的格式代码可用于 6 个字符串类型字段: OddHeader, OddFooter, EvenHeader, EvenFooter, FirstFooter, FirstHeader
+  | 格式代码               | 描述                                                                                                                               |
+  |------------------------+------------------------------------------------------------------------------------------------------------------------------------|
+  | &&                     | 字符 "&"                                                                                                                           |
+  | &font-size             | 文本字体的大小, 其中字体大小为以磅为单位的十进制字体大小                                                                           |
+  | &"font name,font type" | 文本字体名字符串、字体名称和文本字体类型字符串、字体类型                                                                           |
+  | &"-,Regular"           | 常规文本格式。关闭粗体和斜体模式                                                                                                   |
+  | &A                     | 当前工作表名称                                                                                                                     |
+  | &B or &"-,Bold"        | 粗体文本格式, 关闭或打开，默认关闭                                                                                                 |
+  | &D                     | 当前日期                                                                                                                           |
+  | &C                     | 中间部分                                                                                                                           |
+  | &E                     | 对文本使用双下划线                                                                                                                 |
+  | &F                     | 当前工作簿文件名称                                                                                                                 |
+  | &G                     | 将指定对象做为背景                                                                                                                 |
+  | &H                     | 文字阴影                                                                                                                           |
+  | &I or &"-,Italic"      | 文字倾斜                                                                                                                           |
+  | &K                     | 字体颜色 格式为 RRGGBB 的 RGB 颜色 主题颜色被指定为 TTSNNN, 其中 TT 是主题颜色 id, S 是色调或阴影的 "+" 或者 "-", 是色调或阴影的值 |
+  | &L                     | 左侧部分                                                                                                                           |
+  | &N                     | 总页数                                                                                                                             |
+  | &O                     | 大纲文本格式                                                                                                                       |
+  | &R                     | 右侧部分                                                                                                                           |
+  | &S                     | 文本删除线                                                                                                                         |
+  | &T                     | 当前时间                                                                                                                           |
+  | &U                     | 为文本添加单下划线。默认模式处于关闭状态                                                                                           |
+  | &X                     | 上标格式                                                                                                                           |
+  | &Y                     | 下标格式                                                                                                                           |
+  | &Z                     | 当前工作簿文件路径                                                                                                                 |
+  + 示例
+    #+BEGIN_SRC go
+    err := f.SetHeaderFooter("Sheet1", &excelize.FormatHeaderFooter{
+          DifferentFirst:   true,
+          DifferentOddEven: true,
+          OddHeader:        "&R&P",
+          OddFooter:        "&C&F",
+          EvenHeader:       "&L&P",
+          EvenFooter:       "&L&D&R&T",
+          FirstHeader:      `&CCenter &"-,Bold"Bold&"-,Regular"HeaderU+000A&D`,
+    })
+    // 上面的例子蕴含如下格式
+    // 第一页有自己的页眉和页脚
+    // 奇数和偶数页具有不同的页眉和页脚
+    // 奇数页标题右侧部分为当前页码
+    // 奇数页页脚中心部分为当前工作簿的文件名
+    // 偶数页标题左侧部分为当前页码
+    // 左侧部分为当前日期，偶数页页脚右侧部分为当前时间
+    // 第一页中心部分的第一行上的文本为“Center Bold Header”, 第二行为日期
+    // 第一页上没有页脚
+    #+END_SRC
+****** 设置名称
++ 根据给定的名称和作范围设置名称，默认范围是工作簿
+  #+BEGIN_SRC go
+  func (f *File) SetDefinedName(definedName *DefinedName) error
+  
+  f.SetDefinedName(&excelize.DefinedName{
+        Name:     "Amount",
+        RefersTo: "Sheet1!$A$2:$D$5",
+        Comment:  "defined name comment",
+        Scope:    "Sheet2",
+  })
+
+  #+END_SRC
+****** 获取名称
++ 获取作用范围内的工作簿和工作表的名称列表
+  #+BEGIN_SRC go
+  func (f *File) GetDefinedName() []DefinedName
+  #+END_SRC
+****** 删除名称
++ 根据给定的名称和名称作用范围删除已定义的名称，默认名称的作用范围为工作簿
+  #+BEGIN_SRC go
+  func (f *File) DeleteDefinedName(definedName *DefinedName) error
+
+  f.DeleteDefinedName(&excelize.DefinedName{
+        Name:     "Amount",
+        Scope:    "Sheet2",
+  })
+
+  #+END_SRC
+****** 设置工作簿属性
++ 设置工作簿的核心属性
+  #+BEGIN_SRC go
+  func (f *File) SetDocProps(docProperties *DocProperties) error
+  #+END_SRC
++ 可以设置的属性包括
+  | 属性           | 描述                                                            |
+  |----------------+-----------------------------------------------------------------|
+  | Title          | 文档标题                                                        |
+  | Subject        | 文档主题                                                        |
+  | Creator        | 创作者                                                          |
+  | Keywords       | 文档关键词                                                      |
+  | Description    | 资源内容的说明                                                  |
+  | LastModifiedBy | 执行上次修改的用户                                              |
+  | Language       | 文档内容的主要语言                                              |
+  | Identifier     | 对给定上下文中的资源的明确引用                                  |
+  | Revision       | 文档修订版本                                                    |
+  | ContentStatus  | 文档内容的状态。例如: 值可能包括 "Draft"、"Reviewed" 和 "Final" |
+  | Category       | 文档内容的分类                                                  |
+  | Version        | 版本号，该值由用户或应用程序设置                                |
++ 示例
+  #+BEGIN_SRC go
+  err := f.SetDocProps(&excelize.DocProperties{
+        Category:       "category",
+        ContentStatus:  "Draft",
+        Created:        "2019-06-04T22:00:10Z",
+        Creator:        "Go Excelize",
+        Description:    "This file created by Go Excelize",
+        Identifier:     "xlsx",
+        Keywords:       "Spreadsheet",
+        LastModifiedBy: "Go Author",
+        Modified:       "2019-06-04T22:00:10Z",
+        Revision:       "0",
+        Subject:        "Test Subject",
+        Title:          "Test Title",
+        Language:       "en-US",
+        Version:        "1.0.0",
+  })
+
+  #+END_SRC
+****** 获取工作簿属性
++ 获取工作簿的核心属性
+  #+BEGIN_SRC go
+  func (f *File) GetDocProps() (*DocProperties, error)
+  #+END_SRC
+***** 工作表
+****** 设置列可见性
++ 根据给定的工作表名称（大小写敏感）和列名称设置列可见性
+  #+BEGIN_SRC go
+  func (f *File) SetColVisible(sheet, col string, visible bool) error
+
+  // 例如隐藏名为 Sheet1 工作表上的 D 列
+  err := f.SetColVisible("Sheet1", "D", false)
+  // 隐藏名称为 Sheet1 的工作表中的 D 至 F 列
+  err := f.SetColVisible("Sheet1", "D:F", false)
+  #+END_SRC
+****** 设置列宽度
++ 根据给定的工作表名称（大小写敏感）、列范围和宽度值设置单个或多个列的宽度
+  #+BEGIN_SRC go
+  func (f *File) SetColWidth(sheet, startcol, endcol string, width float64) error
+  // 例如设置名为 Sheet1 工作表上 A 到 H 列的宽度为 20
+  f := excelize.NewFile()
+  err := f.SetColWidth("Sheet1", "A", "H", 20)
+  #+END_SRC
+****** 设置行高度
++ 根据给定的工作表名称（大小写敏感）、行号和高度值设置单行高度
+  #+BEGIN_SRC go
+  func (f *File) SetRowHeight(sheet string, row int, height float64) error
+  // 例如设置名为 Sheet1 工作表首行的高度为 50
+  err := f.SetRowHeight("Sheet1", 1, 50)
+  #+END_SRC
+****** 设置行可见性
++ 根据给定的工作表名称（大小写敏感）和行号设置行可见性
+  #+BEGIN_SRC go
+  func (f *File) SetRowVisible(sheet string, row int, visible bool) error
+  // 例如隐藏名为 Sheet1 工作表上第二行
+  err := f.SetRowVisible("Sheet1", 2, false)
+  #+END_SRC
+****** 获取工作表名
++ 根据给定的工作表索引获取工作表名称，如果工作表不存在将返回空字符
+  #+BEGIN_SRC go
+  func (f *File) GetSheetName(index int) string
+  #+END_SRC
+****** 获取列可见性
++ 根据给定的工作表名称（大小写敏感）和列名获取工作表中指定列的可见性，可见返回值为 true，否则为 false
+  #+BEGIN_SRC go
+  func (f *File) GetColVisible(sheet, column string) (bool, error)
+  // 获取名为 Sheet1 的工作表上 D 列的可见性
+  visible, err := f.GetColVisible("Sheet1", "D")
+  #+END_SRC
+****** 获取列宽度
++ 根据给定的工作表名称（大小写敏感）和行号获取工作表中指定行的高度
+  #+BEGIN_SRC go
+  func (f *File) GetRowHeight(sheet string, row int) (float64, error)
+  // 例如，获取名为 Sheet1 的工作表首行的高度
+  height, err := f.GetRowHeight("Sheet1", 1)
+  #+END_SRC
+****** 获取行可见性
++ 根据给定的工作表名称（大小写敏感）和行号获取工作表中指定行的可见性
+  #+BEGIN_SRC go
+  func (f *File) GetRowVisible(sheet string, row int) (bool, error)
+  // 例如，获取名为 Sheet1 的工作表第 2 行的可见性
+  err := f.GetRowVisible("Sheet1", 2)
+  #+END_SRC
+****** 获取工作表索引
++ 根据给定的工作表名称（大小写敏感）获取该工作表的索引，如果工作表不存在将返回 0。获取到的索引可以在设置工作簿默认工作表时，作为调用 SetActiveSheet() 函数的参数使用
+  #+BEGIN_SRC go
+  func (f *File) GetSheetIndex(name string) int
+  #+END_SRC
+****** 获取工作表列表
++ 获取工作簿中以名称和索引构成的全部工作表和图表工作表列表
+  #+BEGIN_SRC go
+  func (f *File) GetSheetMap() map[int]string
+
+  f, err := excelize.OpenFile("./Book1.xlsx")
+  if err != nil {
+        return
+  }
+  for index, name := range f.GetSheetMap() {
+        fmt.Println(index, name)
+  }
+
+  #+END_SRC
+****** 设置工作表名称
++ 根据给定的新旧工作表名称（大小写敏感）重命名工作表。工作表名称最多允许使用 31 个字符，此功能仅更改工作表的名称，而不会更新与单元格关联的公式或引用中的工作表名称。因此使用此功能重命名工作表后可能导致公式错误或参考引用问题
+  #+BEGIN_SRC go
+  func (f *File) SetSheetName(oldName, newName string)
+  #+END_SRC
+****** 设置工作表属性
++ 根据给定的工作表名称（大小写敏感）和筛选项设置工作表属性
+  #+BEGIN_SRC go
+  func (f *File) SetSheetPrOptions(name string, opts ...SheetPrOption) error
+  #+END_SRC
++ 可选属性列表
+  | 可选属性                          | 类型   |
+  |-----------------------------------+--------|
+  | CodeName                          | string |
+  | EnableFormatConditionsCalculation | bool   |
+  | Published                         | bool   |
+  | FitToPage                         | bool   |
+  | AutoPageBreaks                    | bool   |
+  | OutlineSummaryBelow               | bool   |
++ 示例
+  #+BEGIN_SRC go
+  f := excelize.NewFile()
+  const sheet = "Sheet1"
+
+  if err := f.SetSheetPrOptions(sheet,
+        excelize.CodeName("code"),
+        excelize.EnableFormatConditionsCalculation(false),
+        excelize.Published(false),
+        excelize.FitToPage(true),
+        excelize.AutoPageBreaks(true),
+        excelize.OutlineSummaryBelow(false),
+  ); err != nil {
+        panic(err)
+  }
+
+  #+END_SRC
+****** 获取工作表属性
++ 根据给定的工作表名称（大小写敏感）和筛选项获取工作表属性
+  #+BEGIN_SRC go
+  func (f *File) GetSheetPrOptions(name string, opts ...SheetPrOptionPtr) error
+  #+END_SRC
++ 示例
+  #+BEGIN_SRC go
+  f := excelize.NewFile()
+  const sheet = "Sheet1"
+
+  var (
+        codeName                          excelize.CodeName
+        enableFormatConditionsCalculation excelize.EnableFormatConditionsCalculation
+        published                         excelize.Published
+        fitToPage                         excelize.FitToPage
+        autoPageBreaks                    excelize.AutoPageBreaks
+        outlineSummaryBelow               excelize.OutlineSummaryBelow
+  )
+
+  if err := f.GetSheetPrOptions(sheet,
+        &codeName,
+        &enableFormatConditionsCalculation,
+        &published,
+        &fitToPage,
+        &autoPageBreaks,
+        &outlineSummaryBelow,
+  ); err != nil {
+        panic(err)
+  }
+  fmt.Println("Defaults:")
+  fmt.Printf("- codeName: %q\n", codeName)
+  fmt.Println("- enableFormatConditionsCalculation:", enableFormatConditionsCalculation)
+  fmt.Println("- published:", published)
+  fmt.Println("- fitToPage:", fitToPage)
+  fmt.Println("- autoPageBreaks:", autoPageBreaks)
+  fmt.Println("- outlineSummaryBelow:", outlineSummaryBelow)
+  // 输出：
+
+  Defaults:
+    - codeName: ""
+    - enableFormatConditionsCalculation: true
+    - published: true
+    - fitToPage: false
+    - autoPageBreaks: false
+    - outlineSummaryBelow: true
+  #+END_SRC
+****** 插入列
++ 根据给定的工作表名称（大小写敏感）和列名称，在指定列前插入空白列
+  #+BEGIN_SRC go
+  func (f *File) InsertCol(sheet, column string) error
+
+  // 例如，在名为 Sheet1 的工作表的 C 列前插入空白列
+  err := f.InsertCol("Sheet1", "C")
+  #+END_SRC
+****** 插入行
++ 根据给定的工作表名称（大小写敏感）和行号，在指定行前插入空白行
+  #+BEGIN_SRC go
+  func (f *File) InsertRow(sheet string, row int) error
+
+  // 例如，在名为 Sheet1 的工作表的第 3 行前插入空白行：
+  err := f.InsertRow("Sheet1", 3)
+  #+END_SRC
+****** 追加复制行
++ 根据给定的工作表名称（大小写敏感）和行号，在该行后追加复制
++ 谨慎使用此方法，这将影响所有对该工作表中原有公式、图表等资源引用的更改。如果该工作表包含任何引用值，在使用此方法后使用 Excel 应用程序打开它时将可能导致文件错误。excelize 目前仅支持对工作表上部分引用的更新
+  #+BEGIN_SRC go
+  func (f *File) DuplicateRow(sheet string, row int) error
+  // 例如，将名为 Sheet1 的工作表的第 2 行复制到第 3 行：
+  err := f.DuplicateRow("Sheet1", 2)
+  #+END_SRC
+****** 复制行
++ 根据给定的工作表名称（大小写敏感）和行号，在指定行后复制该行
++ 谨慎使用此方法，这将影响所有对该工作表中原有公式、图表等资源引用的更改。如果该工作表包含任何引用值，在使用此方法后使用 Excel 应用程序打开它时将可能导致文件错误。excelize 目前仅支持对工作表上部分引用的更新
+  #+BEGIN_SRC go
+  func (f *File) DuplicateRowTo(sheet string, row, row2 int) error
+  // 例如，将名为 Sheet1 的工作表的第 2 行后复制到第 7 行：
+  err := f.DuplicateRowTo("Sheet1", 2, 7)
+  #+END_SRC
+****** 创建行的分级显示
++ 根据给定的工作表名称（大小写敏感）、行号和分级参数创建组
+  #+BEGIN_SRC go
+  func (f *File) SetRowOutlineLevel(sheet string, row int, level uint8) error
+  
+  // 例如，在名为 Sheet1 的工作表的第 2 行创建 1 级分组
+  err := f.SetRowOutlineLevel("Sheet1", 2, 1)
+  #+END_SRC
+****** 创建列的分级显示
++ 根据给定的工作表名称（大小写敏感）、列名称和分级参数创建组
+  #+BEGIN_SRC go
+  func (f *File) SetColOutlineLevel(sheet, col string, level uint8) error
+  // 例如，在名为 Sheet1 的工作表的 D 列创建 2 级分组
+  err := f.SetColOutlineLevel("Sheet1", "D", 2)
+  #+END_SRC
+****** 获取行的分级显示
++ 根据给定的工作表名称（大小写敏感）和行号获取分组级别
+  #+BEGIN_SRC go
+  func (f *File) GetRowOutlineLevel(sheet string, row int) (uint8, error)
+  // 例如，获取名为 Sheet1 的工作表第 2 行的分组级别。
+  err := f.GetRowOutlineLevel("Sheet1", 2)
+  #+END_SRC
+****** 获取列的分级显示
++ 根据给定的工作表名称（大小写敏感）和列名称获取分组分级
+  #+BEGIN_SRC go
+  func (f *File) GetColOutlineLevel(sheet, col string) (uint8, error)
+  // 例如，获取名为 Sheet1 的工作表的 D 列的分组级别。
+  level, err := f.GetColOutlineLevel("Sheet1", "D")
+  #+END_SRC
+****** 行迭代器
++ 根据给定的工作表名称（大小写敏感）获取该工作表的行迭代器
+  #+BEGIN_SRC go
+  func (f *File) Rows(sheet string) (*Rows, error)
+
+  // 使用行迭代器遍历单元格：
+  rows, err := f.Rows("Sheet1")
+  if err != nil {
+        println(err.Error())
+        return
+  }
+  for rows.Next() {
+        row, err := rows.Columns()
+        if err != nil {
+            println(err.Error())
+        }
+        for _, colCell := range row {
+            print(colCell, "\t")
+        }
+        println()
+  }
+
+  #+END_SRC
++ 行迭代器 - 单行操作
+  #+BEGIN_SRC go
+  // 返回当前行所有列的值
+  func (rows *Rows) Columns() ([]string, error)
+  #+END_SRC
++ 行迭代器 - 遍历操作
+  #+BEGIN_SRC go
+  // 如果下一行有值存在将返回 true
+  func (rows *Rows) Next() bool
+  #+END_SRC
++ 行迭代器 - 错误处理
+  #+BEGIN_SRC go
+  // 当查找下一行出现错误时将返回 error
+  func (rows *Rows) Error() error
+  #+END_SRC
+****** 在工作表中搜索
++ 根据给定的工作表名称（大小写敏感），单元格值或正则表达式来获取坐标。此函数仅支持字符串和数字的完全匹配，不支持公式计算后的结果、格式化数字和条件搜索。如果搜索结果是合并的单元格，将返回合并区域左上角的坐标
+  #+BEGIN_SRC go
+  func (f *File) SearchSheet(sheet, value string, reg ...bool) ([]string, error)
+
+  // 例如，在名为 Sheet1 的工作表中搜索值 100 的坐标:
+  result, err := f.SearchSheet("Sheet1", "100")
+  // 例如，在名为 Sheet1 的工作表中搜索 0-9 范围内数值的坐标:
+  result, err := f.SearchSheet("Sheet1", "[0-9]", true)
+  #+END_SRC
+****** 保护工作表
++ 防止其他用户意外或有意更改、移动或删除工作表中的数据
+  #+BEGIN_SRC go
+  func (f *File) ProtectSheet(sheet string, settings *FormatSheetProtection) error
+
+  // 例如，将名为 Sheet1 的工作表设置密码保护，但是允许选择锁定的单元格、选择未锁定的单元格、编辑方案
+  err := f.ProtectSheet("Sheet1", &excelize.FormatSheetProtection{
+    Password:      "password",
+    EditScenarios: false,
+  })
+  #+END_SRC
+****** 取消保护工作表
++ 根据给定的工作表名称（大小写敏感）取消保护该工作表
+  #+BEGIN_SRC go
+  func (f *File) UnprotectSheet(sheet string) error
+  #+END_SRC
+****** 删除列
++ 根据给定的工作表名称（大小写敏感）和列名称删除指定列
++ 谨慎使用此方法，这将影响所有对该工作表中原有公式、图表等资源引用的更改。如果该工作表包含任何引用值，在使用此方法后使用 Excel 应用程序打开它时将可能导致文件错误。excelize 目前仅支持对工作表上部分引用的更新
+  #+BEGIN_SRC go
+  func (f *File) RemoveCol(sheet, col string) error
+
+  // 例如，删除名为 Sheet1 的 C 列：
+  err := f.RemoveCol("Sheet1", "C")
+  #+END_SRC
+****** 删除行
++ 根据给定的工作表名称（大小写敏感）和行号删除指定行
++ 谨慎使用此方法，这将影响所有对该工作表中原有公式、图表等资源引用的更改。如果该工作表包含任何引用值，在使用此方法后使用 Excel 应用程序打开它时将可能导致文件错误。excelize 目前仅支持对工作表上部分引用的更新
+  #+BEGIN_SRC go
+  func (f *File) RemoveRow(sheet string, row int) error
+  // 例如，删除名为 Sheet1 的第 3 行：
+  err := f.RemoveRow("Sheet1", 3)
+  #+END_SRC
+****** 按行赋值
++ 根据给定的工作表名称（大小写敏感）、起始坐标和 slice 类型引用按行赋值
+  #+BEGIN_SRC go
+  func (f *File) SetSheetRow(sheet, axis string, slice interface{}) error
+  // 例如，在名为 Sheet1 的工作簿第 6 行上，以 B6 单元格作为起始坐标按行赋值：
+  err := f.SetSheetRow("Sheet1", "B6", &[]interface{}{"1", nil, 2})
+  #+END_SRC
+****** 插入分页符
++ 根据给定的工作表名称和单元格坐标插入分页符。分页符是将工作表分成单独的页面以便打印的分隔线
+  #+BEGIN_SRC go
+  func (f *File) InsertPageBreak(sheet, cell string) (err error)
+  #+END_SRC
+****** 删除分页符
++ 根据给定的工作表名称和单元格坐标删除分页符
+  #+BEGIN_SRC go
+  func (f *File) RemovePageBreak(sheet, cell string) (err error)
+  #+END_SRC
+***** 单元格
+****** 设置单元格的值
++ 根据给定的工作表名和单元格坐标设置单元格的值。指定的坐标不应在表格的第一行范围
+  #+BEGIN_SRC go
+  func (f *File) SetCellValue(sheet, axis string, value interface{}) error
+  #+END_SRC
++ 支持的数据类型
+  int
+  int8
+  int16
+  int32
+  int64
+  uint
+  uint8
+  uint16
+  uint32
+  uint64
+  float32
+  float64
+  string
+  []byte
+  time.Duration
+  time.Time
+  bool
+  nil
+****** 设置布尔型值
++ 根据给定的工作表名和单元格坐标设置布尔型单元格的值
+  #+BEGIN_SRC go
+  func (f *File) SetCellBool(sheet, axis string, value bool) error
+  #+END_SRC
+****** 设置默认字符型值
++ 根据给定的工作表名和单元格坐标设置字符型单元格的值，字符将不会进行特殊字符过滤
+  #+BEGIN_SRC go
+  func (f *File) SetCellDefault(sheet, axis, value string) error
+  #+END_SRC
+****** 设置实数
++ 根据给定的工作表名和单元格坐标设置实数单元格的值。
+  #+BEGIN_SRC go
+  func (f *File) SetCellInt(sheet, axis string, value int) error
+  #+END_SRC
+****** 设置字符型值
++ 根据给定的工作表名和单元格坐标设置字符型单元格的值，字符将会进行特殊字符过滤，并且字符串的累计长度应不超过 32767，多余的字符将会被忽略
+  #+BEGIN_SRC go
+  func (f *File) SetCellStr(sheet, axis, value string) error
+  #+END_SRC
+****** 设置单元格样式
++ 根据给定的工作表名、单元格坐标区域和样式索引设置单元格的值。样式索引可以通过 NewStyle 函数获取。注意，在同一个坐标区域内的 diagonalDown 和 diagonalUp 需要保持颜色一致
+  #+BEGIN_SRC go
+  func (f *File) SetCellStyle(sheet, hcell, vcell string, styleID int) error
+  
+  // 例1，为名为 Sheet1 的工作表 D7 单元格设置边框样式
+  style, err := f.NewStyle(`{"border":[{"type":"left","color":"0000FF","style":3},{"type":"top","color":"00FF00","style":4},{"type":"bottom","color":"FFFF00","style":5},{"type":"right","color":"FF0000","style":6},{"type":"diagonalDown","color":"A020F0","style":7},{"type":"diagonalUp","color":"A020F0","style":8}]}`)
+  if err != nil {
+        println(err.Error())
+  }
+  err = f.SetCellStyle("Sheet1", "D7", "D7", style)
+  
+  // 例2，为名为 Sheet1 的工作表 D7 单元格设置渐变样式：
+  style, err := f.NewStyle(`{"fill":{"type":"gradient","color":["#FFFFFF","#E0EBF5"],"shading":1}}`)
+  if err != nil {
+      println(err.Error())
+  }
+  err = f.SetCellStyle("Sheet1", "D7", "D7", style)
+
+  // 例3，为名为 Sheet1 的工作表 D7 单元格设置纯色填充：
+  style, err := f.NewStyle(`{"fill":{"type":"pattern","color":["#E0EBF5"],"pattern":1}}`)
+  if err != nil {
+      println(err.Error())
+  }
+  err = f.SetCellStyle("Sheet1", "D7", "D7", style)
+
+  // 例4，为名为 Sheet1 的工作表 D7 单元格设置字符间距与旋转角度：
+  f.SetCellValue("Sheet1", "D7", "样式")
+  style, err := f.NewStyle(`{"alignment":{"horizontal":"center","ident":1,"justify_last_line":true,"reading_order":0,"relative_indent":1,"shrink_to_fit":true,"text_rotation":45,"vertical":"","wrap_text":true}}`)
+  if err != nil {
+      println(err.Error())
+  }
+  err = f.SetCellStyle("Sheet1", "D7", "D7", style)
+
+  // 例5，Excel 中的日期和时间用实数表示，例如 2017/7/4 12:00:00 PM 可以用数字 42920.5 来表示。为名为 Sheet1 的工作表 D7 单元格设置时间格式：
+  f.SetCellValue("Sheet1", "D7", 42920.5)
+  f.SetColWidth("Sheet1", "D", "D", 13)
+  style, err := f.NewStyle(`{"number_format": 22}`)
+  if err != nil {
+      println(err.Error())
+  }
+  err = f.SetCellStyle("Sheet1", "D7", "D7", style)
+
+  // 例6，为名为 Sheet1 的工作表 D7 单元格设置字体、字号、颜色和倾斜样式：
+  f.SetCellValue("Sheet1", "D7", "Excel")
+  style, err := f.NewStyle(`{"font":{"bold":true,"italic":true,"family":"Times New Roman","size":36,"color":"#777777"}}`)
+  if err != nil {
+      println(err.Error())
+  }
+  err = f.SetCellStyle("Sheet1", "D7", "D7", style)
+
+  // 例7，锁定并隐藏名为 Sheet1 的工作表 D7 单元格：
+  style, err := f.NewStyle(`{"protection":{"hidden":true, "locked":true}}`)
+  if err != nil {
+      println(err.Error())
+  }
+  err = f.SetCellStyle("Sheet1", "D7", "D7", style)
+  #+END_SRC
+****** 设置超链接
++ 根据给定的工作表、单元格坐标、链接资源和资源类型设置单元格的超链接。资源类型分为外部链接地址 External 和工作簿内部位置链接 Location 两种。每个工作表中的包含最大超链接限制为 65530 个
+  #+BEGIN_SRC go
+  func (f *File) SetCellHyperLink(sheet, axis, link, linkType string) error
+
+  // 例1，为名为 Sheet1 的工作表 A3 单元格添加外部链接：
+  err := f.SetCellHyperLink("Sheet1", "A3", "https://github.com/360EntSecGroup-Skylar/excelize", "External")
+  // 为单元格设置字体和下划线样式
+  style, err := f.NewStyle(`{"font":{"color":"#1265BE","underline":"single"}}`)
+  err = f.SetCellStyle("Sheet1", "A3", "A3", style)
+
+  // 例2，为名为 Sheet1 的工作表 A3 单元格添加内部位置链接：
+  err := f.SetCellHyperLink("Sheet1", "A3", "Sheet1!A40", "Location")
+  #+END_SRC
+****** 获取单元格的值
++ 根据给定的工作表和单元格坐标获取单元格的值，返回值将转换为 string 类型。如果可以将单元格格式应用于单元格的值，将返回应用后的值，否则将返回原始值
+  #+BEGIN_SRC go
+  func (f *File) GetCellValue(sheet, axis string) (string, error)
+  #+END_SRC
+****** 获取全部单元格的值
++ 根据给定的工作表名（大小写敏感）获取该工作表上全部单元格的值，以二维数组形式返回，其中单元格的值将转换为 string 类型。如果可以将单元格格式应用于单元格的值，将使用应用后的值，否则将使用原始值
+  #+BEGIN_SRC go
+  func (f *File) GetRows(sheet string) ([][]string, error)
+
+  // 例如，获取并遍历输出名为 Sheet1 的工作表上的所有单元格的值：
+  rows, err := f.GetRows("Sheet1")
+  for _, row := range rows {
+      for _, colCell := range row {
+          print(colCell, "\t")
+      }
+      println()
+  }
+  #+END_SRC
+****** 获取超链接
++ 根据给定的工作表名（大小写敏感）和单元格坐标获取单元格超链接，如果该单元格存在超链接，将返回 true 和链接地址，否则将返回 false 和空的链接地址
+  #+BEGIN_SRC go
+  func (f *File) GetCellHyperLink(sheet, axis string) (bool, string, error)
+
+  // 例如，获取名为 Sheet1 的工作表上坐标为 H6 单元格的超链接：
+  link, target, err := f.GetCellHyperLink("Sheet1", "H6")
+  #+END_SRC
+****** 获取样式索引
++ 根据给定的工作表名（大小写敏感）和单元格坐标获取单元格样式索引，获取到的索引可以在复制单元格样式时，作为调用 SetCellValue 函数的参数使用
+  #+BEGIN_SRC go
+  func (f *File) GetCellStyle(sheet, axis string) (int, error)
+  #+END_SRC
+****** 合并单元格
++ 根据给定的工作表名（大小写敏感）和单元格坐标区域合并单元格,如果给定的单元格坐标区域与已有的其他合并单元格相重叠，已有的合并单元格将会被删除
+  #+BEGIN_SRC go
+  func (f *File) MergeCell(sheet, hcell, vcell string) error
+
+  // 例如，合并名为 Sheet1 的工作表上 D3:E9 区域内的单元格：
+  err := f.MergeCell("Sheet1", "D3", "E9")
+  #+END_SRC
+****** 取消合并单元格
++ 根据给定的工作表名（大小写敏感）和单元格坐标区域取消合并单元格,如果给定的单元格坐标区域包含多个合并单元格，则全部合并单元格都将被取消合并
+  #+BEGIN_SRC go
+  func (f *File) UnmergeCell(sheet string, hcell, vcell string) error
+  
+  // 例如，取消合并名为 Sheet1 的工作表上 D3:E9 区域内的单元格：
+  err := f.UnmergeCell("Sheet1", "D3", "E9")
+  #+END_SRC
+****** 获取合并单元格
++ 根据给定的工作表名（大小写敏感）获取全部合并单元格的坐标区域和值
+  #+BEGIN_SRC go
+  func (f *File) GetMergeCells(sheet string) ([]MergeCell, error)
+  #+END_SRC
+****** 添加批注
++ 根据给定的工作表名称、单元格坐标和样式参数（作者与文本信息）添加批注。作者信息最大长度为 255 个字符，最大文本内容长度为 32512 个字符，超出该范围的字符将会被忽略
+  #+BEGIN_SRC go
+  func (f *File) AddComment(sheet, cell, format string) error
+  
+  // 例如，为 Sheet1!$A$3 单元格添加批注
+  err := f.AddComment("Sheet1", "A3", `{"author":"Excelize: ","text":"This is a comment."}`)
+  #+END_SRC
+****** 获取批注
++ 通过该方法可以获取全部工作表中的批注
+  #+BEGIN_SRC go
+  func (f *File) GetComments() (comments map[string][]Comment)
+  #+END_SRC
+****** 设置公式
++ 根据给定的工作表名（大小写敏感）和单元格坐设置取该单元格上的公式。公式的结果会在工作表被 Office Excel 应用程序打开时计算，Excelize 目前不提供公式计算引擎，所以无法计算公式结果
+  #+BEGIN_SRC go
+  func (f *File) SetCellFormula(sheet, axis, formula string, opts ...FormulaOpts) error
+  #+END_SRC
+****** 获取公式
++ 根据给定的工作表名（大小写敏感）和单元格坐标获取该单元格上的公式
+  #+BEGIN_SRC go
+  func (f *File) GetCellFormula(sheet, axis string) (string, error)
+  #+END_SRC
+***** 样式
+****** 样式设置
++ Alignment 映射单元格对齐样式设置
+  #+BEGIN_SRC go
+  type Alignment struct {
+        Horizontal      string `json:"horizontal"`
+        Indent          int    `json:"indent"`
+        JustifyLastLine bool   `json:"justify_last_line"`
+        ReadingOrder    uint64 `json:"reading_order"`
+        RelativeIndent  int    `json:"relative_indent"`
+        ShrinkToFit     bool   `json:"shrink_to_fit"`
+        TextRotation    int    `json:"text_rotation"`
+        Vertical        string `json:"vertical"`
+        WrapText        bool   `json:"wrap_text"`
+  }
+  #+END_SRC
++ Border 映射单元格边框样式设置
+  #+BEGIN_SRC go
+  type Border struct {
+        Type  string `json:"type"`
+        Color string `json:"color"`
+        Style int    `json:"style"`
+  }
+  #+END_SRC
++ Font 映射字体样式设置
+  #+BEGIN_SRC go
+  type Font struct {
+        Bold      bool    `json:"bold"`
+        Italic    bool    `json:"italic"`
+        Underline string  `json:"underline"`
+        Family    string  `json:"family"`
+        Size      float64 `json:"size"`
+        Strike    bool    `json:"strike"`
+        Color     string  `json:"color"`
+  }
+
+  #+END_SRC
++ Fill 映射单元格样式填充设置
+  #+BEGIN_SRC go
+  type Fill struct {
+        Type    string   `json:"type"`
+        Pattern int      `json:"pattern"`
+        Color   []string `json:"color"`
+        Shading int      `json:"shading"`
+  }
+
+  #+END_SRC
++ Protection 映射保护单元格属性设置
+  #+BEGIN_SRC go
+  type Protection struct {
+        Hidden bool `json:"hidden"`
+        Locked bool `json:"locked"`
+  }
+
+  #+END_SRC
++ Style 映射单元格样式设置
+  #+BEGIN_SRC go
+  type Style struct {
+        Border        []Border    `json:"border"`
+        Fill          Fill        `json:"fill"`
+        Font          *Font       `json:"font"`
+        Alignment     *Alignment  `json:"alignment"`
+        Protection    *Protection `json:"protection"`
+        NumFmt        int         `json:"number_format"`
+        DecimalPlaces int         `json:"decimal_places"`
+        CustomNumFmt  *string     `json:"custom_number_format"`
+        Lang          string      `json:"lang"`
+        NegRed        bool        `json:"negred"`
+  }
+
+  #+END_SRC
+****** 创建样式
++ 通过给定的样式格式 JSON 或结构体创建样式并返回样式索引。请注意，颜色需要使用 RGB 色域代码表示
+  #+BEGIN_SRC go
+  func (f *File) NewStyle(style interface{}) (int, error)
+  #+END_SRC
+****** 边框
++ 下面的表格是 Excelize 中的边框样式索引 type 和对应的边框线条样式
+  | 索引 | 线条样式               | 粗细	 | 预览效果                 |
+  |------+------------------------+--------+--------------------------|
+  |    0 | 无                     |      0 |                          |
+  |    1 | 连续线                 |      1 | "连续线"                 |
+  |    2 | 连续线                 |      2 | "连续线"                 |
+  |    3 | 短线                   |      1 | "短线"                   |
+  |    4 | 点线                   |      1 | "点线"                   |
+  |    5 | 连续线                 |      3 | "连续线"                 |
+  |    6 | 双线                   |      3 | "双线"                   |
+  |    7 | 连续线                 |      0 | "连续线"                 |
+  |    8 | 短线                   |      2 | "短线"                   |
+  |    9 | 短线与点间隔线         |      1 | "短线与点间隔线"         |
+  |   10 | 短线与点间隔线         |      2 | "短线与点间隔线"         |
+  |   11 | 短线与两个点一组重复线 |      1 | "短线与两个点一组重复线" |
+  |   12 | 短线与两个点一组重复线 |      2 | "短线与两个点一组重复线" |
+  |   13 | 斜线与点线             |      2 | "斜线与点线"             |
++ Excelize 中的边框样式代码与 Office Excel 应用程序“设置单元格格式” - “边框”对话框中的关系对照
+  | 索引 | 预览效果  | 索引 | 预览效果  |
+  |------+-----------+------+-----------|
+  |    0 |           |   12 | "边框 12" |
+  |    7 | "边框 7"  |   13 | "边框 13" |
+  |    4 | "边框 4"  |   10 | "边框 19" |
+  |   11 | "边框 11" |    8 | "边框 8"  |
+  |    9 | "边框 9"  |    2 | "边框 2"  |
+  |    3 | "边框 3"  |  	5 | "边框 5"  |
+  |    1 | "边框 1"  |    6 | "边框 6"  |
+****** 颜色填充
++ 下面的表格是 Excelize 中单元格颜色填充样式和索引 shading 参数的关系对照
+  | 索引 | 样式       | 索引 | 样式         |
+  |------+------------+------+--------------|
+  |    0 | 横向       |    3 | 对角线向下   |
+  |    1 | 纵向       |    4 | 从对角线向内 |
+  |    2 | 对角线向上 |    5 | 从中心向外   |
+****** 图案填充
++ Excelize 中单元格图案填充样式和索引 pattern 参数的关系对照
+  | 索引 | 样式         | 索引 | 样式          |
+  |------+--------------+------+---------------|
+  |    0 | 无           |   10 | "图案填充 10" |
+  |    1 | "图案填充 1" |   11 | "图案填充 11" |
+  |    2 | "图案填充 2" |   12 | "图案填充 12" |
+  |    3 | "图案填充 3" |   13 | "图案填充 13" |
+  |    4 | "图案填充 4" |   14 | "图案填充 14" |
+  |    5 | "图案填充 5" |   15 | "图案填充 15" |
+  |    6 | "图案填充 6" |   16 | "图案填充 16" |
+  |    7 | "图案填充 7" |   17 | "图案填充 17" |
+  |    8 | "图案填充 8" |   18 | "图案填充 18" |
+  |    9 | "图案填充 9" |      |               |
+****** 对齐方式
+******* 水平对齐方式
++ 下面的表格是 Excelize 中单元格水平对齐方式 horizontal 参数与样式关系对照表
+  | 参数             | 样式             |
+  |------------------+------------------|
+  | left             | 向左（缩进）     |
+  | center           | 居中             |
+  | right            | 靠右（缩进）     |
+  | fill             | 填充             |
+  | justify          | 两端对齐         |
+  | centerContinuous | 跨列居中         |
+  | distributed      | 分散对齐（缩进） |
+******* 垂直对齐方式
++ Excelize 中单元格垂直对齐方式 vertical 参数与样式关系对照表
+  | 参数        | 样式     |
+  |-------------+----------|
+  | top         | 顶端对齐 |
+  | center      | 居中     |
+  | justify     | 两端对齐 |
+  | distributed | 分散对齐 |
+******* 字体下划线
++ Excelize 中单元格字体下划线 underline 参数与样式关系对照表
+  | 参数   | 样式 |
+  |--------+------|
+  | single | 单线 |
+  | double | 双线 |
+******* 数字自定义格式
++ Excelize 中支持的索引 number_format 参数与数字自定义格式类型对照表
+  索引  类型 
+  0	General
+  1	0
+  2	0.00
+  3	#,##0
+  4	#,##0.00
+  5	($#,##0_);($#,##0)
+  6	($#,##0_);[Red]($#,##0)
+  7	($#,##0.00_);($#,##0.00)
+  8	($#,##0.00_);[Red]($#,##0.00)
+  9	0%
+  10	0.00%
+  11	0.00E+00
+  12	# ?/?
+  13	# ??/??
+  14	m/d/yy
+  15	d-mmm-yy
+  16	d-mmm
+  17	mmm-yy
+  18	h:mm AM/PM
+  19	h:mm:ss AM/PM
+  20	h:mm
+  21	h:mm:ss
+  22	m/d/yy h:mm
+  ...	...
+  37	(#,##0_);(#,##0)
+  38	(#,##0_);[Red](#,##0)
+  39	(#,##0.00_);(#,##0.00)
+  40	(#,##0.00_);[Red](#,##0.00)
+  41	_(* #,##0_);_(* (#,##0);_(* "-"_);_(@_)
+  42	_($* #,##0_);_($* (#,##0);_($* "-"_);_(@_)
+  43	_(* #,##0.00_);_(* (#,##0.00);_(* "-"??_);_(@_)
+  44	_($* #,##0.00_);_($* (#,##0.00);_($* "-"??_);_(@_)
+  45	mm:ss
+  46	[h]:mm:ss
+  47	mm:ss.0
+  48	##0.0E+0
+  49	@
+******* 简体中文数字自定义格式
++ Excelize 中支持的索引 number_format 参数与简体中文 zh-cn 版本数字自定义格式类型对照表
+  索引	类型
+  27	yyyy"年"m"月"
+  28	m"月"d"日"
+  29	m"月"d"日"
+  30	m-d-yy
+  31	yyyy"年"m"月"d"日"
+  32	h"时"mm"分"
+  33	h"时"mm"分"ss"秒"
+  34	上午/下午 h"时"mm"分"
+  35	上午/下午 h"时"mm"分"ss"秒
+  36	yyyy"年"m"月
+  50	yyyy"年"m"月
+  51	m"月"d"日
+  52	yyyy"年"m"月
+  53	m"月"d"日
+  54	m"月"d"日
+  55	上午/下午 h"时"mm"分
+  56	上午/下午 h"时"mm"分"ss"秒
+  57	yyyy"年"m"月
+  58	m"月"d"日"
+******* Unicode 简体中文字型数字自定义格式
++ Excelize 中支持的索引 number_format 参数与 Unicode 简体中文字型 zh-cn 版本数字自定义格式类型对照表
+  索引	类型
+  27	yyyy"5E74"m"6708
+  28	m"6708"d"65E5
+  29	m"6708"d"65E5
+  30	m-d-y
+  31	yyyy"5E74"m"6708"d"65E5
+  32	h"65F6"mm"5206
+  33	h"65F6"mm"5206"ss"79D2
+  34	4E0A5348/4E0B5348h"65F6"mm"5206
+  35	4E0A5348/4E0B5348h"65F6"mm"5206"ss"79D2
+  36	yyyy"5E74"m"6708
+  50	yyyy"5E74"m"6708
+  51	m"6708"d"65E5
+  52	yyyy"5E74"m"6708
+  53	m"6708"d"65E5
+  54	m"6708"d"65E5
+  55	4E0A5348/4E0B5348h"65F6"mm"5206
+  56	4E0A5348/4E0B5348h"65F6"mm"5206"ss"79D2
+  57	yyyy"5E74"m"6708
+  58	m"6708"d"65E5"
+******* 货币格式
++ Excelize 目前支持的货币格式索引如下表所示，索引号仅用于标记，不在 Office Excel 文件中使用，目前无法通过函数 GetCellValue 获取格式化值后的值
+  索引	货币格式
+  164	CN¥
+  165	$ English (China)
+  166	$ Cherokee (United States)
+  167	$ Chinese (Singapore)
+  168	$ Chinese (Taiwan)
+  169	$ English (Australia)
+  170	$ English (Belize)
+  171	$ English (Canada)
+  172	$ English (Jamaica)
+  173	$ English (New Zealand)
+  174	$ English (Singapore)
+  175	$ English (Trinidad & Tobago)
+  176	$ English (U.S. Vigin Islands)
+  177	$ English (United States)
+******* 设置列样式
++ 根据给定的工作表名称、列区域和样式索引设置列样式
+  #+BEGIN_SRC go
+  func (f *File) SetColStyle(sheet, columns string, styleID int) error
+
+  // 例1，为名称为 Sheet1 的工作表中的 H 列设置样式：
+  err = f.SetColStyle("Sheet1", "H", style)
+  // 例2，为名称为 Sheet1 的工作表中的 C:F 列设置样式：
+  err = f.SetColStyle("Sheet1", "C:F", style)
+  #+END_SRC
+******* 设置默认字体
++ 根据给定的字体名称为工作簿设置默认字体
+  #+BEGIN_SRC go
+  func (f *File) SetDefaultFont(fontName string)
+  #+END_SRC
+***** 数据验证
+****** 添加数据验证
++ 根据给定的工作表名和数据验证对象设置数据验证规则，数据验证对象可通过 NewDataValidation 函数创建，数据验证类型和条件参考常量中的定义
+  #+BEGIN_SRC go
+  func (f *File) AddDataValidation(sheet string, dv *DataValidation)
+
+  // 例1，为 Sheet1!A1:B2 设置包含验证条件为允许介于整数 10 到 20 的数据验证规则，输入无效数据时显示出错警告，标题为: "error title"，错误信息 "error body"
+  dvRange := excelize.NewDataValidation(true)
+  dvRange.Sqref = "A1:B2"
+  dvRange.SetRange(10, 20, excelize.DataValidationTypeWhole, excelize.DataValidationOperatorBetween)
+  dvRange.SetError(excelize.DataValidationErrorStyleStop, "error title", "error body")
+  f.AddDataValidation("Sheet1", dvRange)
+
+  // 例2，为 Sheet1!A3:B4 设置包含验证条件为允许大于整数 10 的数据验证规则，选定单元格时显示输入信息，输入信息为: "input body"
+  dvRange = excelize.NewDataValidation(true)
+  dvRange.Sqref = "A3:B4"
+  dvRange.SetRange(10, 20, excelize.DataValidationTypeWhole, excelize.DataValidationOperatorGreaterThan)
+  dvRange.SetInput("input title", "input body")
+  f.AddDataValidation("Sheet1", dvRange)
+
+  // 例3，为 Sheet1!A5:B6 设置验证条件为序列的数据验证规则，忽略空值并提供下拉箭头
+  dvRange = excelize.NewDataValidation(true)
+  dvRange.Sqref = "A5:B6"
+  dvRange.SetDropList([]string{"1", "2", "3"})
+  f.AddDataValidation("Sheet1", dvRange)
+
+  // 例4，为 Sheet1!A7:B8 设置以 Sheet1!E1:E3 为来源的验证条件，忽略空值并提供下拉箭头
+  dvRange := excelize.NewDataValidation(true)
+  dvRange.Sqref = "A7:B8"
+  dvRange.SetSqrefDropList("$E$1:$E$3", true)
+  f.AddDataValidation("Sheet1", dvRange)
+  #+END_SRC
+****** 删除数据验证
++ 根据给定的工作表名和数据验证区域删除数据验证规则
+  #+BEGIN_SRC go
+  func (f *File) DeleteDataValidation(sheet, sqref string) error
+  #+END_SRC
+***** 工具函数
+****** 创建表格
++ 根据给定的工作表名、单元格坐标区域和条件格式创建表格
+  #+BEGIN_SRC go
+  func (f *File) AddTable(sheet, hcell, vcell, format string) error
+
+  // 例1，在名为 Sheet1 的工作表 A1:D5 区域创建表格
+  err := f.AddTable("Sheet1", "A1", "D5", ``)
+  // 例2，在名为 Sheet2 的工作表 F2:H6 区域创建带有条件格式的表格
+  err := f.AddTable("Sheet2", "F2", "H6", `{"table_name":"table","table_style":"TableStyleMedium2", "show_first_column":true,"show_last_column":true,"show_row_stripes":false,"show_column_stripes":true}`)
+  #+END_SRC
++ 注意，表格坐标区域至少需要覆盖两行：字符型的标题行和内容行。每列标题行的字符需保证是唯一的，并且必须在调用 AddTable 函数前设置表格的标题行数据。多个表格的坐标区域不能有交集
++ 可选参数 table_name 用以设置自定义表格名称，同一个工作表内的表格名称应该是唯一的
++ Excelize 支持的表格样式 table_style 参数：
+  TableStyleLight1 - TableStyleLight21
+  TableStyleMedium1 - TableStyleMedium28
+  TableStyleDark1 - TableStyleDark11
+****** 自动过滤器
++ 根据给定的工作表名、单元格坐标区域和条件格式创建自动过滤器。Excel 中的自动过滤器可以对一些简单的二维数据数据进行数据筛选
+  #+BEGIN_SRC go
+  func (f *File) AutoFilter(sheet, hcell, vcell, format string) error
+  
+  // 例1，在名称为 Sheet1 的工作表 A1:D4 区域创建自动过滤器
+  err := f.AutoFilter("Sheet1", "A1", "D4", "")
+
+  // 例2，在名称为 Sheet1 的工作表 A1:D4 区域创建带有格式条件的自动过滤器：
+  err := f.AutoFilter("Sheet1", "A1", "D4", `{"column":"B","expression":"x != blanks"}`)
+  #+END_SRC
++ 参数 column 指定了自动过滤器在过滤范围内的基准列。 Excelize 暂不支持自动过滤器的计算，在设置过滤条件后，如果需要隐藏任何不符合过滤条件的行，可以使用 SetRowVisible() 设置行的可见性
++ 为列设置过滤条件，参数 expression 用于指定过滤条件运算，支持下列运算符
+  ==
+  !=
+  >
+  <
+  >=
+  <=
+  and
+  or
++ 一个表达式可以包含一个或两个由 and 和 or 运算符分隔的语句
+  x <  2000
+  x >  2000
+  x == 2000
+  x >  2000 and x <  5000
+  x == 2000 or  x == 5000
++ 可以通过在表达式中使用空白或非空白值来实现空白或非空白数据的过滤
+  x == Blanks
+  x == NonBlanks
++ Office Excel 还允许一些简单的字符串匹配操作
+  x == b*      // 以 b 开始
+  x != b*      // 不以 b 开始
+  x == *b      // 以 b 结尾
+  x != *b      // 不以 b 结尾
+  x == *b*     // 包含 b
+  x != *b*     // 不包含 b
++ 可以使用 * 来匹配任何字符或数字，用 ? 匹配任何单个字符或数字。除此之外，Office Excel 的自动过滤器不支持其他正则表达式的关键字。 Excel 的正则表达式字符可以使用 ~ 进行转义
+****** 清除单元格缓存
++ Excel 会在保存时将保存带有公式的单元格的计算结果，这会导致在 Office Excel 2007 和 2010 中文档在打开时，即便计算因子已经发生变化，公式的计算结果不会自动更新,此函数会将工作簿中所有缓存结果清除，这样文档在 Office Excel 中被重新打开时会自动计算新的公式结果，但是由于计算后文档发生了变化，在关闭文档时 Office Excel 会提示是否保存工作簿
+  #+BEGIN_SRC go
+  func (f *File) UpdateLinkedValue() error
+
+  // 清除单元格缓存对工作簿的影响表现为对 <v> 标签的修改，例如，清除前的单元格缓存
+  <row r="19" spans="2:2">
+    <c r="B19">
+        <f>SUM(Sheet2!D2,Sheet2!D11)</f>
+        <v>100</v>
+     </c>
+  </row>
+  清除单元格缓存后：
+
+  <row r="19" spans="2:2">
+    <c r="B19">
+        <f>SUM(Sheet2!D2,Sheet2!D11)</f>
+    </c>
+  </row>
+  #+END_SRC
+****** 单元格坐标切分
++ 将工作表的单元格坐标切分为列名和行号
+  #+BEGIN_SRC go
+  func SplitCellName(cell string) (string, int, error)
+
+  // 例如，将单元格坐标 AK74 切分为 AK 和 74：
+  excelize.SplitCellName("AK74") // return "AK", 74, nil
+  #+END_SRC
+****** 单元格坐标组合
++ 将列名和行号组合成工作表的单元格坐标
+  #+BEGIN_SRC go
+  func JoinCellName(col string, row int) (string, error)
+  #+END_SRC
+****** 列名转索引
++ 将工作表的列名（大小写不敏感）转换为索引，对于错误的列名格式将返回错误
+  #+BEGIN_SRC go
+  func ColumnNameToNumber(name string) (int, error)
+
+  // 例如：
+  excelize.ColumnNameToNumber("AK") // returns 37, nil
+  #+END_SRC
+****** 索引转列名
++ 将数据类型为整型的索引转换为列名
+  #+BEGIN_SRC go
+  func ColumnNumberToName(num int) (string, error)
+  
+  // 例如：
+  excelize.ColumnNumberToName(37) // returns "AK", nil
+  #+END_SRC
+****** 单元格坐标转索引
++ 将由字母和数字组合而成的单元格坐标转换为 [X, Y] 形式的行、列索引，或返回错误
+  #+BEGIN_SRC go
+  func CellNameToCoordinates(cell string) (int, int, error)
+
+  // 例如：
+  CellCoordinates("A1") // returns 1, 1, nil
+  CellCoordinates("Z3") // returns 26, 3, nil
+  #+END_SRC
+****** 索引转单元格坐标
++ 将 [X, Y] 形式的行、列索引转换为由字母和数字组合而成的单元格坐标，或返回错误
+  #+BEGIN_SRC go
+  func CoordinatesToCellName(col, row int) (string, error)
+  
+  // 例如：
+  CoordinatesToCellName(1, 1) // returns "A1", nil
+  #+END_SRC
+****** 创建条件格式样式
++ 通过给定样式为条件格式创建样式，样式参数与 NewStyle() 函数的相同。请注意，使用 RGB 色域颜色代码时，目前仅支持设置字体、填充、对齐和边框的颜色
+  #+BEGIN_SRC go
+  func (f *File) NewConditionalStyle(style string) (int, error)
+  #+END_SRC
+****** 设置条件格式
++ 根据给定的工作表名称、单元格坐标区域和格式参数，为单元格值创建条件格式设置规则。条件格式是 Office Excel 的一项功能，它允许您根据特定条件将格式应用于单元格或一系列单元格
+  #+BEGIN_SRC go
+  func (f *File) SetConditionalFormat(sheet, area, formatSet string) error
+  #+END_SRC
++ 格式参数 type 选项是必需的参数，它没有默认值。允许的类型值及其相关参数是
+  类型	参数
+  cell	criteria
+        value
+        minimum
+        maximum
+  date	criteria
+        value
+        minimum
+        maximum
+  time_period	criteria
+  text	criteria
+        value
+  average	criteria
+  duplicate	(none)
+  unique	(none)
+  top	criteria
+      value
+  bottom	criteria
+          value
+  blanks	(none)
+  no_blanks	(none)
+  errors	(none)
+  no_errors	(none)
+  2_color_scale	min_type
+                max_type
+                min_value
+                max_value
+                min_color
+                max_color
+  3_color_scale	min_type
+                mid_type
+                max_type
+                min_value
+                mid_value
+                max_value
+                min_color
+                mid_color
+                max_color
+  data_bar	min_type
+            max_type
+            min_value
+            max_value
+            bar_color
+  formula	criteria
++ criteria 参数用于设置单元格数据的条件格式运算符。它没有默认值，同常与 {"type"："cell"} 一起使用，支持的参数为
+  文本描述字符	符号表示
+  between	
+  not between	
+  equal to	    ==
+  not equal to	!=
+  greater than	>
+  less than	    <
+  greater than or equal to	>=
+  less than or equal to	<=
++ .......
+****** 删除条件格式
++ 根据给定的工作表名称和单元格坐标区域删除条件格式
+  #+BEGIN_SRC go
+  func (f *File) UnsetConditionalFormat(sheet, area string) error
+  #+END_SRC
+****** 设置窗格
++ 通过给定的工作表名称和窗格样式参数设置冻结窗格或拆分窗格
+  #+BEGIN_SRC go
+  func (f *File) SetPanes(sheet, panes string)
+  #+END_SRC
+****** 文件 Writer
++ Write 
+  该函数提供方法将当前文件内容写入给定的 io.Writer
+  #+BEGIN_SRC go
+  func (f *File) Write(w io.Writer) error
+  #+END_SRC
++ WriteTo
+  该函数通过实现 io.WriterTo 以保存文件
+  #+BEGIN_SRC go
+  func (f *File) WriteTo(w io.Writer) (int64, error)
+  #+END_SRC
++ WriteToBuffer
+  该函数提供获取当前文件内容 *bytes.Buffer 的方法
+  #+BEGIN_SRC go
+  func (f *File) WriteToBuffer() (*bytes.Buffer, error)
+  #+END_SRC
+****** Excel 日期时间转换
++ ExcelDateToTime 将 Excel 中以 float 类型表示的日期转换为 time.Time 类型
+  #+BEGIN_SRC go
+  func ExcelDateToTime(excelDate float64, use1904Format bool) (time.Time, error)
+  #+END_SRC
+****** 字符集转码器
++ CharsetTranscoder 为非 UTF-8 编码的电子表格文档设置用户提供指定自定义编码转换器支持
+  #+BEGIN_SRC go
+  func (f *File) CharsetTranscoder(fn charsetTranscoderFn) *File
+  #+END_SRC
+***** 常量
+#+BEGIN_SRC go
+//  以下这些常量定义了当前支持的图表类型：
+
+  const (
+      Area                        = "area"
+      AreaStacked                 = "areaStacked"
+      AreaPercentStacked          = "areaPercentStacked"
+      Area3D                      = "area3D"
+      Area3DStacked               = "area3DStacked"
+      Area3DPercentStacked        = "area3DPercentStacked"
+      Bar                         = "bar"
+      BarStacked                  = "barStacked"
+      BarPercentStacked           = "barPercentStacked"
+      Bar3DClustered              = "bar3DClustered"
+      Bar3DStacked                = "bar3DStacked"
+      Bar3DPercentStacked         = "bar3DPercentStacked"
+      Bar3DConeClustered          = "bar3DConeClustered"
+      Bar3DConeStacked            = "bar3DConeStacked"
+      Bar3DConePercentStacked     = "bar3DConePercentStacked"
+      Bar3DPyramidClustered       = "bar3DPyramidClustered"
+      Bar3DPyramidStacked         = "bar3DPyramidStacked"
+      Bar3DPyramidPercentStacked  = "bar3DPyramidPercentStacked"
+      Bar3DCylinderClustered      = "bar3DCylinderClustered"
+      Bar3DCylinderStacked        = "bar3DCylinderStacked"
+      Bar3DCylinderPercentStacked = "bar3DCylinderPercentStacked"
+      Col                         = "col"
+      ColStacked                  = "colStacked"
+      ColPercentStacked           = "colPercentStacked"
+      Col3D                       = "col3D"
+      Col3DClustered              = "col3DClustered"
+      Col3DStacked                = "col3DStacked"
+      Col3DPercentStacked         = "col3DPercentStacked"
+      Col3DCone                   = "col3DCone"
+      Col3DConeClustered          = "col3DConeClustered"
+      Col3DConeStacked            = "col3DConeStacked"
+      Col3DConePercentStacked     = "col3DConePercentStacked"
+      Col3DPyramid                = "col3DPyramid"
+      Col3DPyramidClustered       = "col3DPyramidClustered"
+      Col3DPyramidStacked         = "col3DPyramidStacked"
+      Col3DPyramidPercentStacked  = "col3DPyramidPercentStacked"
+      Col3DCylinder               = "col3DCylinder"
+      Col3DCylinderClustered      = "col3DCylinderClustered"
+      Col3DCylinderStacked        = "col3DCylinderStacked"
+      Col3DCylinderPercentStacked = "col3DCylinderPercentStacked"
+      Doughnut                    = "doughnut"
+      Line                        = "line"
+      Pie                         = "pie"
+      Pie3D                       = "pie3D"
+      Radar                       = "radar"
+      Scatter                     = "scatter"
+      Surface3D                   = "surface3D"
+      WireframeSurface3D          = "wireframeSurface3D"
+      Contour                     = "contour"
+      WireframeContour            = "wireframeContour"
+      Bubble                      = "bubble"
+      Bubble3D                    = "bubble3D"
+  )
+//  以下这些常量定义了 XML 标签的命名空间：
+
+  const (
+      SourceRelationship                           = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+      SourceRelationshipChart                      = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart"
+      SourceRelationshipComments                   = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments"
+      SourceRelationshipImage                      = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
+      SourceRelationshipTable                      = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/table"
+      SourceRelationshipDrawingML                  = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing"
+      SourceRelationshipDrawingVML                 = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing"
+      SourceRelationshipHyperLink                  = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink"
+      SourceRelationshipWorkSheet                  = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"
+      SourceRelationshipChartsheet                 = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chartsheet"
+      SourceRelationshipPivotTable                 = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotTable"
+      SourceRelationshipPivotCache                 = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotCacheDefinition"
+      SourceRelationshipVBAProject                 = "http://schemas.microsoft.com/office/2006/relationships/vbaProject"
+      SourceRelationshipChart201506                = "http://schemas.microsoft.com/office/drawing/2015/06/chart"
+      SourceRelationshipChart20070802              = "http://schemas.microsoft.com/office/drawing/2007/8/2/chart"
+      SourceRelationshipChart2014                  = "http://schemas.microsoft.com/office/drawing/2014/chart"
+      SourceRelationshipCompatibility              = "http://schemas.openxmlformats.org/markup-compatibility/2006"
+      NameSpaceDrawingML                           = "http://schemas.openxmlformats.org/drawingml/2006/main"
+      NameSpaceDrawingMLChart                      = "http://schemas.openxmlformats.org/drawingml/2006/chart"
+      NameSpaceDrawingMLSpreadSheet                = "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"
+      NameSpaceSpreadSheet                         = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+      NameSpaceSpreadSheetX14                      = "http://schemas.microsoft.com/office/spreadsheetml/2009/9/main"
+      NameSpaceSpreadSheetX15                      = "http://schemas.microsoft.com/office/spreadsheetml/2010/11/main"
+      NameSpaceSpreadSheetExcel2006Main            = "http://schemas.microsoft.com/office/excel/2006/main"
+      NameSpaceMacExcel2008Main                    = "http://schemas.microsoft.com/office/mac/excel/2008/main"
+      NameSpaceXML                                 = "http://www.w3.org/XML/1998/namespace"
+      NameSpaceXMLSchemaInstance                   = "http://www.w3.org/2001/XMLSchema-instance"
+      StrictSourceRelationship                     = "http://purl.oclc.org/ooxml/officeDocument/relationships"
+      StrictSourceRelationshipChart                = "http://purl.oclc.org/ooxml/officeDocument/relationships/chart"
+      StrictSourceRelationshipComments             = "http://purl.oclc.org/ooxml/officeDocument/relationships/comments"
+      StrictSourceRelationshipImage                = "http://purl.oclc.org/ooxml/officeDocument/relationships/image"
+      StrictNameSpaceSpreadSheet                   = "http://purl.oclc.org/ooxml/spreadsheetml/main"
+      NameSpaceDublinCore                          = "http://purl.org/dc/elements/1.1/"
+      NameSpaceDublinCoreTerms                     = "http://purl.org/dc/terms/"
+      NameSpaceDublinCoreMetadataIntiative         = "http://purl.org/dc/dcmitype/"
+      ContentTypeDrawing                           = "application/vnd.openxmlformats-officedocument.drawing+xml"
+      ContentTypeDrawingML                         = "application/vnd.openxmlformats-officedocument.drawingml.chart+xml"
+      ContentTypeMacro                             = "application/vnd.ms-excel.sheet.macroEnabled.main+xml"
+      ContentTypeSpreadSheetMLChartsheet           = "application/vnd.openxmlformats-officedocument.spreadsheetml.chartsheet+xml"
+      ContentTypeSpreadSheetMLComments             = "application/vnd.openxmlformats-officedocument.spreadsheetml.comments+xml"
+      ContentTypeSpreadSheetMLPivotCacheDefinition = "application/vnd.openxmlformats-officedocument.spreadsheetml.pivotCacheDefinition+xml"
+      ContentTypeSpreadSheetMLPivotTable           = "application/vnd.openxmlformats-officedocument.spreadsheetml.pivotTable+xml"
+      ContentTypeSpreadSheetMLTable                = "application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml"
+      ContentTypeSpreadSheetMLWorksheet            = "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"
+      ContentTypeVBA                               = "application/vnd.ms-office.vbaProject"
+      ContentTypeVML                               = "application/vnd.openxmlformats-officedocument.vmlDrawing"
+      // ExtURIConditionalFormattings is the extLst child element
+      // ([ISO/IEC29500-1:2016] section 18.2.10) of the worksheet element
+      // ([ISO/IEC29500-1:2016] section 18.3.1.99) is extended by the addition of
+      // new child ext elements ([ISO/IEC29500-1:2016] section 18.2.7)
+      ExtURIConditionalFormattings = "{78C0D931-6437-407D-A8EE-F0AAD7539E65}"
+      ExtURIDataValidations        = "{CCE6A557-97BC-4B89-ADB6-D9C93CAAB3DF}"
+      ExtURISparklineGroups        = "{05C60535-1F16-4fd2-B633-F4F36F0B64E0}"
+      ExtURISlicerListX14          = "{A8765BA9-456A-4DAB-B4F3-ACF838C121DE}"
+      ExtURISlicerCachesListX14    = "{BBE1A952-AA13-448e-AADC-164F8A28A991}"
+      ExtURISlicerListX15          = "{3A4CF648-6AED-40f4-86FF-DC5316D8AED3}"
+      ExtURIProtectedRanges        = "{FC87AEE6-9EDD-4A0A-B7FB-166176984837}"
+      ExtURIIgnoredErrors          = "{01252117-D84E-4E92-8308-4BE1C098FCBB}"
+      ExtURIWebExtensions          = "{F7C9EE02-42E1-4005-9D12-6889AFFD525C}"
+      ExtURITimelineRefs           = "{7E03D99C-DC04-49d9-9315-930204A7B6E9}"
+      ExtURIDrawingBlip            = "{28A0092B-C50C-407E-A947-70E740481C1C}"
+      ExtURIMacExcelMX             = "{64002731-A6B0-56B0-2670-7721B7C09600}"
+  )
+//  下面的常量定义了 EMU (English Metric Units) 单位：
+
+  const (
+      EMU int = 9525
+  )
+//  下面的常量定义了 XML 文档中的独立声明：
+
+  const XMLHeader = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n"
+//  以下这些常量定义了当前支持的数据验证类型：
+
+  const (
+      DataValidationTypeCustom
+      DataValidationTypeDate
+      DataValidationTypeDecimal
+      DataValidationTypeTextLeng
+      DataValidationTypeTime
+      DataValidationTypeWhole
+  )
+//  以下这些常量定义了当前支持的数据验证条件：
+
+  const (
+      DataValidationOperatorBetween
+      DataValidationOperatorEqual
+      DataValidationOperatorGreaterThan
+      DataValidationOperatorGreaterThanOrEqual
+      DataValidationOperatorLessThan
+      DataValidationOperatorLessThanOrEqual
+      DataValidationOperatorNotBetween
+      DataValidationOperatorNotEqual
+  )
+
+#+END_SRC
