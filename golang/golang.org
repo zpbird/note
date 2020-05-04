@@ -5809,8 +5809,20 @@ go module是Go1.11版本之后官方推出的版本管理工具，并且从Go1.1
   #+BEGIN_SRC shell
   # 安装命令
   go get github.com/360EntSecGroup-Skylar/excelize
+  如果您使用 Go Modules 管理软件包，请使用下面的命令来安装最新版本。
+  go get github.com/360EntSecGroup-Skylar/excelize/v2@v2.1.0
   # 更新命令
   go get -u github.com/360EntSecGroup-Skylar/excelize
+  #+END_SRC
+***** 导入
++ v2
+  #+BEGIN_SRC go
+  import (
+	"fmt"
+
+	"github.com/360EntSecGroup-Skylar/excelize/v2"
+  )
+
   #+END_SRC
 ***** 简单示例
 + 创建 Excel 文档
