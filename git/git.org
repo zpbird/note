@@ -103,9 +103,21 @@
 + git pull
   #+BEGIN_SRC shell
   git pull origin master
+  git pull origin master --allow-unrelated-histories
 
   直接拉取并覆盖本地的所有代码
   git fetch --all
   git reset --hard origin/master
   git pull
   #+END_SRC
+** tag
++ 查看现有标签
+  git tag
++ 新建
+  git tag v1.0.1
++ 删除现有标签
+  git tag -d <tagname>
++ 查看tag详细信息
+  git show v1.0.1
++ 同步到远程服务器
+  git push origin v1.0.1
