@@ -391,10 +391,10 @@ vue ui
   - index.html： 编译html文件的模板
 + src文件夹
   + assets文件夹：存放一些图片、字体等静态资源
-  + components文件夹： 一些可以复用的组件存放在这里
+  + components文件夹： 一些可以复用的组件存放在这里、、、，(自定义功能组件)这里存放的是开发需要的的各种组件，各个组件联系在一起组成一个完整的项目
   + router文件夹：存放VueRouter路由信息
   + store文件夹：存放Vuex状态
-  + views文件夹： 页面视图vue文件存放在这里
+  + views文件夹： 页面视图vue文件存放在这里，所有的路由组件
   - App.vue  
   - main.ts 项目入口文件
   - shims-tsx.d.ts： 增加对JSX语法的类型支持的声明文件
@@ -685,6 +685,37 @@ vue ui
       };
   </script>
   #+END_SRC
+* UI框架
+** Vuetify 
+*** 安装
++ 库安装
+  #+BEGIN_SRC shell
+  vue create my-app
+  cd my-app
+  vue add vuetify
+  #+END_SRC
++ 字体安装
+  - 安装字体
+    #+BEGIN_SRC shell
+    npm install @mdi/font -D
+    #+END_SRC
+  - 或在线使用 Google's Roboto fon 和 Material Design Icons。安装这些软件的最简单方式是将他们的 CDN 包含在你的主 index.html 中
+    #+BEGIN_SRC html
+    <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@mdi/font@5.x/css/materialdesignicons.min.css" rel="stylesheet">
+    #+END_SRC
+** Quasar
+http://www.quasarchs.com/start/pick-quasar-flavour
+*** 安装
+**** 通过Quasar CLI 
++ npm install -g @quasar/cli
+*** 创建项目
++ 命令
+  quasar create <folder_name>
+*** 启动
++ 命令
+  进入目录
+  quasar dev
 * 常用插件
 ** QRCode(二维码)
 + 安装
@@ -729,1111 +760,496 @@ vue ui
         };
     </script>
   #+END_SRC
-* 从入门到项目实战
-** 基本介绍
-*** 安装和引入
-**** 下载后引入
-+ 通过官网现在Vue.js文件，并通过<script>标签引入，此时Vue会被注册为全局变量
-**** 安装后引入
-+ 通过npm安装vue(npm install vue -g)后引入
-  #+BEGIN_SRC js
-  import Vue from 'vue'
-  #+END_SRC
-**** 使用Vue Devtools工具
-+ 在官网中下载chrome或firefox对应的扩展，进行安装
-+ 此工具提供了一个界面，可以查看Vue组件和全局状态管理器Vuex中记录的数据
-*** Vue实例介绍
-+ 示例
+* 项目开发规范
+** 对前端各设备css初始化同一外观
++ 在App.vue中引入下面两个文件
   #+BEGIN_SRC html
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8"/>
-    <title>test</title>
-  </head>
-  <body>
-    <div id="app">
-      {{ activeKey }}
-    </div>
-
-    <script src="../js/vue.js"></script>
-    <script>
-        let app = new Vue ({
-          el: '#app',
-          data: {
-            activeKey: '12345'
-          }
-        })
-    </script>
-  </body>
-</html>
-  #+END_SRC
-+ 在上面的示例中，初始化了带有activeKey数据的app对象，并将其绑定到id为app的DOM节点上
-+ 初始化时，中实例上绑定的常规数据对象会被vue转化为被观察的拥有可响应行为的对象，即当数据变化时，会同步更新其数据链和作用域中所有的相关状态，最常见的情况就是，当实例数据发生变化时，视图也随之改变
-*** 生命周期
-+ vue实例中初始化时需要经历一系列的过程，如编译模板、渲染虚拟DOM数、将实例挂载到DOM上、设置数据监听和数据绑定等，在这些过程中也会运行一些钩子函数，允许开发者中不同的阶段注入自己的代码
-+ 示例：绑定钩子函数打印标识信息，用以观察这些钩子函数的执行时机
-  #+BEGIN_SRC html
-  <div id="app">
-    <h1>{{ title }}</h1>
-    <button @click="randomTitle()">改变title</button>
-    <button @click="destoryVm()">销毁实例</button>
-  </div>
-  <script scr="./js/vue.js"></script>
-  <script>
-      let app = new Vue({
-          el: '#app', //mount到DOM上
-          data () {
-              return {
-                  title: 'Hello World'
-              }
-          },
-          
-          methods: {
-              randomTitle () {
-                  this.title = 'Hello' + ['China', 'World', 'Universe'][Math.floor(Math.random() * 2.999)]
-              },
-              destoryVm () {
-                  this.$destory()
-              }
-          },
-
-          //实例初始化之后，数据观测和事件绑定之前
-          beforeCreate () {
-              console.log('before create')
-          }，
-
-          //实例初始化之后，挂载尚未开始时
-          created () {
-              console.log('created')
-          },
-
-          //挂载之前，render函数首次被调用时
-          beforeMount () {
-              console.log('before mount')
-          },
-
-          //在实例挂载到DOM节点上之后
-          mounted () {
-              console.log('mounted')
-          },
-
-          //数据更新时，在虚拟DOM状态变化之前
-          beforeUpdate () {
-              console.log('before update')
-          },
-
-          //虚拟DOM被重新渲染之后
-          updated () {
-              console.log('updated')
-          },
-          
-          //实例销毁之前，此时实例依然可用
-          beforeDestory () {
-              console.log('before destory')
-          },
-
-          //实例销毁之后，此时vue实例及其子实例将完全解绑
-          destoryed () {
-              console.log () {'destoryed'}
-          }
-      })
-  </script>
-  #+END_SRC
-*** 数据响应式原理
-**** 数据链
-+ 数据链即连通数据的链路，其中有一个到多个数据起点(元数据)，并通过该点衍生拓展新的节点(衍生数据)，形成一个庞大的网状结构，当修改数据起点时，所有存在于网上的节点都将同步更新
-+ vue中可以通过修改元数据的值来触发一系列数据的更新
-**** 函数式编程
-+ 函数式编程是一种结构化编程方式，力求将运算过程写成一系列嵌套的函数调用，源于javascript的万物皆对象的理念，函数式编程认定函数是第一等公民，可以赋值给其他变量、用作另一个函数的参数或作为函数的返回值使用
-+ 函数式编程的核心是根据元数据生成新的衍生数据，提供唯一确定的输入，函数将返回唯一确定的输出，它并不会修改原有变量的值，这在运用JS闭包概念进行开发时尤为重要，在函数作用域内调用域外或全局变量时并不会修改它们的值，安全无污染
-+ 函数式编程就是建立了一条数据流通的链路，开发者只需要关注输入和输出两端的内容就可以，这是封装复用的一种最佳实践，在高效开发中举足轻重
-**** vue中的数据链
-+ vue实例提供了computed计算属性选项，以供开发者生成衍生数据对象，虽然计算属性以函数形式声明，却并不接受参数，也只能以属性的方式调用，计算属性的this指向vue实例，可以获取实例上所有已挂载的可见属性
-+ 当然vue也可以使用methonds中的方法来实现数据链
-**** 数据绑定视图
-+ 在vue中，把普通的javascript对象传给vue实例的data选项时，vue将遍历对象属性，使用Object.defineProperty将其全部转化为getter/setter，并中渲染组件时将属性记录为依赖，之后当依赖项的setter函数被调用时，会通知watcher重新计算并更新其关联的所有组件
-** Vue语法
-*** 插值绑定
-**** 文本插值
-+ 文本插值是用双大括号将要绑定的变量、值、表达式包含其中，vue会获取计算后的值，并以文本的形式将其展示出来
-+ 文本插值常见形式
-  #+BEGIN_SRC html
-  <p>变量：{{ num }}</p>
-  <p>表达式：{{ 5 + 10 }}</p>
-  <p>三目运算符：{{ true ? 15 : 10 }}</p>
-  <p>函数：{{ getNum() }}</p>
-  <p>匿名函数：{{ (() => 5 + 10 )() }}</p>
-  <p>对象：{{ num: 15 }}</p>
-  <p>函数对象：{{ getNum }}</p>
-  <p>html代码(表达式){{ '<span>15</span>' }}</p>
-  <p>html代码(变量){{ html }}</p>
-  #+END_SRC
-**** HTML插值
-+ HTML插值可以动态渲染DOM节点，常用于处理开发者无可预知和难以控制的DOM结构，如渲染用户随意书写的文档结构
-+ 文本插值中的代码被解释为节点的文本内容，HTML插值中的代码则被渲染为视图节点
-+ 实际上，HTML插值是对文本插值的补充和扩展，vue可以解析被绑定的内容为DOM节点，从而实现动态渲染视图的效果
-+ 使用HTML插值的原则
-  - 尽量多的使用Vue自身的模板机制，减少HTML插值的使用
-  - 只对可信内容使用HTML插值
-  - 绝不相信用户输入的数据
-*** 属性绑定
-**** 指令v-bind
-+ DOM节点的属性基本都可以使用指令v-bind进行绑定
-  #+BEGIN_SRC html
-  <style>
-    .italic { font-style: italic; }
+  <style lang="scss">
+    @import "./assets/css/reset.css";
   </style>
-  <div id="app" style="margin-left: 300px;">
-    <p v-bind:class="className" v-bind:title="title">危险勿触</p>
-    <button v-bind:disable="10 + 10 === 20">点击有奖</button>
-    <input v-bind:type="'text'" v-bind::placeholder="true ? '请输入':'请录入'">
-  </div>
-  <script>
-      let vm = new Vue({
-          el: '#app',
-          data () {
-              return {
-                  className: 'italic',
-                  title: '危险勿触'
-              }
-          }
-      })
-  </script>
   #+END_SRC
-+ v-bind可以省略不写
-  #+BEGIN_SRC html
-  <p :class="className" :title="title">危险勿触</p>
-  #+END_SRC
-+ 属性也可以绑定变量、表达式、执行函数等内容，但都要求满足属性自身的约束
-**** 类名和样式绑定
-+ 类名class和样式style中节点属性中是两个比较特殊的，虽然他们可接收的类型都是字符串，但类名实际上是由数组拼接而成的，样式则是由对象键值对拼接而成的，所以vue绑定类名和样式时采用了不一样的机制
-+ 可以通过字符串、数组、对象三种方式为节点动态绑定类名属性
-  #+BEGIN_SRC html
-  <style>
-    .color-gray { color: gray; }
-    .size-18 { font-size: 18px; }
-    .style-italic { font-style: italic; }
-  </style>
-  <div id="app">
-    <p class="color-gray size-18 style-italic"></p>
-    <p :class="classStr"></p>
-    <p :class="classArr"></p>
-    <p :class="classObj1"></p>
-    <p :class="classObj2"></p>
-  </div>
-  <script>
-      let vm = new Vue({
-          el: '#app',
-          data () {
-              return {
-                  classStr: 'color-gray size-18 style-italic', //拼接字符串
-                  classArr: ['color-gray', 'size-18', 'style-italic'], //数组
-                  classObj1: { //对象，绑定类名
-                      'color-gray': true,
-                      'size-18': true,
-                      'style-italic': true
-                  },
-                  classObj2: { //对象，未绑定类名
-                      'color-gray': 0,
-                      'size-18': '',
-                      'style-italic': false
-                  }
-              }
-          }
-      })
-  </script>
-  #+END_SRC
-+ 在使用对象绑定类名时，应将类名作为对象键名，当键值为真时，类名将被绑定到节点上
-+ 样式绑定的方式于类名相似，不过样式是以键值对的形式，所以不能像类名一样使用数组进行绑定
-*** 事件绑定
-***** 指令v-on
-+ vue使用v-on指令监听DOM事件，可以将事件代码通过v-on指令绑定到DOM节点上
-  #+BEGIN_SRC html
-  <div id="app">
-    <button v-on:click="loginfo()">打印信息(default: Hello World)</button>
-    <br>
-    <button v-on:click="loginfo('Self Message')">打印信息(Self Message)</button>
-    <br>
-    <button v-on:click="console.log('A Vue App')">打印信息(A Vue App)</button>
-  </div>
-  <script>
-      let vm = new Vue({
-          el: '#app',
-          methods: {
-              loginfo (msg) {
-                  console.log(msg || 'Hello World')
-              }
-          }
-      })
-  </script>
-  #+END_SRC
-+ v-on指令可以简写为@
-+ 有时在处理事件时，也会用到事件对象本身，可以使用如下两种方法获取事件对象
-  #+BEGIN_SRC html
-    <div id="app">
-      <!--   1. 在事件函数不必传参时，可以如下写法，注意不能带() -->
-      <input type="text" @keyup="handleKeyUp">
-      <br>
-      <!--   2. 手动传入$event对象 -->
-      <input type="text" @keyup="handleKeyUp($event)">
-    <div>
-    <script>
-        let vm = new Vue({
-            el: '#app',
-            methods: {
-                handleKeyUp (event) {
-                    console.log(event.key, event)
-                }
-            }
-        })
-    </script>
-    <!-- 两种方式都能打印出事件对象 -->
-  #+END_SRC
-***** 常见修饰符
-****** 事件修饰符
-+ 常见事件修饰符
-  |----------+----------+----------------------------------------------|
-  | 名称     | 可用事件 | 说明                                         |
-  |----------+----------+----------------------------------------------|
-  | .stop    | 任意     | 当事件触发时，阻止事件冒泡                   |
-  |----------+----------+----------------------------------------------|
-  | .prevent | 任意     | 当事件触发时，阻止元素的默认行为             |
-  |----------+----------+----------------------------------------------|
-  | .capture | 任意     | 当事件触发时，阻止事件捕获                   |
-  |----------+----------+----------------------------------------------|
-  | .self    | 任意     | 限制事件仅作用于节点自身                     |
-  |----------+----------+----------------------------------------------|
-  | .once    | 任意     | 事件被触发一次后即解除监听                   |
-  |----------+----------+----------------------------------------------|
-  | .passive | 滚动     | 移动端，限制事件永不调用preventDefault()方法 |
-  |----------+----------+----------------------------------------------|
-+ 当事件后缀多个修饰符时，要注意排列顺序，响应代码会根据排列顺序依次执行
-****** 按键修饰符
-+ 常见按键修饰符别名
-  |------------+------------+-----------|
-  | 别名修饰符 | 键值修饰符 | 对应按键  |
-  |------------+------------+-----------|
-  | .delete    |     .8/.46 | 回退/删除 |
-  | .tab       |         .9 | 制表      |
-  | .enter     |        .13 | 回车      |
-  | .esc       |        .27 | 退出      |
-  | .space     |        .32 | 空格      |
-  | .left      |        .37 | 左        |
-  | .up        |        .38 | 上        |
-  | .right     |        .39 | 右        |
-  | .down      |        .40 | 下        |
-  |------------+------------+-----------|
-****** 鼠标修饰符
-+ 常见鼠标按键修饰符
-  |---------+----------|
-  | 修饰符  | 对应按键 |
-  |---------+----------|
-  | .left   | 左键     |
-  | .right  | 右键     |
-  | .middle | 中键     |
-  |---------+----------|
-****** 组合修饰符
-+ 组合键使用方式，vue提供了组合修饰符的机制，但必须配合系统按键修饰符
-+ 系统按钮修饰符
-|--------+--------------------------|
-| 修饰符 | 对应按键                 |
-| .ctrl  | Ctrl键                   |
-| .alt   | Alt键                    |
-| .shift | Shift键                  |
-| .meta  | meta键(windows中为win键) |
-|--------+--------------------------|
-*** 双向绑定
-**** 指令v-model
-+ 使用v-model可以为可输入元素(input & textarea)创建双向数据绑定，它会根据元素类型自动选取正确的方法来更新元素
-  #+BEGIN_SRC html
-    <div id="app">
-      <h3>单行文本框</h3>
-      <input type="text" v-model="singleText" style="width: 240px;">
-      <p>{{ singleText }}</p>
++ reset.css
+  #+BEGIN_SRC css
+    @import "./normalize.css";
 
-      <h3>多行文本框</h3>
-      <textarea v-model="multiText" style="width: 240px;"></textarea>
-      <pre>{{ multiText }}</pre>
+    :root {
+      --color-text: #666;
+      --color-high-text: #ff5777;
+      --color-text: #ff8198;
+      --color-background: #fff;
+      --font-size: 14px;
+      --line-height: 1.5;
+    }
 
-      <h3>单选框</h3>
-      <!--   由于点击被选中的单选项无法取消被选中状态，基本不会出现单独使用一个单选选的情况，通常都是设置一个变量(radioValue)可实现RadioGroup的效果 -->
-      <input id="ra" type="radio" value="杨玉环" v-model="radioValue">
-      <label for="ra">A.杨玉环</label>
-      <input id="rb" type="radio" value="赵飞燕" v-model="radioValue">
-      <label for="rb">B.赵飞燕</label>
-      <p>{{ radioValue }}</p>
+    html {
+    overflow-x:hidden;
+    overflow-y:scroll;
+    }
+    body, dl, dt, dd, ul, ol, li, pre, form, fieldset, input, p, blockquote, th, td {
+    font-weight:400;
+    margin:0;
+    padding:0;
+    }
+    h1, h2, h3, h4, h4, h5 {
+    margin:0;
+    padding:0;
+    }
+    body {
+    color:#666666;
+    font-family:Helvetica,Arial,sans-serif;
+    }
+    table {
+    border-collapse:collapse;
+    }
+    fieldset, img {
+    border:0 none;
+    }
+    fieldset {
+    margin:0;
+    padding:0;
+    }
+    fieldset p {
+    margin:0;
+    padding:0 0 0 8px;
+    }
+    legend {
+    display:none;
+    }
+    address, caption, em, strong, th, i {
+    font-style:normal;
+    font-weight:400;
+    }
+    table caption {
+    margin-left:-1px;
+    }
+    hr {
+    border-bottom:1px solid #FFFFFF;
+    border-top:1px solid #E4E4E4;
+    border-width:1px 0;
+    clear:both;
+    height:2px;
+    margin:5px 0;
+    overflow:hidden;
+    }
+    ol, ul {
+    list-style-image:none;
+    list-style-position:outside;
+    list-style-type:none;
+    }
+    caption, th {
+    text-align:left;
+    }
+    q:before, q:after, blockquote:before, blockquote:after {
+    content:””;
+    }
+    a {color: #666;display: block;text-decoration: none;}
+    input {outline: none;-webkit-appearance: none;-webkit-appearance: none;-webkit-tap-highlight-color: rgba(0, 0, 0, 0);}
+    /* 公共样式 */
+    .flex{
+        display: -webkit-box; /* Chrome 4+, Safari 3.1, iOS Safari 3.2+ */ display: -moz-box; /* Firefox 17- */  
+        display: -webkit-flex; /* Chrome 21+, Safari 6.1+, iOS Safari 7+, Opera 15/16 */  
+        display: -moz-flex; /* Firefox 18+ */  
+        display: -ms-flexbox; /* IE 10 */  
+        display: flex;
+    }
+    .clearfix:after {
+    content: "";
+    display: block;
+    visibility: hidden;
+    height: 0;
+    clear: both;
+    }
+    .clearfix {zoom: 1;}
+    .fl{float: left;}
+    .fr{float: right;}
+    /*单行溢出*/
+    .one-txt-cut{
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    }
+    /*多行溢出 手机端使用*/
+    .txt-cut{
+    overflow : hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    }
+    /* 文字颜色 */
+    .text-pink{color:#ef4562;}
+    /* 文字大小 */
+    .f12{font-size: 12px;}
+  #+END_SRC
++ normalize.css
+  #+BEGIN_SRC css
+    /*! normalize.css v8.0.1 | MIT License | github.com/necolas/normalize.css */
 
-      <h3>单个复选框</h3>
-      <!--   单个复选框被用于true和false的切换 -->
-      <input id="c" type="checkbox" v-model="toggleValue">
-      <label for="c">天生丽质</label>
-      <p>{{ toggleValue }}</p>
+    /* Document
+       ========================================================================== */
 
-      <h3>多个复选框</h3>
-      <!--   多个复选框，v-model接收数组类型的变量 -->
-      <input id="ca" type="checkbox" value="漂亮" v-model="checkedValues">
-      <label for="ca">A.回眸一笑百媚生</label>
-      <input id="cb" type="checkbox" value="瘦弱" v-model="checkedValues">
-      <label for="cb">B.体轻能为掌上舞</label>  
-      <input id="cd" type="checkbox" value="得宠" v-model="checkedValues">
-      <label for="cd">C.三千宠爱在一身</label>
-      <p>{{ checkedValue.join(',') }}</p>
-    <div>
-    <script>
-        let vm = new Vue({
-            el: '#app',
-            data () {
-                return {
-                    singleText: '',
-                    multiText: '',
-                    radioValue: '',
-                    toggleValue: false,
-                    checkedValue: []
-                };
-            }
-        })
-    </script>
-    <!--   在实际项目中由于自身的限制很少直接使用select制作下拉列表，而是使用div进行模拟 -->
+    /**
+     ,* 1. Correct the line height in all browsers.
+     ,* 2. Prevent adjustments of font size after orientation changes in iOS.
+     ,*/
+
+    html {
+      line-height: 1.15; /* 1 */
+      -webkit-text-size-adjust: 100%; /* 2 */
+    }
+
+    /* Sections
+       ========================================================================== */
+
+    /**
+     ,* Remove the margin in all browsers.
+     ,*/
+
+    body {
+      margin: 0;
+    }
+
+    /**
+     ,* Render the `main` element consistently in IE.
+     ,*/
+
+    main {
+      display: block;
+    }
+
+    /**
+     ,* Correct the font size and margin on `h1` elements within `section` and
+     ,* `article` contexts in Chrome, Firefox, and Safari.
+     ,*/
+
+    h1 {
+      font-size: 2em;
+      margin: 0.67em 0;
+    }
+
+    /* Grouping content
+       ========================================================================== */
+
+    /**
+     ,* 1. Add the correct box sizing in Firefox.
+     ,* 2. Show the overflow in Edge and IE.
+     ,*/
+
+    hr {
+      box-sizing: content-box; /* 1 */
+      height: 0; /* 1 */
+      overflow: visible; /* 2 */
+    }
+
+    /**
+     ,* 1. Correct the inheritance and scaling of font size in all browsers.
+     ,* 2. Correct the odd `em` font sizing in all browsers.
+     ,*/
+
+    pre {
+      font-family: monospace, monospace; /* 1 */
+      font-size: 1em; /* 2 */
+    }
+
+    /* Text-level semantics
+       ========================================================================== */
+
+    /**
+     ,* Remove the gray background on active links in IE 10.
+     ,*/
+
+    a {
+      background-color: transparent;
+    }
+
+    /**
+     ,* 1. Remove the bottom border in Chrome 57-
+     ,* 2. Add the correct text decoration in Chrome, Edge, IE, Opera, and Safari.
+     ,*/
+
+    abbr[title] {
+      border-bottom: none; /* 1 */
+      text-decoration: underline; /* 2 */
+      text-decoration: underline dotted; /* 2 */
+    }
+
+    /**
+     ,* Add the correct font weight in Chrome, Edge, and Safari.
+     ,*/
+
+    b,
+    strong {
+      font-weight: bolder;
+    }
+
+    /**
+     ,* 1. Correct the inheritance and scaling of font size in all browsers.
+     ,* 2. Correct the odd `em` font sizing in all browsers.
+     ,*/
+
+    code,
+    kbd,
+    samp {
+      font-family: monospace, monospace; /* 1 */
+      font-size: 1em; /* 2 */
+    }
+
+    /**
+     ,* Add the correct font size in all browsers.
+     ,*/
+
+    small {
+      font-size: 80%;
+    }
+
+    /**
+     ,* Prevent `sub` and `sup` elements from affecting the line height in
+     ,* all browsers.
+     ,*/
+
+    sub,
+    sup {
+      font-size: 75%;
+      line-height: 0;
+      position: relative;
+      vertical-align: baseline;
+    }
+
+    sub {
+      bottom: -0.25em;
+    }
+
+    sup {
+      top: -0.5em;
+    }
+
+    /* Embedded content
+       ========================================================================== */
+
+    /**
+     ,* Remove the border on images inside links in IE 10.
+     ,*/
+
+    img {
+      border-style: none;
+    }
+
+    /* Forms
+       ========================================================================== */
+
+    /**
+     ,* 1. Change the font styles in all browsers.
+     ,* 2. Remove the margin in Firefox and Safari.
+     ,*/
+
+    button,
+    input,
+    optgroup,
+    select,
+    textarea {
+      font-family: inherit; /* 1 */
+      font-size: 100%; /* 1 */
+      line-height: 1.15; /* 1 */
+      margin: 0; /* 2 */
+    }
+
+    /**
+     ,* Show the overflow in IE.
+     ,* 1. Show the overflow in Edge.
+     ,*/
+
+    button,
+    input { /* 1 */
+      overflow: visible;
+    }
+
+    /**
+     ,* Remove the inheritance of text transform in Edge, Firefox, and IE.
+     ,* 1. Remove the inheritance of text transform in Firefox.
+     ,*/
+
+    button,
+    select { /* 1 */
+      text-transform: none;
+    }
+
+    /**
+     ,* Correct the inability to style clickable types in iOS and Safari.
+     ,*/
+
+    button,
+    [type="button"],
+    [type="reset"],
+    [type="submit"] {
+      -webkit-appearance: button;
+    }
+
+    /**
+     ,* Remove the inner border and padding in Firefox.
+     ,*/
+
+    button::-moz-focus-inner,
+    [type="button"]::-moz-focus-inner,
+    [type="reset"]::-moz-focus-inner,
+    [type="submit"]::-moz-focus-inner {
+      border-style: none;
+      padding: 0;
+    }
+
+    /**
+     ,* Restore the focus styles unset by the previous rule.
+     ,*/
+
+    button:-moz-focusring,
+    [type="button"]:-moz-focusring,
+    [type="reset"]:-moz-focusring,
+    [type="submit"]:-moz-focusring {
+      outline: 1px dotted ButtonText;
+    }
+
+    /**
+     ,* Correct the padding in Firefox.
+     ,*/
+
+    fieldset {
+      padding: 0.35em 0.75em 0.625em;
+    }
+
+    /**
+     ,* 1. Correct the text wrapping in Edge and IE.
+     ,* 2. Correct the color inheritance from `fieldset` elements in IE.
+     ,* 3. Remove the padding so developers are not caught out when they zero out
+     ,*    `fieldset` elements in all browsers.
+     ,*/
+
+    legend {
+      box-sizing: border-box; /* 1 */
+      color: inherit; /* 2 */
+      display: table; /* 1 */
+      max-width: 100%; /* 1 */
+      padding: 0; /* 3 */
+      white-space: normal; /* 1 */
+    }
+
+    /**
+     ,* Add the correct vertical alignment in Chrome, Firefox, and Opera.
+     ,*/
+
+    progress {
+      vertical-align: baseline;
+    }
+
+    /**
+     ,* Remove the default vertical scrollbar in IE 10+.
+     ,*/
+
+    textarea {
+      overflow: auto;
+    }
+
+    /**
+     ,* 1. Add the correct box sizing in IE 10.
+     ,* 2. Remove the padding in IE 10.
+     ,*/
+
+    [type="checkbox"],
+    [type="radio"] {
+      box-sizing: border-box; /* 1 */
+      padding: 0; /* 2 */
+    }
+
+    /**
+     ,* Correct the cursor style of increment and decrement buttons in Chrome.
+     ,*/
+
+    [type="number"]::-webkit-inner-spin-button,
+    [type="number"]::-webkit-outer-spin-button {
+      height: auto;
+    }
+
+    /**
+     ,* 1. Correct the odd appearance in Chrome and Safari.
+     ,* 2. Correct the outline style in Safari.
+     ,*/
+
+    [type="search"] {
+      -webkit-appearance: textfield; /* 1 */
+      outline-offset: -2px; /* 2 */
+    }
+
+    /**
+     ,* Remove the inner padding in Chrome and Safari on macOS.
+     ,*/
+
+    [type="search"]::-webkit-search-decoration {
+      -webkit-appearance: none;
+    }
+
+    /**
+     ,* 1. Correct the inability to style clickable types in iOS and Safari.
+     ,* 2. Change font properties to `inherit` in Safari.
+     ,*/
+
+    ::-webkit-file-upload-button {
+      -webkit-appearance: button; /* 1 */
+      font: inherit; /* 2 */
+    }
+
+    /* Interactive
+       ========================================================================== */
+
+    /*
+     ,* Add the correct display in Edge, IE 10+, and Firefox.
+     ,*/
+
+    details {
+      display: block;
+    }
+
+    /*
+     ,* Add the correct display in all browsers.
+     ,*/
+
+    summary {
+      display: list-item;
+    }
+
+    /* Misc
+       ========================================================================== */
+
+    /**
+     ,* Add the correct display in IE 10+.
+     ,*/
+
+    template {
+      display: none;
+    }
+
+    /**
+     ,* Add the correct display in IE 10.
+     ,*/
+
+    [hidden] {
+      display: none;
+    }
   #+END_SRC
-**** v-model与修饰符
-+ 在使用v-model时，可以使用修饰符丰富用户输入时的行为
-|---------+--------------------------------------------------------|
-| 修饰符  | 说明                                                   |
-| .lazy   | 将用户输入的数据赋予变量的时机由输入时延迟到数据改变时 |
-| .number | 自动转换用户输入为数值类型                             |
-| .trim   | 自动过滤用户输入的首尾空白字符                         |
-|---------+--------------------------------------------------------|
-**** v-model与自定义组件
-+ 不只有原生的输入元素可以使用v-model进行双向绑定，vue允许开发者将v-model用于自定义组件
-  #+BEGIN_SRC html
-    <div id="app">
-      <!--   自定义组件v-model -->
-      <custom-screen v-model="text"></custom-screen>
-      <bt>
-      <!--   原生元素v-model -->
-      <input type="text" v-mode="text">
-    <div>
-    <script>
-        Vue.component('custom-screen', {
-            //使用value属性接收外部传入的值
-            props: ['value'],
-            methods: {
-                handleRest () {
-                    console.log('重置为\'\'');
-                    this.%emit('input', '') //使用$emit发送input事件，并将目标值作为参数传出
-                }
-            },
-            template: '
-                <div>
-                  <h2>输入值为: {{ value }}</h2>
-                  <button @click="handleReset">重置为空</button>
-                </div>
-            '
-        })
-        
-        let vm = new Vue({
-            el: '#app',
-            data: () => ({ text: '' })
-        })
-    </script>
-  #+END_SRC
-+ 自定义组件中，value属性和input事件尤为重要，它们分别负责不同方向的数据传递，value属性用于接收外部传入的值以更新组件内部的状态；input事件由开发者决定在什么时候调用，并负责将组件内部的状态同步到外部
-*** 条件渲染和列表渲染
-**** 指令v-if和v-show
-+ v-if、v-else-if、v-else命令组合，后两个必须跟v-if一起使用，否则不会被识别
-  #+BEGIN_SRC html
-  <div id="app">
-    <h2 v-if="order === 0">站在前排的v-if</h2>
-    <h2 v-else-if="order === 1">不上不下的v-elseif</h2>
-    <h2 v-else>负责殿后的v-else</h2>
-    <button @click=toggleTitle>切换标题</button>
-  </div>
-  <script>
-      let vm = new Vue({
-          el: '#app',
-          data () {
-              return {
-                  order: 0
-              };
-          },
-          methods: {
-              toggleTitle () {
-                  this.order = ++this.order % 3;
-                  console.log('order的值为：' ,this.order)
-              }
-          }
-      })
-  </script>
-  #+END_SRC
-+ v-show也是用于实现条件渲染，但它只是简单的切换元素的CSS属性(display)，当条件为假时，display被设置为none
-+ 相对于v-if来说v-show并不能算作真正的条件渲染，因为挂载它的多个元素之间并没有条件上下文关系
-+ v-if会在切换中将组件上的事件监听器和子组件销毁和重建，当组件被销毁时，它将无法被任何方式获取，因为它已经不存在与DOM中
-+ 在创建父组件时，如果子组件的v-if被判断为假，vue不会对子组件做任何事情，直到第一次判定为真时，这在使用生命周期的钩子函数时要注意，如果生命周期已经走过组件的创建阶段，却无法获取组件对象，就有可能是使用v-if的原因
-+ v-show有更高的初始渲染开销，v-if有更高的切换开销，需要根据具体场景进行选用
-**** 指令v-for
-+ v-for用于实现列表渲染，可以使用item in items或item of items的语法
-  #+BEGIN_SRC html
-    <div id="app">
-      <div style="float: left; width: 160px;">
-        <h2>用户列表</h2>
-        <ul>
-          <!-- index作为第二个参数，用以标识下标 -->
-          <li v-for="(item, index) in users">{{ index }}.&nbsp;{{ item.name }}</li>
-        </ul>
-      </div>
-      <div style="margin-left: 170px; over flow: hidden">
-        <h2>用户列表</h2>
-        <ul>
-          <!-- uIndex作为第二个参数，用以标识下标 -->
-          <li v-for="(user, uIndex) of users">{{ uIndex }}.&nbsp;{{ item.name }}</li>
-        </ul>
-      </div>
-    </div>
-    <script>
-        let vm = new Vue({
-            el: '#app',
-            data () {
-                return {
-                    users: [
-                        {
-                            name: 'Clark',
-                            age: 18,
-                            city: 'BeiJing'
-                        },
-                        {
-                            name: 'Tom'
-                            age: 25,
-                            city: 'Tangshan'
-                        }
-                    ]
-                };
-            }
-        })
-    </script>
-  #+END_SRC
-+ v-for除了渲染数组，还可以渲染对象的键值对
-  #+BEGIN_SRC html
-    <div id="app">
-      <div style="float: left; width: 160px;">
-        <h2>用户列表</h2>
-        <ul>
-          <!-- index作为第二个参数，用以标识下标 -->
-          <li v-for="(user, index) in users">用户{{ index + 1 }}
-            <ul>
-              <!-- key作为第二个参数，用以标识键名 -->
-              <li v-for="(value, key) of users">{{ key }}.&nbsp;{{ value }}</li>
-            </ul>
-          </li>
-        </ul>
-      </div>
-    </div>  
-  #+END_SRC
-+ vue会把数组当作被观察者加入响应式系统中，当调用一些方法修改数组时，对应的视图将会同步更新，以下为与数据响应有关的数组方法
-  |---------+---------------------------------------------------------|
-  | 名称    | 说明                                                    |
-  | push    | 将一个或多个元素添加至数组末尾，并返回新数组的长度      |
-  | pop     | 从数组中删除并返回最后一个元素                          |
-  | shift   | 从数组中删除并返回第一个元素                            |
-  | unshift | 将一个或多个元素添加到数组头部，并返回新数组的长度      |
-  | splice  | 从数组中删除元素或向数组添加元素                        |
-  | sort    | 对数组元素排序，默认按unicode编码排序，返回排序后的数组 |
-  | reverse | 将数组中的元素位置颠倒，返回颠倒后的数组                |
-  |---------+---------------------------------------------------------|
-+ 注意使用下标或键名为数组或对象设置成员的值时，vue并不会将其加入数据响应系统，此种方法修改数据时，视图不会进行更新，此类操作可以使用新数组替换就数组实现视图刷新或使用 Vue.set()或$set()方法
-  - arr[0] = 99
-  - obj['key'] = 'value'
-**** 列表渲染中的key
-+ 使用v-for时，最好为每个迭代元素提供一个值不重复的key，当列表渲染被重新执行(数组内容发生改变)时，如果不使用key，vue会为数组成员就近复用已存在的DOM节点
-+ 实质上，key的存在是为DOM节点标注了一个身份信息，让vue能够有迹可循到数据对应的节点，中vue2.0以上的版本使用v-for时没有附加key的话，vue会给出一个警告
-** Vue选项
-*** 数据和方法
-**** 数据选项(data)
-+ 数据(data)选项可接受的类型有对象和函数两种，不过在定义一个组件时，只能使用函数类型
+** 设置路径别名(可选，编辑器的路径提示不支持)
++ 在项目根目录下创建vue.config.js
   #+BEGIN_SRC js
-  //创建一个vue组件时data选项必须使用函数类型
-  Vue.component('button-counter', {
-      data () {
-          return {
-              counter: 1
+  module.exports = {
+      configureWebpack: {
+        resolve: {
+          alias: {
+            'assets': '@/assets',
+            'components': '@/components',
+            'network': '@/network',
+            'views': '@/views'
           }
-      }
-  })
-
-  //非定义组件的情况下可以使用对象类型
-  let vm = new Vue ({
-      el: '#app',
-      data: {
-          title: 'A Vue App'
-      }
-  })
-  #+END_SRC
-+ Vue会递归将data选项中的数据加入到响应式系统，但这些数据应该是声明时即存在的
-  #+BEGIN_SRC html
-  <template>
-    <div>
-      <h2>{{ title }}</h2>
-      <p>{{ pro file }}</p>
-    </div>
-  </template>
-  <script>
-      export default {
-          name: 'instance',
-          data () {
-              return {
-                  title: 'A Vue App'
-              };
-          }
-      },
-      created () {
-          Object.assign(this.$data, {
-          //为对象赋值属性，没有则添加属性，有则覆盖原有属性值，但此处定义的数据不会被加入到响应式系统，而只是一个普通的js属性                                                                                                                                                                                                                                                                                                                                                                  
-          pro file: 'This is a Vue App'
-          })
-          console.log(this.$data)
-      }
-  </script>
-  #+END_SRC
-+ 在实际开发时，应将可能中实例中被观察的对象预先中data选项中声明，任何浏览器所支持的原生API都无法将数据动态加入响应式系统，但vue针对这一需求提供了相应的机制
-+ 开发者可以使用Vue.$set(target, key, value)
-**** 属性选项(props)
-+ 使用属性选项(props)可以为组件注册动态特性，以处理业务间的差异，使代码可以复用于相似的应用场景
-+ props选项可以是数组或对象类型，用于接收从父组件传递过来的参数，并允许开发者为其设置默认值、类型检测、校验规则等
-  #+BEGIN_SRC html
-  <div id="app">
-    <color-text text="Hello World"></color-text>
-    <br>
-    <color-text></color-text>
-    <br>
-    <color-text color="#f78" text="Hello World"></color-text>
-    <br>    
-    <color-text color="#43dt" text="Hello World"></color-text>
-    <br>
-  </div>
-  <script>
-      Vue.component('color-text', {
-          props: {
-              text: String,
-              color: {
-                  type: String,
-                  default: '#000',
-                  required: true,
-                  valdator(value){
-                      //校验规则，判断颜色数值是否合法
-                      return /^#([0-9a-fA-F]{6}|[0-9a-fA-f]{3})$/.test(value)
-                  }
-              }
-          },
-          template: '<span :style="{ color: color }">{{ text }}</span>'
-      })
-  </script>
-  #+END_SRC
-**** 方法选项(methods)
-+ 注意不要使用箭头函数在其中定义方法，在创建组件时，methods中的方法将被绑定到Vue实例上，方法中的this将自动指向Vue实例，此时如果使用箭头函数的话，this无法正确指向Vue实例，带来不必要的麻烦
-**** 计算属性选项(computed)
-+ 计算属性(computed选项)设计的初衷在于减轻模板上的业务负担，当数据链上出现复杂衍生数据时，我们更期望以一种易于维护的方式使用它，可以避免中模板部分写入过分复杂的业务逻辑，不利用维护
-+ 与methods一样，计算属性不能使用箭头函数
-+ 计算属性依赖于响应式属性，当且仅当响应式属性变化时，计算属性才会被重新计算，且结果将会被缓存，一直到响应式属性被再次修改，相比于使用methods函数求值，这是一直更高效的机制
-+ vue也允许开发者为computed属性赋值，开发者有权定义可被赋值的computed属性，方法类似于定义对象属性描述符中的setter和getter，但此项功能不长用
-**** 侦听属性选项(watch)
-+ Vue允许开发者使用侦听属性(watch选项)为实例添加被观察对象，并在对象被修改时调用开发者自定义的方法
-+ 由于watch更注重于处理数据变化时的业务逻辑，而computed更注重于衍生数据，因此，与computed相比，watch还优于可以异步修改数据，可以用于为组件异步获取ajax请求的返回值，而computed无法实现这种效果
-*** 生命周期钩子
-**** beforeCreate
-**** created
-**** beforeMount
-**** mounted
-**** beforeUpdate
-**** updated
-**** activated
-**** deactivated
-**** beforeDestroy
-**** destroyed
-**** errorCaptured
-*** DOM渲染
-**** 指定被挂载的元素(el)
-+ el选项用于指定vue实例的挂载目标，属性值仅限于CSS选择器或DOM节点对象
-+ 可以使用$mount方法手动挂载实例 
-**** 视图的字符串模板(template)
-+ vue可以使用字符串作为实例的模板，模板字符串由template选项接收
-+ 模板节点将替换掉原有DOM节点
-**** 渲染函数(render)
-+ render函数同样也可以用于渲染视图，它提供了回调方法createElement创建DOM节点
-+ template和render选项均是用于增加JS代码以减少HTML代码的开发
-**** 选项优先级
-+ 当el、template、render的功能是一致的，当它们同时存在时就存在优先级问题
-+ 当el、template、render同时存在时render优先
-+ 当el、template共存时，template优先
-*** 封装复用
-**** 过滤器选项(filter)
-+ filter选项用于定义中当前组件或实例作用域中可用的过滤器，可中双大括号插值中添加在javascript表达式尾部，以管道符|与表达式隔开，表达式的值将作为参数传入filter中
-+ 除了在组件内定义filter外，还可以定义全局filter
-  #+BEGIN_SRC js
-  Vue.filter('supplyTitle', value => {
-      console.log('SupplyTitle');
-      return value.replace(/%/g, '')
-  })
-  #+END_SRC
-**** 自定义指令选项(directives)
-+ vue为自定义指令提供了如下钩子函数(均为可选)
-  - bind：指令与元素绑定时调用
-  - inserted：指令绑定的元素被挂载到父元素上时调用
-  - update：指令所在VNode更新时调用，可能发生在其子VNode更新之前
-  - componentUpdated：指令所在VNode及其子VNode全部更新后调用
-  - unbind：指令与元素解绑时调用
-+ 钩子函数会被传入以下参数
-  - el：指令所绑定的元素，可用于操作DOM
-  - binding：包含指令相关属性的对象
-+ 可以定义全局的自定义指令
-**** 组件注册选项(components)
-+ components选项用于为组件注册从外部引入的组件，由于子组件并非在全局定义，因此不可能直接在父组件的作用域中使用，此选项常见的应用场景是引入第三方库中的组件和自定义组件
-**** 混入选项(mixins)
-+ 与components选项相似，mixins选项也用于注册外部封装好的代码，不过这些代码更加碎片化，并不如组件一样成体系，混入的目的在于灵活地分发组件中一些可复用的功能
-+ mixins可以将一些封装好的选项混入到另一个组件中，在混入过程中，如果没有发生冲突，则执行合并；如果发生冲突且用户没有指定解决策略，vue将采用默认策略
-** Vue内置组件
-*** 组件服务
-**** 动态组件(component)
-+ 在某些场景,往往需要动态切换页面部分区域的视图，这时内置组件component就显得尤为重要
-+ component接收一个名为is的属性，is的值应为在父组件中注册过的组件名称
-  #+BEGIN_SRC html
-    <style>
-      .tabs {
-        margin: 0;
-        padding: 0;
-        list-style: none;
-      }
-      .per-tab {
-        display: inline-block;
-        width: 120px;
-        line-height: 32px;
-        border-left: 1px solid #ccc;
-        border-top: 1px solid #ccc;
-      }
-      .per-tab:last-child {
-        border-right: 1px solid #ccc;
-      }
-      .tab-content {
-        height: 240px;
-        border: 1px solid #ccc;
-      }
-    </style>
-    <div id="app">
-      <ul class="tabs">
-        <li class="per-tab" @click="toggleView('Home')">Home</li>
-        <li class="per-tab" @click="toggleView('About')">About</li>
-      </ul>
-      <div class="tab-content">
-        <!--此处view是变量用于切换视图-->
-        <component :is="view"></component>
-      </div>
-    </div>
-    <script src="../js/vue.js"></script>
-    <script>
-        let Home = {
-            template: '<p style="color: #787878;">Hello Home!</p>'
         }
-        let About = {
-            template: '<p>Hello About!</p>'
-        }
-        let vm = new Vue ({
-            el: '#app',
-            components: { Home, About },
-            data () {
-                return {
-                    view: 'Home'
-                };
-            },
-            methods: {
-                toggleView (view){
-                    this.view = view
-                }
-            }
-        })
-    </script>
-  #+END_SRC
-**** 插槽(slot)
-+ 通过props选项，组件可以接收多态的数据，如果希望组件也能接收多态的DOM结构，可以使用内置组件slot(插槽)分发内容
-+ 定义多个插槽时，可以使用name属性对其进行区分，如果没有指定name属性，则vue将会所有的插槽内容置于默认插槽default中
-  #+BEGIN_SRC html
-  <div id="app">
-    <slot-test>
-      <p>使用插槽分发内容</p>
-      <h1 slot="header">插槽测试！</h1>
-      <p>在组件中，没有指定插槽名称的元素将被置于默认插槽中</p>
-      <p slot="none">指定到不存在的插槽中的内容将不会被显示</p>
-    </slot-test>
-  </div>
-  <script src="./js/vue.js"></script>
-  <script>
-      let SlotTest = {
-          template: '<div>' + '<slot name="header">相当于占位符元素，因此这些文字不会被渲染</slot>' + '<slot></slot>' + '</div>'
-      }
-      let vm = new Vue ({
-          el: '#app',
-          components: {SlotTest}
-      })
-  </script>
-  #+END_SRC
-+ 父组件的元素可以分发到对应的插槽中
-+ vue还提供了作用域插槽(slot-scope)，可以用来获取子组件回传的数据，用来在父组件中执行多态的渲染和响应，可以实现表格类的组件
-**** 组件的缓存
-+ keep-alive是一个抽象组件，它不渲染任何DOM元素，也不会出现在组件结构树中，使用它可以缓存一些非动态的组件实例(没有或不需要数据变化)，以保留组件状态或减少重新渲染的开销
-+ keep-alive应出现在组件被移除之后需要再次挂载的地方
-*** 过渡效果
-**** 单节点过渡
-+ vue提供了标签为transition的内置组件，在下列情况中，可以给任何元素和组件添加进入/离开时的过渡动画
-  - 元素或组件初始渲染时
-  - 元素或组件显示/隐藏时(v-if和v-show)
-  - 元素或组件切换时
-+ vue允许用户使用CSS和JS两种方式来定义过渡效果
-  - 使用CSS过渡时，需要预置符合vue规则的带样式的类名，这些类名用于定义过渡不同阶段时的样式
-    - v-enter
-      定义进入过渡的开始状态，在元素被插入前生效，被插入后的下一帧移除
-    - v-enter-active
-      定义进入过渡生效时的状态，在整个进入过渡阶段中应用，在元素被插入之前生效，在过渡/动画完成之后移除，这个类可以用来定义进入过渡的过程时间、延迟和曲线函数等
-    - v-enter-to
-      定义进入过渡结束时的状态，在元素被插入后的下一帧生效(此时v-enter被移除)，在过渡/动画完成之后移除
-    - v-leave
-      定义离开过渡的开始状态，在离开过渡被触发时立刻生效，下一帧被移除
-    - v-leave-active
-      定义离开过渡生效时的状态，在整个离开过渡的阶段中应用，在离开过渡被触发时离开生效，在过渡/动画完成之后移除，这个类可以被用来定义离开过渡的过程时间’延迟和曲线函数等
-    - v-leave-to
-      定义离开过渡的结束状态，在离开过渡被触发之后的下一帧生效(此时v-leave被移除)，在过渡/动画完成之后移除
-  - 当实例中存在多个不同的动画效果时，可以使用自定义前缀替换v-，比如使用slide-enter替换v-enter，不过帧这需要赋予transition元素name属性
-  - 除了transition之外，还可以使用CSS中的animation，或直接使用第三方动画库(例如Animate.css)来实现过渡动画，由于这些动画库有着不同的类名规则，无法与vue默认的类名规则配合使用，因此vue提供了兼容方案，允许用户自定义过渡的类名，这些类名的优先级高于默认的类名，可以使用以下特性来自定义过渡类名
-    - enter-class
-    - enter-active-class
-    - enter-to-class
-    - leave-class
-    - leave-active-class
-    - leave-to-class
-+ 使用JS实现过渡效果并不常见
-**** 多节点过渡
-+ 为列表元素或使用v-for渲染的元素添加过渡时，vue提供了transition-group组件，不同与transition的地方为
-  - transition-group将以真实元素呈现，默认为span，也可以通过tag属性更换为其他元素
-  - 过渡模式不可用
-  - 内部元素必须提供唯一的key属性(就近复用会导致部分过渡失效)
-** Vue项目化
-*** 前端路由(Vue Router)
-**** 基础路由
-+ 示例
-  #+BEGIN_SRC html
-  <div id="app">
-    <ul>
-      <li><router-link to="/">Home</router-link></li>
-      <li><router-link to="/about">About</router-link></li>
-    </ul>
-    <router-view></router-view>
-  </div>
-  <script src="./js/vue.js"></script>
-  <script src="./js/vue-router.js"></script>
-  <script>
-      let Home = { template: '<h1>This is Home!</h1>' }
-      let About = { template: '<h1>This is About!</h1>' }
-      let routers = [
-          { path: '/', component: Home },
-          { path: '/about', component: About }
-      ]
-      let router = new VueRouter({
-          routers
-      })
-      let app = new Vue({
-          router
-      }).$mount('#app')
-  </script>
-  #+END_SRC
-+ RouterLink和RouterView是Vue Router提供的两个内置组件，RouterLink默认会被渲染一个<a>标签，它的to属性用于指定跳转链接，RouterView将负责挂载路由匹配到的视图组件
-**** 动态路由
-+ 示例
-  #+BEGIN_SRC html
-  <div id="app">
-    <ul>
-      <li><router-link to="/">Home</router-link></li>
-      <li @click="add">
-        <!-- 2.参数num由实例传入路由 -->
-        <router-link :to="'/about/' + num">About</router-link>
-      </li>
-    </ul>
-    <router-view></router-view>
-  </div>
-  <script src="./js/vue.js"></script>
-  <script src="./js/vue-router.js"></script>
-  <script>
-      let Home = { template: '<h1>This is Home!</h1>' }
-      let About = {
-          template: '<div>' + '<h1>This is About!</h1>' + '<p>num: {{ $route.params.num }}</p>' + '</div>'
-      }
-      let routes = [
-          { path: '/', component: Home },
-          { path: '/about/:num', component: About }
-      ]
-      let router = new VueRouter ({
-          routes
-      })
-      let app = new Vue ({
-          data () {
-              return {
-                  num: 0
-              }
-          },
-          methods: {
-              add () { this.num++ }
-          },
-          router
-      }).$mount('#app')
-  </script>
-  #+END_SRC
-+ 可以使用动态路由参数将匹配某种模式的所有路由映射到同一个组件
-+ 路径参数应用英文冒号:标记，但在使用时应注意设计的是否合理
-**** 嵌套路由
-+ 示例
-  #+BEGIN_SRC html
-  <div id="app">
-    <ul>
-      <li><router-link to="/">Home</router-link></li>
-      <li>
-        <div><router-link to="/about">About</router-link></div>
-        <ul>
-          <li><router-link to="/about/author">About - Author</router-link></li>
-          <li><router-link to="/about/email">About - Email</router-link></li>
-        </ul>
-      </li>
-    </ul>
-    <router-view></router-view>
-  </div>
-  <script src="./js/vue.js"></script>
-  <script src="./js/vue-router.js"></script>
-  <script>
-      let Home = { template: '<h1>This is Home!</h1>' }
-      let About = {
-          template: '<div>' + '<h1>This is About!</h1>' + '<router-view></router-view>' + '</div>'
-      }
-      let Author = { template: '<p>Author: Lonelydawn</p>' }
-      let Emali = { template: '<p>Email: aaa@sina.com</p>' }
-      let routes = [
-          { path: '/', component: Home },
-          { path: '/about', component: About,
-            children: [
-                { path: 'author', component: Author },
-                { path: 'email', component: Email }
-            ]
-          
-          }
-      ]
-      let router = new VueRouter({
-          routes
-      })
-      let app = new Vue({
-          router
-      }).$mount('#app')
-  </script>  
-  #+END_SRC
-+ 嵌套路由可以实现在动态视图中嵌套动态视图
-+ 多层的动态视图是可以使用vue内置组件component来实现的，但是component切换视图会在页面刷新后回到初始状态，而使用路由分发的视图在页面刷新后会保持当前路径对应的视图，并在浏览器的history中留下记录
-**** 编程式路由
-+ 示例
-  #+BEGIN_SRC html
-  <div id="app">
-    <ul>
-      <!-- 默认字符串为路径参数 -->
-      <li @click="redirectByPath('/')">Home</li>
-      <li>
-        <!-- 指定参数为路径 -->
-        <div @click="redirectByPath('/about')">About</div>
-        <ul>
-          <!-- 嵌套路由 -->
-          <li @click="redirectByPath('/about/author')">About -Author</li>
-          <!-- 嵌套路由，动态路由，当使用path时，params参数不生效 ???运行时未生效 -->
-          <li @click="redirectByPath('/about/email', { email: 'lonelydawn@sina.com' })">About -Email</li>
-          <!-- 嵌套路由，动态路由，可以直接将参数写入path ????运行时未生效 -->
-          <li @click="redirectByPath('/about/email/lonelydawn@sina.com')">About -Email</li>
-          <!-- 嵌套路由，动态路由，使用命名路由跳转视图 -->
-          <li @click="redirectByName('Email', { email: 'singledawn@sina.com' })">About -Email</li>
-        </ul>
-      </li>
-    </ul>
-    <router-view></router-view>
-  </div>
-  <script src="./js/vue.js"></script>
-  <script src="./js/vue-router.js"></script>
-  <script>
-    let Home = { template: '<h1>This is Home!</h1>' }
-    let About = { template: '<div>' + '<h1>This is About!</h1>' + '<router-view></router-view>' + '</div>' }
-    let Author = { template: '<p>Author: lonelydawn</p>' }
-    let Email = { template: '<p>Email: {{ $route.params.email }}</p>' }
-    let routes = [
-        { path: '/', component: Home },
-        { 
-          path: '/about',
-          component: About,
-          children: [
-              { name: 'Author', path: 'author', component: Author },
-              { name: 'Email', path: 'emali/:email', component: Email }
-          ]
-        }
-    ]
-    let router = new VueRouter({
-        routes
-    })
-    let app = new Vue({
-        methods: {
-            redirectByPath(path, params){
-                this.$router.push({ path, params })
-            },
-            redirectByName(name, params){
-                this.$router.push({ name, params })
-            }
-        },
-        router
-    }).$mount('#app')
-  </script>
-  #+END_SRC
-*** 状态管理
-**** 简介
-+ 对于组件化开发来讲,大型应用的状态往往跨越多个组件，在多层嵌套的父子组件之间传递状态是是十分麻烦的，而vue更是没有为兄弟组件提供直接共享数据的办法，Vuex就是vue官方提供保管所有分散的共享数据的状态管理器
-+ 对于小型应用来说，完全没有必要引入状态管理，会带来更多的开发成本，然而当应用的复杂度很高时，状态管理会越发的重要
-**** Vuex
-+ Vuex用于管理分散在Vue各个组件中的数据
-+ 每一个Vuex应用的核心都是一个store(仓库)，也可以想象为“非凡的全局对象”，与普通的全局对象不同的是，基于Vue数据与视图绑定的特点，当store中的状态发生变化时，与之绑定的视图也会被重新渲染
-+ 这是一个单向的过程，store中的状态不允许被直接修改，改变store中的状态的唯一途径就是显示提交(commit)mutation，这可以方便的跟踪每一个状态的变化
-**** Vuex重要概念
-***** State
-+ State用于维护所有应用层的状态，确保应用只有唯一的数据源
-+ 语法
-  #+BEGIN_SRC js
-  new Vuex.Store({
-      state: {
-          count: 1
-      }
-  })
-  #+END_SRC
-+ 在组件中可以直接使用$store.state.count(前提是store已经被注册到实例中)
-***** Getter
-+ Getter维护由State派生的一些状态，这些状态随着State状态的变化而变化，与计算属性一样，Getter中的派生状态在被计算之后会被缓存起来，当重复调用时，如果被依赖的状态没有变化，那么Vuex不会重新计算派生状态的值，而是直接采用缓存值
-+ 语法
-  #+BEGIN_SRC js
-  new Vuex.Store({
-      state: {
-          count: 1
-      },
-      getters: {
-          tenTimesCount(state){
-              return state.count * 10 
-          }
-      }
-  })
-  #+END_SRC
-+ 在组件中，可以直接使用$store.getters.tenTimesCount
-***** Mutation
-+ Mutation用来修改State状态
-+ 语法
-  #+BEGIN_SRC js
-  new Vuex.Store({
-      state: {
-          count: 0
-      },
-      mutations: {
-          addCount(state, num){
-              state.count += num || 1
-          }
-      }
-  })
-  #+END_SRC
-+ 在组件中，可以直接使用store.commit来提交mutation
-  #+BEGIN_SRC js
-  methods: {
-      addCount(){
-          this.$store.commit('addCount')
       }
   }
+
   #+END_SRC
-***** Action
-+ Action类似与Mutation，不同点在于
-  - Action不能直接修改状态，只能通过提交mutation来修改
-  - Action可以包含异步操作
-+ 语法
-  #+BEGIN_SRC js
-  new Vuex.Store({
-      state: {
-          count: 0
-      },
-      mutations: {
-          addCount(state, num){
-              state.count += num || 1
-          }
-      },
-      actions: {
-          //context具有和store实例相同的属性和方法
-          //可以通过context获取state和getters中的值，或者提交Mutation和分发其他的action
-          addCountAsync(context, num){
-              setInterval(function(){
-                  if (context.state.count < 2000){
-                      context.commit('addCount', num || 100)
-                  }
-              }, num || 100)
-          }
-      }
-  })
-  #+END_SRC
-+ 在组件中，可以直接使用store.dispatch来分发action
-  #+BEGIN_SRC js
-  methods: {
-      addCountAsync(num){
-          this.$store.dispatch('addCountAsync', num)
-      }
-  }
-  #+END_SRC
-***** Module
-+ 由于使用单一状态树，当项目的状态非常多时，store对象会变得非常臃肿，因此Vuex可以将store分割成模块(Module)，每个模块拥有独立的State、Getter、Mutation、Action，模块之中还可以嵌套模块，每一级都有着相同的结构
-+ 语法
-  #+BEGIN_SRC js
-  //定义模块
-  const counter = {
-      namespaced: true, //定义为独立的命名空间
-      state: {
-          count: 0
-      },
-      getters: {
-          //在模块中，计算方法还会具有rootState、rootGetters参数以获取根模块中的数据
-          tenTimesCount(state, getters, rootState, rootGetters){
-              console.log(state, getters, rootState, rootGetters)
-              return state.count * 10
-          }
-      },
-      mutations: {
-          addCount(state, num){
-              state.count += num || 1
-          }
-      },
-      actions: {
-         //在模块中context还会具有rootState和rootGetters属性以获取根模块中的数据
-         addCountAsync(context, num){
-             setInterval(function (){
-                 if (context.state.count < 2000) {
-                     context.commint('addCount', num || 100)
-                 }
-             }, num || 100)
-         }
-      }
-  }
-  //创建仓库
-  new Vuex.Store({
-      modules: { //注册模块
-          counter
-      }
-  })
-  #+END_SRC
-+ 在组件中，模块的使用方法如下
-  #+BEGIN_SRC js
-  import { mapState, mapGetters, mapMutations, mapActions } from 'vuex'
-  ...
-  #+END_SRC
-***** 综述
-+ 作为一个状态管理器，首先是保管状态的容器State
-+ 为了满足衍生数据和数据链的需求，从而有了Getter
-+ 为了显示修改状态，所有需要Mutation
-+ 为了可以异步修改状态(满足AJAX等异步数据交互)，所以需要Action
-+ 如果应用有成百上千个状态，放在一起会显得十分庞杂，所以需要模块管理(Module)
-**** 在项目中使用Vuex
-* 项目实例
-** 
+** 使用axios请求数据
++ 安装
+  npm install axios --save

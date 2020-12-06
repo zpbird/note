@@ -1,0 +1,959 @@
+* 安装
+** windows
+*** 绿色版安装
++ 解压后，在D:\software\pgsql下创建data目录
++ 在cmd中执行命令
+  d:\software\pgsql\bin\initdb.exe -D d:\software\pgsql\data -E UTF8
++ 注册windows服务（可不注册）
+  d:\software\pgsql\bin\pg_ctl register -N postgres -D d:\software\pgsql\data
++ 启动服务
+  - 已经注册windows服务的启动方式
+    D:\software\pgsql\bin>net start postgres
+  - 未注册windows服务的启动方式
+    d:\software\pgsql\bin\postgres -D d:\software\pgsql\data 
+    或
+    d:\software\pgsql\bin\pg_ctl -D d:\software\pgsql/data -l logfile start
++ 创建数据库
+  d:\software\pgsql\bin\createdb test
++ 需要将用户'flo'添加到您本地的postgres实例（我通常只是将它们添加为超级用户，所以我没有权限问题）
+  d:\software\pgsql\bin\createuser -P -s -e flo
++ 创建用户
+  d:\software\pgsql\bin\createuser.exe -U test -P test
++ 修改PostgresSQL 数据库配置实现远程访问
+  - 修改postgresql.conf 文件
+    修改d:\pgsql\data\postgresql.conf中的
+    listen_addresses = ‘localhost’ 改成 listen_addresses =’*’
+  - 修改客户端认证配置文件pg_hba.conf
+    将host all all 127.0.0.1/32 trust修改成host all all 0.0.0.0/0 trust
+    重启postgres服务使配置生效
+* psql命令行工具
+** 登录数据库
++ psql -h <hostname or ip> -p <端口> -d [数据库名称] -U [用户名称]
++ 这些连接参数也可以用环境变量指定，然后直接允许 psql 
+  export PGDATABASE=testdb
+    export PGHOST=127.0.0.1
+    export PGPORT=5432
+    export PGUSER=postgres
+** 详细参数
+-d dbname
+–dbname = dbname
+指定要连接的数据库的名称。这相当于将 dbname指定为命令行上的第一个非选项参数
+如果此参数包含=或以有效的URL前缀（postgresql://或postgres://）开头，则将其是为conninfo字符串。
+-e
+–echo-queries
+将发送到服务器的所有SQL命令也复制到标准输出。这相当于变量ECHO设置为查询。
+-E
+–echo-hidden
+回显\d和其他反斜杠命令生成的实际查询。可以使用它来研究psql的内部操作。这相当与将变量ECHO_HIDDEN设置为on。
+-f filename
+–file = filename
+从文件filename中读取命令，而不是标准输入。可以使用-c选项以任何顺序重复和组合此选项。当任意-c或-f指定，psql不从标准输入读取命令；相反，它在按顺序处理所有-c和-f选项后终止。除此之外，此选项在很大程度上等同于元命令\i
+如果filename是- （连字符），则读取标准输入直到EOF只是或\q元命令。这可以用于将交互式输入与来自文件的输入交叉。但请注意，在这种情况下不能使用Readline（就像指令了-n一样）。
+-F
+–field-separator = separator
+使用分隔符separator作为为对齐输出的字段分隔符。这相当与 \pset fieldsep or \f
+-h hostname
+–host = hostname
+指定运行服务器的计算机的主机名。如果值以斜杠开头，则将其用作Unix域套接字的目录
+-H
+–html
+打开HTML表格输出。这相当于\pset format html或\H命令。
+-l
+–list
+列出所有可用的数据库，然后提出。其他非连接选项将被忽略。这类似与元命令\list
+-L filename
+–log-file = filename
+除了正常输出目标之外，将所有查询输出写入文件filename
+-n
+–no-readline
+不要使用Readline进行行编辑，也不要使用命令历史记录。这在切割和粘贴时关闭标签扩展非常有用。
+-o filename
+–output = filename
+将所有查询输出放入文件filename。这相当于命令\o。
+-p port
+–port = port
+指定服务器正在侦听连接的TCP端口或本地Unix域套接字文件扩展名。默认PGPORT环境变量的值，如果未设置，则默认为编译时指定的端口，通常为5432。
+-P assignment
+–pset = assignment
+指定打印选项，格式为\pset。请注意，必须使用等号而不是空格分隔名称和值。例如要将输出格式设置为LaTeX，可以编写为-P format = latex
+-q
+–quiet
+指定psql应该静默执行其工作。默认情况下，他会打印欢迎消息和各种信息输出。如果使用此选项，则不会发生这种情况。这对-c选项很优雅。这相当于变量QUIET设置为on。
+-R separator
+–record-separator = separator
+使用separator作为未对齐输出的记录分隔符。这相当与\pset recordsep命令。
+-s
+–single-step
+以single-step模式运行。这意味着在将每个命令发送到服务器之前会提示用户，并且还可以选择取消执行。可使用它来调试脚本。
+-S
+–single-line
+以single-line模式运行，其中换行符终止SQL命令，如同“；”。
+-t
+–tuples-only
+关闭列名称和结果行计数页脚等的打印。这相当于\t命令。
+-T table_options
+–table-attr = table_options
+指定要放在HTML table标记中的选项。
+-U username
+–username = username
+以用户名username而不是默认用户名连接到数据库。（username必须获得许可）
+-v assignment
+–set = assignment
+–variable = assignment
+执行变量复制，例如\set meta-command。请注意，必须在命令行上使用等号分割名称和值。要取消设置变量请不要使用等号。要设置具有控制的变量，请使用等号，但不要使用该值。这些分配是在启动的早期阶段完成的，因此为内部目的保留的变量可能会在以后被覆盖。
+-V
+–version
+打印psql版本并退出。
+-w
+–no-password
+永远不要发出密码提示。如果服务器需要密码身份验证，并且其他方式（如.pgpass文件）无法使用密码，则连接尝试将失败。此选项在没有用户输入密码的批处理作业和脚本中非常有用。
+请注意，此选项将保持为整个会话设置，因此它会影响元命令\connect的使用以及初始连接尝试。
+-W
+–password
+强制psql在连接到数据库之前提示输入密码。
+该选项永远不是必须的，因为如果服务器需要密码身份验证，psql将自动提示输入密码。但是，psql将浪费连接尝试，发现服务器需要密码。某些情况下值得输入-W以避免额外的连接尝试。
+请注意，此选项将保持为整个会话设置，因此它会影响元命令\connect的使用以及初始连接尝试。
+-x
+–expanded
+打开扩展表格式化模式。这相当于\x命令。
+-X
+–no-psqlrc
+不要读取启动文件（系统范围的psqlrc文件和用户～/.psqlrc文件）。
+-z
+–record-separator-zero
+将未对齐输出到记录分隔符设置为零字节
+** 常用命令
+psql 的命令都是以斜杠 "\" 开头
++ \l  查看所有数据库
++ \d [ pattern ] 该命令将显示每个匹配关系（表、视图、索引、序列）的信息，可以加上 + 查看更多的信息
+  1. 不加任何参数表示查看当前数据库的所有表。
+  2. \d tablename 后面跟一个表名，表示显示这个表的结构定义
+  3. \d indexname 也可以显示索引的信息，如 \d 索引名称
+  4. \d * 后面也可以跟通配符如 "*" 或 "?"，\d x*
+  5. \d+ 将显示比 \d 更详细的信息，还会显示任何与表关系的注释，以及表中出现的 OID 
+  6. \dt 只显示匹配的表  
+       \di 只显示索引
+       \ds  只显示序列
+       \dv 只显示视图
+       \df 只显示函数
+  7. \dn 列出所有的 schema
+  8. \du 或 \dg 列出所有的数据库用户和角色
+  9. \db 显示所有的表空间，表空间其实是一个目录，放在这个表空间的表，就是把表的数据文件发到这个表空间下
+  10. \dp 或 \z 显示表的权限分配情况
+  11. \encoding 指定客户端的字符编码，如 \encoding UTF8
+  12. \pset 设置输出的格式，\pset border 0 : 表示输出内容无边框。 border 1 ：表示边框只在内部。border 2 ：内外都有边框
++ \x 把表中的每一行的每列数据都拆分为单行展示，与 MySQL 中的 "\G" 的功能类似
++ \timing on或off 显示 SQL 已执行的时间，默认情况下是 off
++ \echo 用于输出一行信息，通常用于在 .sql 文件中输出一些提示信息
++ \password 设置密码
++ \conninfo 列出当前数据库连接的信息
++ \dx 查看数据库中安装的扩展 或 select * from pg_extension
++ 更多的命令可以用 \? 来显示
+** 两种操作模式
++ 交互模式
+  - 在执行SQL命令语句时，以分号作为结尾，否则psql会认为命令还没有输入完毕
++ 非交互模式
+  - 在非交互模式下，使用psql需要为其传递一个脚步文件，其中可以包含任意数量的SQL和psql语句
+    psql -f script_filename
+  - 非交互模式下也可以执行多条使用双引号括起来的SQL语句
+    psql -d postgresql_book -c "DROP TABLE IF EXISTS dross; CREATE SCHEMA staging"
+** 实现数据导入导出
+*** 导入
++ 在导入非规范化数据或不太了解其特征的数据时，应该新建一个独立的schema作为数据过渡区，将数据导入到此schema中，通过一系列查询摸清数据特征后，导入到正式的产品表中，再删除此schema
+  #+BEGIN_SRC sql
+  \connect postgresql_book
+  \cd /postgresql_book/ch03
+  \copy staging.factfinder_import FROM aaa.csv CSV
+  #+END_SRC
+*** 导出
++ 格式与导入类似
+  #+BEGIN_SRC sql
+  \copy (SELECT * FROM staging.factfinder_import WHERE s01 ~ E'^[0-9]+') TO '/test.tab' WITH DELIMITER E'\t' CSV HEADER
+  #+END_SRC
+** 常规操作
++ 查看所有数据库
+  \l
++ 查看所有schema
+  \dn
+  \dnS 包括系统内置的
++ 查看所有表
+  - 默认public下的表
+    \dt
+  - 数据库中所有的表
+    select * from pg_tables;
+  - 指定schema下所有的表
+    select * from pg_tables where schemaname='a';
++ 查看表结构
+  \d tablename
++ 查看数据库中所有视图
+  \dv
+  select viewname from pg_views；
+  select viewname from pg_views where schemaname='a';
+
+* 数据库管理
+** 配置文件
+*** postgresql.conf
++ 包含通用设置：内存分配、新建database的默认存储位置、postgresql服务器的IP地址、日志的位置
+*** pg_hba.conf
++ 包含控制访问安全：允许哪些用户连接哪个数据库、允许哪些IP或网段连接到本服务器、连接时使用的身份验证模式
+*** pg_ident.conf
++ 
+** 连接管理
++ 强行终止连接是一种很不优雅的行为，应当尽量少用
++ 一般会使用以下三个SQL语句来取消正在运行的查询并终止连接
+  - 查出活动连接列表及其进程ID，该命令还能查出每个连接上最近一次执行的语句
+    SELECT * FROM pg_stat_activity;
+  - 取消连接上的活动查询，该操作不会终止连接本身
+    SELECT pg_cannel_backend(procid);
+  - 终止该连接，一般可以直接使用终止连接，避免用户反复提交操作
+    SELECT pg_terminate_backend(procid);
+** 角色(role)
+*** 简介
++ 角色的概念把“用户”和“组”的概念都包括在内，任意角色都可以扮演用户、组或者两者
++ 一个拥有成员角色的角色称为组角色(group role)，设计组角色是为了将一组权限集中在一起成为一个组，便于以组为单位对这些权限进行管理
+*** 数据库角色
++ 数据库角色在概念上已经完全与操作系统用户独立开来，数据库角色在一个数据库集簇安装范围内是全局的（而不是独立数据库内）
++ 创建一个角色，可使用CREATE ROLE SQL 命令，name遵循 SQL 标识符的规则：或是未经装饰没有特殊字符，或是用双引号包围
+  CREATE ROLE name;
++ 移除一个已有的角色，使用相似的DROP ROLE命令
+  DROP ROLE name;
++ 为了方便，createuser和dropuser程序被提供作为这些SQL命令的包装器，它们可以从shell 命令行调用
+  createuser name
+  dropuser name
++ 要查看现有角色的集合，检查pg_roles系统目录,psql程序的\du元命令也可以用来列出现有角色
+  SELECT rolname FROM pg_roles;
++ 为了引导数据库系统，一个刚刚被初始化好的系统总是包含一个预定义角色。这个角色总是一个“superuser”，并且默认情况下（除非在运行initdb时修改）它的名字和初始化数据库集簇的操作系统用户相同。习惯上，这个角色将被命名为postgres。为了创建更多角色，你首先必须以初始角色的身份连接
++ 每一个到数据库服务器的连接都是使用某个特定角色名建立的，并且这个角色决定发起连接的命令的初始访问权限。要使用一个特定数据库连接的角色名由客户端指示，该客户端以一种应用相关的风格发起连接请求。例如，psql程序使用-U命令行选项来指定要以哪个角色连接。很多应用假定该名字默认是当前操作系统用户（包括createuser和psql）。因此在角色和操作系统用户之间维护一个名字对应关系通常是很方便的
+*** 角色属性
+**** 创建具有某种角色属性的角色
++ 一个数据库角色可以有一些属性，它们定义角色的权限并且与客户端认证系统交互
+***** login privilege 登录权限
++ 只有具有LOGIN属性(login privilege)的角色才能被用于一个数据库连接的初始角色名称。一个带有LOGIN属性的角色可以被认为和一个“数据库用户”相同。要创建一个带有登录权限的角色，使用两者之一
+  CREATE ROLE name LOGIN;
+  或
+  CREATE USER name;
++ CREATE USER和CREATE ROLE等效，除了CREATE USER默认假定有LOGIN，而CREATE ROLE不这样认为
+***** superuser status 超级用户
++ 一个数据库超级用户会绕开所有权限检查，除了登入的权利。这是一个危险的权限并且应该小心使用，最好用一个不是超级用户的角色来完成你的大部分工作
++ 要创建一个新数据库超级用户，使用CREATE ROLE name SUPERUSER。你必须作为一个超级用户来完成这些
+***** database creation 创建数据库
++ 一个角色必须被显式给予权限才能创建数据库（除了超级用户，因为它们会绕开所有权限检查）。要创建这样一个角色，使用CREATE ROLE name CREATEDB
+***** role creation 创建角色
++ 一个角色必须被显式给予权限才能创建更多角色（除了超级用户，因为它们会绕开所有权限检查）。要创建这样一个角色，使用CREATE ROLE name CREATEROLE
++ 一个带有CREATEROLE权限的角色也可以修改和删除其他角色，还可以授予或回收角色中的成员关系。然而，要创建、修改、删除或修改一个超级用户角色的成员关系，需要以超级用户的身份操作。CREATEROLE不足以完成这一切
+***** initiating replication 发起流复制
++ 一个角色必须被显式给予权限才能发起流复制（除了超级用户，因为它们会绕开所有权限检查）。一个被用于流复制的角色必须也具有LOGIN权限。要创建这样一个角色，使用CREATE ROLE name REPLICATION LOGIN
+***** password 密码
++ 只有当客户端认证方法要求用户在连接数据库时提供一个口令时，一个口令才有意义。password和md5认证方法使用口令。数据库口令与操作系统命令独立。在角色创建时指定一个口令：CREATE ROLE name PASSWORD 'string'
+**** 修改角色属性
++ 用ALTER ROLE修改一个角色属性
+**** 最佳实践
++ 一个好习惯是创建一个具有CREATEDB和CREATEROLE权限的角色，而不是创建一个超级用户，并且然后用这个角色来完成对数据库和角色的例行管理。这种方法避免了在非必要时作为超级用户操作任务的风险
+*** 角色成员关系
++ 把用户分组在一起来便于管理权限常常很方便：那样，权限可以被授予一整个组或从一整个组回收。在PostgreSQL中通过创建一个表示组的角色来实现，并且然后将在该组角色中的成员关系授予给单独的用户角色
++ 要建立一个组角色，首先创建该角色
+  CREATE ROLE name;
++ 通常被用作一个组的角色不需要有LOGIN属性，不过如果你希望你也可以设置它
++ 一旦组角色存在，你可以使用GRANT和REVOKE命令增加和移除成员
+  GRANT group_role TO role1, ... ;
+  REVOKE group_role FROM role1, ... ;
++ 你也可以为其他组角色授予成员关系（因为组角色和非组角色之间其实没有任何区别）。数据库将不会让你设置环状的成员关系。另外，不允许把一个角色中的成员关系授予给PUBLIC
++ 组角色的成员可以以两种方式使用角色的权限
+  - 一个组的每一个成员可以显式地做SET ROLE来临时“成为”组角色。在这种状态中，数据库会话可以访问组角色而不是原始登录角色的权限，并且任何被创建的数据库对象被认为属于组角色而不是登录角色
+  - 有INHERIT属性的成员角色自动地具有它们所属角色的权限，包括任何组角色继承得到的权限
+    CREATE ROLE joe LOGIN INHERIT;
+    CREATE ROLE admin NOINHERIT;
+    CREATE ROLE wheel NOINHERIT;
+    GRANT admin TO joe;
+    GRANT wheel TO admin;
+    在作为角色joe连接后，一个数据库会话将立即拥有直接授予给joe的权限，外加任何授予给admin的权限，因为joe“继承了”admin的权限。然而，授予给wheel的权限不可用，因为即使joe是wheel的一个间接成员，但是该成员关系是通过带NOINHERIT属性的admin得到的
++ 在SQL标准中，用户和角色之间的区别很清楚，并且用户不会自动继承权限而角色会继承。这种行为在PostgreSQL中也可以实现：为要用作 SQL 角色的角色给予INHERIT属性，而为要用作 SQL 用户的角色给予NOINHERIT属性。不过，为了向后兼容 8.1 以前的发布（在其中用户总是拥有它们所在组的权限），PostgreSQL默认给所有的角色INHERIT属性
++ 角色属性LOGIN、SUPERUSER、CREATEDB和CREATEROLE可以被认为是一种特殊权限，但是它们从来不会像数据库对象上的普通权限那样被继承。要使用这些属性，你必须实际SET ROLE到一个有这些属性之一的特定角色
++ 要销毁一个组角色，使用DROP ROLE,任何在该组角色中的成员关系会被自动撤销（但是成员角色不会受到影响）
+  DROP ROLE name;
+*** 删除角色
++ 由于角色可以拥有数据库对象并且能持有访问其他对象的特权，删除一个角色常常并非一次DROP ROLE就能解决。任何被该用户所拥有 的对象必须首先被删除或者转移给其他拥有者，并且任何已被授予给该角色的 权限必须被收回
++ 对象的拥有关系可以使用ALTER命令一次转移出去
+  ALTER TABLE bobs_table OWNER TO alice;
++ REASSIGN OWNED命令可以被用来把要被删除的 角色所拥有的所有对象的拥有关系转移给另一个角色。由于 REASSIGN OWNED不能访问其他数据库中的对象，有必要 在每一个包含该角色所拥有对象的数据库中运行该命令（注意第一个这样的 REASSIGN OWNED将更改任何在数据库间共享的该角色拥 有的对象的拥有关系，即数据库或者表空间）
++ 一旦任何有价值的对象已经被转移给新的拥有者，任何由被删除角色拥有的剩余对象就可以用DROP OWNED命令删除。再次，由于这个命令不能 访问其他数据库中的对象， 有必要在每一个包含该角色所拥有对象的数据库中运行 该命令。还有，DROP OWNED将不会删除整个数据库或者表空间，因此如果该角色拥有任何还没有被转移给新拥有者的数据库或者表空间，有必要手工 删除它们
++ DROP OWNED也会注意移除为不属于目标角色的对象授予给目标角色的任何特权。因为REASSIGN OWNED不会触碰这类对象，通 常有必要运行REASSIGN OWNED和 DROP OWNED（按照这个顺序！）以完全地移除要被删除对象的 从属物
++ 总之，移除曾经拥有过对象的角色的方法是
+  REASSIGN OWNED BY doomed_role TO successor_role;
+  DROP OWNED BY doomed_role;
+  -- 在集簇中的每一个数据库中重复上述命令
+  DROP ROLE doomed_role;
+  如果不是所有的拥有对象都被转移给了同一个后继拥有者，最好手工处理异常然后执行上述步骤直到结束。
+  如果在依赖对象还存在时尝试了DROP ROLE，它将发出 消息标识哪些对象需要被重新授予或者删除
+*** 默认角色
++ PostgreSQL提供了一组默认角色，它们提供对特定的、通常需要的、需要特权的功能和信息的访问。管理员可以把这些角色GRANT给其环境中的用户或者其他角色，让这些用户能够访问指定的功能和信息
++ 默认角色
+|---------------------------+--------------------------------------------------------------------------------------------------------------|
+| 角色                      | 允许的访问                                                                                                   |
+|---------------------------+--------------------------------------------------------------------------------------------------------------|
+| pg_read_all_settings      | 读取所有配置变量，甚至是那些通常只对超级用户可见的变量                                                       |
+|---------------------------+--------------------------------------------------------------------------------------------------------------|
+| pg_read_all_stats         | 读取所有的pg_stat_*视图并且使用与扩展相关的各种统计信息，甚至是那些通常只对超级用户可见的信息                |
+|---------------------------+--------------------------------------------------------------------------------------------------------------|
+| pg_stat_scan_tables       | 执行可能会在表上取得ACCESS SHARE锁的监控函数，可能会持锁很长时间                                             |
+|---------------------------+--------------------------------------------------------------------------------------------------------------|
+| pg_monitor                | 读取/执行各种不同的监控视图和函数。 这角色是pg_read_all_settings，pg_read_all_stats和pg_stat_scan_tables成员 |
+|---------------------------+--------------------------------------------------------------------------------------------------------------|
+| pg_signal_backend         | 发信号到其他后端亿取消查询或中止它的会话                                                                     |
+|---------------------------+--------------------------------------------------------------------------------------------------------------|
+| pg_read_server_files      | 允许使用COPY以及其他文件访问函数从服务器上该数据库可访问的任意位置读取文件                                   |
+|---------------------------+--------------------------------------------------------------------------------------------------------------|
+| pg_write_server_files     | 允许使用COPY以及其他文件访问函数在服务器上该数据库可访问的任意位置中写入文件                                 |
+|---------------------------+--------------------------------------------------------------------------------------------------------------|
+| pg_execute_server_program | 允许用运行该数据库的用户执行数据库服务器上的程序来配合COPY和其他允许执行服务器端程序的函数                   |
+|---------------------------+--------------------------------------------------------------------------------------------------------------|
++ pg_monitor、pg_read_all_settings、pg_read_all_stats和pg_stat_scan_tables角色的目的是允许管理员能为监控数据库服务器的目的很容易地配置角色。它们授予一组常用的特权，这些特权允许角色读取各种有用的配置设置、统计信息以及通常仅限于超级用户的其他系统信息
++ 管理员可以用GRANT命令把对这些角色的访问授予给用户
+  GRANT pg_signal_backend TO admin_user;
+*** 函数和触发器安全性
++ 函数、触发器以及行级安全性策略允许用户在后端服务器中插入代码，其他用户不会注意到这些代码的执行。因此，这些机制允许用户相对容易地为其他人设置“特洛伊木马”。最强的保护是严格控制哪些人能定义对象。如果做不到，则编写查询时应该只引用具有可信任拥有者的对象。可以从search_path中去除public方案以及任何其他允许不可信用户创建对象的方案
++ 在后端服务器进程中运行的函数带有数据库服务器守护进程的操作系统权限。如果用于函数的编程语言允许非检查的内存访问，它就可能改变服务器的内部数据结构。因此，在很多其他事情中，这些函数可能绕开任何系统访问控制。允许这种访问的函数语言被认为是“不可信的”，并且PostgreSQL只允许超级用户创建用这些语言编写的函数
+*** 常规操作
+**** 创建可登录角色
++ 示例
+  #+BEGIN_SRC sql
+  CREATE ROLE leo LOGIN PASSWORD 'king' CREATEDB VALID UNTIL 'infinity';
+  #+END_SRC
+  VALID是可选项，其功能是为此角色的权限设定有效期，默认是infinity，即永不过期
+  CREATEDB表示为此角色赋予创建数据库的权限
+**** 创建组角色
++ 一般不应该授予组角色登录权限，因为组角色的作用就是讲一组权限汇集成一个集合以便于将这组权限批量授予给别的普通角色
+  #+BEGIN_SRC sql
+  CREATE ROLE royalty INHERIT
+  #+END_SRC
++ INHERIT表示组角色royalty的任何一个成员角色都将自动继承其除了超级用户权限之外的所有权限
++ 使用以下语句可以将组角色的权限赋予其成员角色
+  #+BEGIN_SRC sql
+  GRANT royalty TO leo;
+  GRANT royalty TO regina;
+  #+END_SRC
+** 创建数据库
+*** 简介
++ 最基本的创建数据库语句为，该命令会以template1库为模板生成一份副本作为新的database
+  #+BEGIN_SRC sql
+  CREATE DATABASE mydb;
+  #+END_SRC
++ 每个database都会有一个属主，新库的属主就是执行此SQL命令的角色
++ 任何拥有CREATEDB权限的角色都能够创建新的database
+*** 模板数据库
++ 模板数据库就是创建新database时所依赖的模板，postgresql默认自带两个模板数据库：template0和template1，如果创建数据库时未指定使用哪个模板，系统默认使用template1
++ 任何时候都不要对template0模板数据库做任何修改，因为这是原始的干净模板，如果其他模板数据库被破坏了，基于这个数据库做一个副本就可以了
++ 定制自己的模板数据库，要基于template1进行修改或自己另外创建一个模板数据库再修改，这两种方式创建的数据库不能修改其字符集编码和排序规则，如果需要修改这些信息那么使用基于template0模板来创建数据库
++ 基于某个模板创建数据库的基本语法
+  #+BEGIN_SRC sql
+  CREATE DATABASE my_db TEMPLATE my_template_db;
+  #+END_SRC
++ 可以使用任何一个现存的database作为创建数据库时的模板，也可以将某个现存的数据库标记为模板数据库，对于被标记为模板的数据库，系统会禁止对其进行编辑或删除
++ 具有CREATEDB权限的角色都可以进行模板数据库的设定操作
+  #+BEGIN_SRC sql
+  UPDATE pg_datebase SET datistemplate = TRUE WHERE datname = 'mydb';
+  UPDATE pg_datebase SET datistemplate = FALSE WHERE datname = 'mydb'; -- 解除模板设定，可以编辑删除此数据库
+  #+END_SRC
+** schema(模式)
++ schema可以对database中的对象进行逻辑分组管理，schema中的对象名不允许重复，但同一个database的不同schema中的对象可以重名
++ 创建schema
+  #+BEGIN_SRC sql
+  CREATE SCHEMA my_schema
+  #+END_SRC
++ 查看数据库存在的schema
+  #+BEGIN_SRC shell
+  \dn
+  \dnS
+  #+END_SRC
+** 权限管理
+*** 简介
++ 权限控制即可以精确到数据库对象级别，也可以精确到同一张表的不同字段分别单独设定其权限
+*** 权限类型
++ 对象级别的权限
+  SELECT、INSERT、UPDATE、ALTER、EXECUTE、TRUNCATE等以及一个附带的WITH GRANT修饰符
+*** 设定权限基本流程
++ 以超级用户登录默认数据库(如果没有其他数据库)，默认超级用户和数据库都为postgres
++ 创建新数据库的所有者角色，所有者可以登录该新建数据库
+  #+BEGIN_SRC sql
+  CREATE ROLE zp LOGIN PASSWORD '790204';
+  #+END_SRC
++ 创建数据库设定所有者
+  #+BEGIN_SRC sql
+  CREATE DATABASE zpdb WITH owner = zp;
+  #+END_SRC
++ 最后使用zp登录zpdb创建schema和表
+*** GRANT
++ GRANT命令可以将权限授予他人
+  #+BEGIN_SRC sql
+  GRANT some_privilege TO some_role;
+  #+END_SRC
++ 使用原则
+  - 只有权限的所有者才能将权限授予别人，并且所有者还必须拥有GRANT操作权限
+  - 有些权限只有对象的所有者才能拥有，任何情况下都不能授予别人，如DROP和ALTER
+  - 对象的所有者天然拥有此对象的所有权限，不需要再次授予
+  - 授权时可以加上WITH GRANT子句，这意味着被授权者将得到可以再次授予别人的权利
+    #+BEGIN_SRC sql
+    GRANT ALL ON ALL TABLES IN SCHEMA public TO some_role WITH GRANT OPTION;
+    #+END_SRC
+  - 可以一次性将某个对象的所有权限都授予某人，使用ALL关键字
+    #+BEGIN_SRC sql
+    GRANT  ALL ON my_schema.my_table TO mydb_admin;
+    #+END_SRC
+  - ALL关键字还可以指代某个database或schema中的所有对象
+    #+BEGIN_SRC sql
+    GRANT SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA my_schema TO PUBLIC;
+    #+END_SRC
+  - 如果希望将权限授予所有人，可以使用PUBLIC关键字指代所有角色
+    #+BEGIN_SRC sql
+    GRANT USAGE ON SCHEMA my_schema TO PUBLIC;
+    #+END_SRC
+  - 默认情况下会将某些权限授予PUBLIC，这些权限包括：CONNECT、CREATE TEMP TABLE(针对数据库)、 EXECUTE(针对函数)、USAGE(针对语音)，在某些情况下出于安全考虑，可以使用REVOKE命令，从PUBLIC中去除
+    #+BEGIN_SRC sql
+    REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA my_schema FROM PUBLIC;
+    #+END_SRC
+*** 默认权限
++ 使用默认权限，可以一次性针对某个特定schema或database中的所有数据库资产进行权限设置操作，哪怕这些资产还没有创建，可以简化权限管理工作
++ 示例
+  #+BEGIN_SRC sql
+  -- 假设希望对所有数据库用户都授予某个schema中所有函数和表的EXECUTE和SELECT权限
+  -- 定义schema的默认权限
+  GRANT USAGE ON SCHEMA my_schema TO PUBLIC;
+  ALTER DEFAULT PRIVILEGES IN SCHEMA my_schema;
+  GRANT SELECT, REFERENCES ON TABLES TO PUBLIC;
+  ALTER DEFAULT PRIVILEGES IN SCHEMA my_schema;
+  GRANT ALL ON TABLES TO my_admin WITH GRANT OPTION;
+  ALTER DEFAULT PRIVILEGES IN SCHEMA my_schema;
+  GRANT SELECT, UPDATE ON SEQUENCES TO PUBLIC;
+  ALTER DEFAULT PRIVILEGES IN SCHEMA my_schema;
+  GRANT ALL ON FUNCTIONS TO my_admin WITH GRANT OPTION;
+  ALTER DEFAULT PRIVILEGES IN SCHEMA my_schema;
+  GRANT USAGE ON TYPES TO PUBLIC;
+
+  #+END_SRC
+*** 常规操作
+**** 限制用户连接特定数据库
++ 回收public的connect on database 特定数据库名称 
+  revoke connect on database 特定数据库名称 from public;
+  此时所有者和超级用户还可以连接
+** 备份与恢复
+*** 使用pg_dump进行有选择的备份
++ 如果是每天都进行备份，pg_dump比pg_dumpall更合适，因为pg_dump支持精确指定要备份的表、schema和database，pg_dumpall不支持
++ pg_dump可以将数据备份为SQL文本文件格式，也支持备份为用户自定义压缩格式或TAR包格式
++ 示例
+  #+BEGIN_SRC bash
+  # 备份某个database，备份结果以自定义压缩格式输出
+  pg_dump -h localhost -p 5432 -U someuser -F c -b -v -f mydb.backup mydb
+
+  # 备份某个database，备份结果以SQL文本方式输出，输出结果中需要包含CREATE DATABASE语句
+  pg_dump -h localhost -p 5432 -U someuser -C -F p -b -v -f mydb.backup mydb
+
+  # 备份某个database中所有名称以"pay"开头的表，备份结果以自定义压缩格式输出
+  pg_dump -h localhost -p 5432 -U someuser -F c -b -v -t *.pay* -f pay.backup mydb
+
+  # 备份某个database中hr和payroll这两个schema中的所有数据，备份结果以自定义压缩格式输出
+  pg_dump -h localhost -p 5432 -U someuser -F c -b -v -n hr -n payroll -f hr.bakcup mydb
+  
+  # 备份某个database中除了public schema以外的所有数据
+  pg_dump -h localhost -p 5432 -U someuser -F c -b -v -N public -f all_sch_except_pub.backup mydb
+  #+END_SRC
++ 当输出文件路径中含有空格或其他可能影响命令行正常处理的字符，要在路径两侧加双引号"/path with spaces/mydb.backup"
++ 支持目录格式选项，可以避免单个文件超出操作系统限制的问题
+  #+BEGIN_SRC bash
+  pg_dump -h localhost -p 5432 -U someuser -F d -f /somepath/a_directory mydb
+  #+END_SRC
+*** 使用pg_dumpall进行全库备份
++ pd_dumpall可以将当前postgresql服务器实例中所有database的数据导出为SQL文本(且不支持其他格式)，也可以同时导出表空间定义和角色等全局对象
++ 建议经常使用pg_dumpall对角色和表空间定义等全局对象进行备份，但不建议使用pg_dumpall备份全库，因为SQL文本格式恢复全库相当耗时，通常全库备份最多每月一次
++ 备份角色和表空间定义命令
+  #+BEGIN_SRC bash
+  pg_dumpall -h localhost -U postgres --port=5432 -f myglobals.sql --globals-only
+  pg_dumpall -h localhost -U postgres --port=5432 -f myglobals.sql --roles-only # 仅备份角色
+  #+END_SRC
+*** 数据恢复
+**** 使用psql恢复SQL文本格式的数据备份
++ SQL文本格式就是一个包含SQL脚本的文本文件，这种格式最不方便，但最通用
+  #+BEGIN_SRC bash
+  # 恢复一个SQL备份文件并忽略过程中可能发生的所有错误
+  psql -U postgres -f myglobals.sql
+
+  # 遇到错误立即停止恢复
+  psql -U postgres --set ON_ERROR_STOP=on -f myglobals.sql
+
+  # 恢复到某个指定的database
+  psql -U postgres -d mydb -f select_objects.sql
+  #+END_SRC
+**** 使用pg_restore进行恢复
++ 使用pg_restore执行恢复之前，先创建目标数据库
+  CREATE DATABASE mydb;
++ 执行恢复
+  #+BEGIN_SRC bash
+  pg_restore --dbname=mydb --jobs=4 --verbose mydb.backup
+  #+END_SRC
++ 备份和恢复使用的database同名时，可以使用--create选项省略建库操作
+  #+BEGIN_SRC bash
+  pg_restore --dbname=postgres --create --jobs=4 --verbose mydb.backup
+  #+END_SRC
+** 表空间
+*** 简介
++ 表空间用来将逻辑存储空间映射到磁盘上的物理存储空间
++ postgresql在安装阶段会自动生成两个表空间：pg_default用于存储所有的用户级数据，pg_global存储所有的系统级数据
++ pg_default和pg_global两个表空间默认存储在data文件夹(base)中
++ 用户可以不受限制的创建表空间并将其物理位置设定在任何一块物理磁盘上，也可以为database设定默认表空间，也可以将现有数据库对象迁移到新的表空间中
+*** 表空间的创建
++ 需要取一个逻辑名称并指定某个物理文件夹作为其存储位置
+  #+BEGIN_SRC sql
+  CREATE TABLESPACE secondary LOCATION '/home/zp/data/zp_secondary'
+  #+END_SRC
+*** 在表空间之间迁移对象
++ 可以将数据库中的对象在表空间之间任意迁移，如果希望将一个database的所有对象都迁移到另一个表空间，可以执行以下命令
+  #+BEGIN_SRC sql
+  ALTER DATABASE mydb SET TABLESPACE secondary;
+  #+END_SRC
++ 如果只希望迁移一张表，命令如下
+  #+BEGIN_SRC sql
+  ALTER TABLE mytable SET TABLESPACE secondary;
+  #+END_SRC
++ 将pg_default默认表空间中的所有对象迁移到新表空间，命令如下
+  #+BEGIN_SRC sql
+  ALTER TABLESPACE pg_default MOVE ALL TO secondary;
+  #+END_SRC
+** 禁止行为
+*** 不要删除postgresql系统文件
+*** 不要把操作系统管理员权限授予postgresql系统账号(postgres)
+*** 不要把shared_buffers缓存区设置过大
+* 数据类型
+** 数字类型
++ 列表
+|------------------+----------+--------------------+----------------------------------------------|
+| 名字             | 存储尺寸 | 描述               | 范围                                         |
+|------------------+----------+--------------------+----------------------------------------------|
+| smallint         | 2字节    | 小范围整数         | -32768 to +32767                             |
+|------------------+----------+--------------------+----------------------------------------------|
+| integer          | 4字节    | 整数的典型选择     | -2147483648 to +2147483647                   |
+|------------------+----------+--------------------+----------------------------------------------|
+| bigint           | 8字节    | 大范围整数         | -9223372036854775808 to +9223372036854775808 |
+|------------------+----------+--------------------+----------------------------------------------|
+| decimal          | 可变     | 用户指定精度，精确 | 最高小数点前131072位，以及小数点后16383位    |
+|------------------+----------+--------------------+----------------------------------------------|
+| numeric          | 可变     | 用户指定精度，精确 | 最高小数点前131072位，以及小数点后16383位    |
+|------------------+----------+--------------------+----------------------------------------------|
+| real             | 4字节    | 可变精度，不精确   | 6位十进制精度                                |
+|------------------+----------+--------------------+----------------------------------------------|
+| double precision | 8字节    | 可变精度，不精确   | 15位十进制精度                               |
+|------------------+----------+--------------------+----------------------------------------------|
+| smallserial      | 2字节    | 自动增加的小整数   | 1到32767                                     |
+|------------------+----------+--------------------+----------------------------------------------|
+| serial           | 4字节    | 自动增加的整数     | 1到2147483647                                |
+|------------------+----------+--------------------+----------------------------------------------|
+| bigserial        | 8字节    | 自动增长的大整数   | 1到 9223372036854775807                      |
+|------------------+----------+--------------------+----------------------------------------------|
+*** 整数类型
++ smallint、integer和bigint存储各种范围的全部是数字的数，也就是没有小数部分的数字。试图存储超出范围以外的值将导致一个错误
++ 常用的类型是integer，因为它提供了在范围、存储空间和性能之间的最佳平衡。一般只有在磁盘空间紧张的时候才使用smallint类型。而只有在integer的范围不够的时候才使用bigint
+*** 任意精度数字
++ 类型numeric可以存储非常多位的数字。我们特别建议将它用于货币金额和其它要求计算准确的数量。numeric值的计算在可能的情况下会得到准确的结果，例如加法、减法、乘法。不过，numeric类型上的算术运算比整数类型或者下一节描述的浮点数类型要慢很多
++ numeric列的最大精度和最大比例都是可以配置的。要声明一个类型为numeric的列，你可以用下面的语法：
+  #+BEGIN_SRC sql
+  NUMERIC(precision, scale) -- 精度必须为正数，比例可以为零或者正数
+  #+END_SRC
+*** 浮点类型
++ 数据类型real和double precision是不精确的、变精度的数字类型
++ 如果你要求准确的存储和计算（例如计算货币金额），应使用numeric类型
++ 用两个浮点数值进行等值比较不可能总是按照期望地进行
++ 除了普通的数字值之外，浮点类型还有几个特殊值
+  1. Infinity
+  2. -Infinity
+  3. NaN
+*** 序数类型
++ 一般表本身的字段不适宜作为主键字段时，会增加一个专门的字段并指定为serial类型作为主键
++ smallserial、serial和bigserial类型不是真正的类型，它们只是为了创建唯一标识符列而存在的方便符号（类似其它一些数据库中支持的AUTO_INCREMENT属性）
++ 创建了一个整数列并且把它的缺省值安排为从一个序列发生器取值。应用了一个NOT NULL约束以确保空值不会被插入（在大多数情况下你可能还希望附加一个UNIQUE或者PRIMARY KEY约束避免意外地插入重复的值，但这个不是自动发生的）。最后，该序列被标记为“属于”该列，这样当列或表被删除时该序列也会被删除
++ 因为smallserial、serial和bigserial是用序列实现的，所以即使没有删除过行，在出现在列中的序列值可能有“空洞”或者间隙。如果一个从序列中分配的值被用在一行中，即使该行最终没有被成功地插入到表中，该值也被“用掉”了。例如，当插入事务回滚时就会发生这种情况
++ 要使用serial列插入序列的下一个数值到表中，请指定serial列应该被赋予其缺省值。我们可以通过在INSERT语句中把该列排除在列列表之外来实现，也可以通过使用DEFAULT关键字来实现
++ 
+** 货币类型
++ money类型存储固定小数精度的货币数字
++ 小数的精度由数据库的lc_monetary设置决定。表中展示的范围假设有两个小数位。可接受的输入格式很多，包括整数和浮点数文字，以及常用的货币格式，如'$1,000.00'。 输出通常是最后一种形式，但和区域相关
++ 由于这种数据类型的输出是区域敏感的，因此将money数据装入到一个具有不同lc_monetary设置的数据库是不起作用的。为了避免这种问题，在恢复一个转储到一个新数据库中之前，应确保新数据库的lc_monetary设置和被转储数据库的相同或者具有等效值
++ 数据类型numeric、int和bigint的值可以被造型成money。从数据类型real和doubleprecision的转换可以通过先造型成numeric来实现,不推荐这样做。浮点数不应该被用来处理货币，因为浮点数可能会有圆整错误
+** 字符类型
++ 列表
+|----------------------------------+----------------|
+| 名字                             | 描述           |
+|----------------------------------+----------------|
+| character varying(n)或 varchar(n) | 有限制的变长   |
+|----------------------------------+----------------|
+| character(n)或 char(n)         | 定长，空格填充 |
+|----------------------------------+----------------|
+| text                             | 无限变长       |
+|----------------------------------+----------------|
+
++ SQL定义了两种基本的字符类型： character varying(n)和character(n)， 其中n是一个正整数。两种类型都可以存储最多n个字符长的串。试图存储更长的串到这些类型的列里会产生一个错误，除非超出长度的字符都是空白，这种情况下该串将被截断为最大长度（这个看上去有点怪异的例外是SQL标准要求的）。如果要存储的串比声明的长度短，类型为character的值将会用空白填满；而类型为character varying的值将只是存储短些的串
++ text类型，它可以存储任何长度的串。尽管类型text不是SQL标准，但是许多其它 SQL 数据库系统也有它
++ 这三种类型之间没有性能差别，只不过是在使用填充空白的类型的时候需要更多存储尺寸，以及在存储到一个有长度约束的列时需要少量额外CPU周期来检查长度。虽然在某些其它的数据库系统里，character(n)有一定的性能优势，但在PostgreSQL里没有。事实上，character(n)通常是这三种类型之中最慢的一个，因为它需要额外的存储开销。在大多数情况下，应该使用text或者character varying
+** 二进制数据类型
++ 
+** 日期/时间类型
+*** 日期/时间输入
+**** 日期
+**** 时间
+**** 时间戳
+**** 特殊值
+*** 日期/时间输出
+*** 时区
+*** 间隔输入
+*** 间隔输出
+** 布尔类型
+** 枚举类型
+** 几何类型
+** 网络地址类型
+** 位串类型
+** 文本搜索类型
+** UUID类型
+** XML类型
+** JSON 类型
+*** JSON 输入和输出语法
+*** 设计 JSON 文档
+*** jsonb 包含和存在
+*** jsonb 索引
+*** 转换
+*** jsonpath Type
+** 数组
+*** 数组类型的定义
+*** 数组值输入
+*** 访问数组
+*** 修改数组
+*** 在数组中搜索
+*** 数组输入和输出语法
+** 组合类型
+** 范围类型
++ 范围类型非常有用，因为它们可以表达一种单一范围值中的多个元素值，并且可以很清晰地表达诸如范围重叠等概念。用于时间安排的时间和日期范围是最清晰的例子；但是价格范围、一种仪器的量程等等也都有用
+*** 内建范围类型
+*** 例子
+*** 包含和排除边界
+*** 无限（无界）范围
+*** 范围输入/输出
+*** 构造范围
+*** 离散范围类型
+*** 定义新的范围类型
+*** 索引
+*** 范围上的约束
+** 域类型
+** 对象标识符类型
+** pg_lsn 类型
+** 伪类型
+* 表、约束和索引
+** 简介
++ 表是关系型数据库存储体系的基本单元，设计好结构化的表且定义表与表之间的关联关系是关系型数据库的核心设计思想
++ 约束定义了表与表之间的关系
+** 表
+*** 基本的建表操作
++ 语法
+  #+BEGIN_SRC sql
+  CREATE TABLE my_first_table (id serial PRIMARY KEY, user_name varchar(50));
+  #+END_SRC
+*** 继承表
++ 创建子表时，除了自己的字段外，还会包含父表的所有字段，当父表的结构发生变化时，子表的结构也会自动跟着变化，当查询父表时，子表的记录也会被提取出来，但需要注意，不是父表所有的特征都会被子表继承，比如父表的主键约束、唯一性约束、索引就不会被继承
++ 创建继承表
+*** 无日志表
+*** TYPE OF
+** 约束
+*** 检查约束(Check Constraints)
++ 检查约束是最普通的约束类型。它允许我们指定一个特定列中的值必须要满足一个布尔表达式。例如，为了要求正值的产品价格
+  #+BEGIN_SRC sql
+  CREATE TABLE products (
+  product_no integer,
+  name text,
+  price numeric CHECK (price > 0)
+  );
+  #+END_SRC
++ 一个检查约束有关键字CHECK以及其后的包围在圆括号中的表达式组成。检查约束表达式应该涉及到被约束的列，否则该约束也没什么实际意义
++ 可以给与约束一个独立的名称。这会使得错误消息更为清晰，同时也允许我们在需要更改约束时能引用它
+  #+BEGIN_SRC sql
+  CREATE TABLE products (
+  product_no integer,
+  name text,
+  price numeric CONSTRAINT positive_price CHECK (price > 0)
+  );
+  #+END_SRC
++ 要指定一个命名的约束，请在约束名称标识符前使用关键词CONSTRAINT，然后把约束定义放在标识符之后
++ 一个检查约束也可以引用多个列。例如我们存储一个普通价格和一个打折后的价格，而我们希望保证打折后的价格低于普通价格
+  #+BEGIN_SRC sql
+  CREATE TABLE products (
+  product_no integer,
+  name text,
+  price numeric CHECK (price > 0),
+  discounted_price numeric CHECK (discounted_price > 0),
+  CHECK (price > discounted_price)
+  );
+  #+END_SRC
++ 需要注意的是，一个检查约束在其检查表达式值为真或空值时被满足。因为当任何操作数为空时大部分表达式将计算为空值，所以它们不会阻止被约束列中的控制
+*** 非空约束(Not-Null Constraints)
++ 一个非空约束仅仅指定一个列中不会有空值
+  #+BEGIN_SRC sql
+  CREATE TABLE products (
+  product_no integer NOT NULL,
+  name text NOT NULL,
+  price numeric
+  );
+  #+END_SRC
++ 一个列可以有多于一个的约束，只需要将这些约束一个接一个写出,约束的顺序没有关系，因为并不需要决定约束被检查的顺序
+  #+BEGIN_SRC sql
+  CREATE TABLE products (
+  product_no integer NOT NULL,
+  name text NOT NULL,
+  price numeric NOT NULL CHECK (price > 0)
+  );
+  #+END_SRC
+*** 唯一性约束(Unique Constraints)
++ 唯一约束保证在一列中或者一组列中保存的数据在表中所有行间是唯一的
+  #+BEGIN_SRC sql
+  CREATE TABLE products (
+  product_no integer UNIQUE,
+  name text,
+  price numeric
+  );
+  
+  -- 写成一个表约束的语法
+  CREATE TABLE products (
+  product_no integer,
+  name text,
+  price numeric,
+  UNIQUE (product_no)
+  );
+
+  -- 要为一组列定义一个唯一约束，把它写作一个表级约束，列名用逗号分隔，但这指定这些列的组合值在整个表的范围内是唯一的，但其中任意一列的值并不需要是（一般也不是）唯一的
+  CREATE TABLE example (
+  a integer,
+  b integer,
+  c integer,
+  UNIQUE (a, c)
+  );
+  #+END_SRC
++ 增加一个唯一约束会在约束中列出的列或列组上自动创建一个唯一B-tree索引。只覆盖某些行的唯一性限制不能被写为一个唯一约束，但可以通过创建一个唯一的部分索引来强制这种限制
+*** 主键约束(Primary Keys)
++ 一个主键约束表示可以用作表中行的唯一标识符的一个列或者一组列。这要求那些值都是唯一的并且非空
+  #+BEGIN_SRC sql
+  CREATE TABLE products (
+  product_no integer PRIMARY KEY,
+  name text,
+  price numeric
+  );
+  -- 和
+  CREATE TABLE products (
+  product_no integer UNIQUE NOT NULL,
+  name text,
+  price numeric
+  );
+  -- 效果是相同的
+  #+END_SRC
++ 主键也可以包含多于一个列，其语法和唯一约束相似
+  #+BEGIN_SRC sql
+  CREATE TABLE example (
+  a integer,
+  b integer,
+  c integer,
+  PRIMARY KEY (a, c)
+  );
+  #+END_SRC
++ 增加一个主键将自动在主键中列出的列或列组上创建一个唯一B-tree索引。并且会强制这些列被标记为NOT NULL
++ 一个表最多只能有一个主键（可以有任意数量的唯一和非空约束，它们可以达到和主键几乎一样的功能，但只能有一个被标识为主键）
+*** 外键约束(Foreign Keys)
++ 一个外键约束指定一列（或一组列）中的值必须匹配出现在另一个表中某些行的值。我们说这维持了两个关联表之间的引用完整性
+  #+BEGIN_SRC sql 
+  -- 产品表(被引用表)
+  CREATE TABLE products (
+  product_no integer PRIMARY KEY,
+  name text,
+  price numeric
+  );
+
+  -- 订单表(引用表)
+  CREATE TABLE orders (
+  order_id integer PRIMARY KEY,
+  product_no integer REFERENCES products (product_no),
+  quantity integer
+  );
+  #+END_SRC
+
++ 一个外键也可以约束和引用一组列。照例，它需要被写成表约束的形式
+  #+BEGIN_SRC sql
+  CREATE TABLE t1 (
+  a integer PRIMARY KEY,
+  b integer,
+  c integer,
+  FOREIGN KEY (b, c) REFERENCES other_table (c1, c2)
+  );
+  #+END_SRC
++ 一个表可以有超过一个的外键约束。这被用于实现表之间的多对多关系
+  #+BEGIN_SRC sql
+  CREATE TABLE products (
+  product_no integer PRIMARY KEY,
+  name text,
+  price numeric
+  );
+  CREATE TABLE orders (
+  order_id integer PRIMARY KEY,
+  shipping_address text,
+  ...
+  );
+  CREATE TABLE order_items (
+  product_no integer REFERENCES products,
+  order_id integer REFERENCES orders,
+  quantity integer,
+  PRIMARY KEY (product_no, order_id)
+  );
+  #+END_SRC
++ 限制删除或者级联删除是两种最常见的选项。RESTRICT阻止删除一个被引用的行。NO ACTION表示在约束被检察时如果有任何引用行存在，则会抛出一个错误，这是我们没有指定任何东西时的默认行为（这两种选择的本质不同在于NO ACTION允许检查被推迟到事务的最后，而RESTRICT则不会）。CASCADE指定当一个被引用行被删除后，引用它的行也应该被自动删除。还有其他两种选项：SET NULL和SET DEFAULT。这些将导致在被引用行被删除后，引用行中的引用列被置为空值或它们的默认值。注意这些并不会是我们免于遵守任何约束。例如，如果一个动作指定了SET DEFAULT，但是默认值不满足外键约束，操作将会失败
++ 与ON DELETE相似，同样有ON UPDATE可以用在一个被引用列被修改（更新）的情况，可选的动作相同。在这种情况下，CASCADE意味着被引用列的更新值应该被复制到引用行中
++ 正常情况下，如果一个引用行的任意一个引用列都为空，则它不需要满足外键约束。如果在外键定义中加入了MATCH FULL，一个引用行只有在它的所有引用列为空时才不需要满足外键约束（因此空和非空值的混合肯定会导致MATCH FULL约束失败）。如果不希望引用行能够避开外键约束，将引用行声明为NOT NULL
++ 一个外键所引用的列必须是一个主键或者被唯一约束所限制。这意味着被引用列总是拥有一个索引（位于主键或唯一约束之下的索引），因此在其上进行的一个引用行是否匹配的检查将会很高效。由于从被引用表中DELETE一行或者UPDATE一个被引用列将要求对引用表进行扫描以得到匹配旧值的行，在引用列上建立合适的索引也会大有益处。由于这种做法并不是必须的，而且创建索引也有很多种选择，所以外键约束的定义并不会自动在引用列上创建索
+引
+*** 排他性约束(Exclusion Constraints)
++ 排他约束保证如果将任何两行的指定列或表达式使用指定操作符进行比较，至少其中一个操作符比较将会返回否或空值
+  #+BEGIN_SRC sql
+  CREATE TABLE circles (
+  c circle,
+  EXCLUDE USING gist (c WITH &&)
+  );
+  #+END_SRC
+** 索引
+*** 原生支持的索引类型
+**** B-树索引
++ 是关系型数据库中最常见的通用索引类型，如果对别的索引类型不感兴趣，一般使用B-树索引就可以了
++ 某些场景下系统自动创建索引(创建主键约束或唯一性约束)，则创建出来的索引就是B-树类型的
++ 如果自己创建索引时未指定索引类型，默认也是B-树类型的索引
++ 主键约束和唯一性约束唯一支持的后台索引就是B-树索引
+**** GiST索引
++ 主要适用于全文搜索、空间数据、科学数据、非结构化数据和层次化数据的搜索，该索引不能用于保证字段的唯一性
+**** GIN索引
++ 适用于postgresql内置的全文搜索引擎及jsonb数据类型
+**** SP-GiST索引
++ 
+**** 哈希索引
++ 要避免使用
+**** 基于B-树算法的GiST和GIN索引
+*** 运算符类
+*** 函数索引
+*** 基于部分记录的索引
+*** 多列索引
+** 视图
+*** 简介
++ 当需要从多张表中取数据时，就需要写关联查询的SQL语句，如果需要反复执行相同的操作，就可以使用视图，视图就是持久化存储在数据库中的一个查询语句
+*** 单表视图
++ 如果需要将数据写回到表中，则视图要包含表的主键
+  #+BEGIN_SRC sql
+  CREATE OR REPLACE VIEW my_view AS 
+  SELECT id, name, age FROM my_table WHERE age<18;
+  #+END_SRC
+*** 使用触发器更新视图
++ 
+*** 物化视图
+* 函数
+** 简介
++ 在postgresql中函数就是将若干SQL语句组合在一起然后作为一个单元使用，此概念等同于其他数据库中的存储过程或用户自定义函数
+** 函数的功能
+*** 基础知识
++ 函数的基本结构
+  #+BEGIN_SRC sql
+  CREATE OR REPLACE FUNCTION my_function(arg1 arg1_datatype DEFAULT arg1_default)
+  RETURNS some type | set of some type | TABLE (...) AS
+  $$
+  -- BODY of function
+  $$
+  LANGUAGE language_of_function
+  #+END_SRC
++ 
+*** 触发器
+*** 聚合操作
+** 使用SQL语言编写函数
+** 使用PL/pgSQL语言编写函数
+* 触发器
+* 复制
+** 简介
++ 通过复制功能可以在另一台服务器上创建当前服务器的一个镜像，提高数据的安全性和服务的不间断
+** 术语
++ 主服务器(Master)
++ 从属服务器(Slave)
++ 预写日志(Write Ahead Log. WAL)
++ 同步复制(Synchronous)
++ 异步复制(Asynchronous)
++ 流式复制(Streaming)
++ 级联复制(Cascading replication)
++ 重新选主(Remastering)
+** 第三方复制解决方案
+*** Slony
+*** Bucardo
+* SQL语言 
+** 语法
+*** 词法结构
+**** 标识符和关键词
++ 关键词和不被引号修饰的标识符是大小写不敏感的，一个常见的习惯是将关键词写成大写，而名称写成小写
+**** 常量
+***** 字符串常量
++ 在SQL中，一个字符串常量是一个由单引号（'）包围的任意字符序列，例如'This is a string'。为了在一个字符串中包括一个单引号，可以写两个相连的单引号，例如'Dianne''s horse'
++ 两个只由空白及至少一个新行分隔的字符串常量会被连接在一起，并且将作为一个写在一起的字符串常量来对待
+***** C风格转义的字符串常量
++ 反斜线转义序列
+***** 带有 Unicode 转义的字符串常量
++ 
+***** 美元引用的字符串常量
++ 
+***** 位串常量
++ 
+***** 数字常量
++ 
+***** 其他类型的常量
+**** 操作符
++ 一个操作符名是最多NAMEDATALEN-1（默认为 63）的一个字符序列，其中的字符来自下面的列表：
+  + - * / < > = ~ ! @ # % ^ & | ` ?
++ 
+**** 特殊字符
++ 
+**** 注释
++ 单行
+  -- This is a standard SQL comment
++ 多行
+  /* multiline comment
+   * with nesting: /* nested block comment */
+   */
+**** 操作符优先级
++ 
+*** 值表达式
+**** 列引用
++ 一个列可以以下面的形式被引用：
+  correlation.columnname
++ correlation是一个表（有可能以一个模式名限定）的名字，或者是在FROM子句中为一个表定义的别名。如果列名在当前索引所使用的表中都是唯一的，关联名称和分隔用的句点可以被忽略
+**** 位置参数
++ 
+**** 下标
++ 如果一个表达式得到了一个数组类型的值，那么可以抽取出该数组值的一个特定元素：
+  expression[subscript]
++ 或者抽取出多个相邻元素（一个“数组切片”）：
+  expression[lower_subscript:upper_subscript]
+**** 域选择
++ 如果一个表达式得到一个组合类型（行类型）的值，那么可以抽取该行的指定域
+  expression.fieldname
++ 通常行表达式必须被加上括号，但是当该表达式是仅从一个表引用或位置参数选择时，圆括号可以被忽略
+  mytable.mycolumn
+  $1.somecolumn
+  (rowfunction(a,b)).col3
+**** 操作符调用
++ 
+**** 函数调用
++ 
+**** 聚集表达式
++ 
+**** 窗口函数调用
+**** 类型转换
+**** 排序规则表达式
+**** 标量子查询
+**** 数组构造器
+**** 行构造器
+**** 表达式计算规则
+*** 调用函数
+**** 使用位置记号
+**** 使用命名记号
+**** 使用混合记号
+** 数据定义
+*** 表基础

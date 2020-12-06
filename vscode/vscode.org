@@ -18,12 +18,14 @@
   #+END_SRC
 + 设置github生成Personal access tokens 
   - 进入github -> Settings 在左侧 Developer settings -> Personal access tokens
+    9711344fe9997233c129a4a34aeb8cd7dd14b646
   - 点击按钮 Generate new token 新增一个token
   - 设置Note：vscode_sync
   - 勾选gist，点击Generate token
 + VSCode配置将token配置到本地
   - (Sync: Update / Uplaod Settings) Shift + Alt + U 在弹窗里输入你的token， 回车后会生成syncSummary.txt文件
     注意要保存GIST ID,下载配置时需要输入
+    Gist ID:1ce51e14fc8caf90f666bccf3213799a
 + 同步下载设置
   - (Sync: Download  Settings) Shift + Alt + D 在弹窗里输入你的gist值，稍后片刻便可同步成功
 + 重置同步设置，变更其它token

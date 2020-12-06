@@ -121,7 +121,7 @@ ifup eth0　　            #启动网卡eth0
 + 备份本地yum源
   mv /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo_bak
 + 获取阿里yum源配置文件
-  wget -O /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
+  wget -O /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-8.repo
 + 清理yum缓存 
   yum clean all
 + 更新cache
@@ -158,3 +158,6 @@ enabled=1
 * yum常用命令
 + 安装软件
   yum -y install xxxx
+* 开机启动
+** 方法一
++ 将写好的脚本（.sh文件）放到目录 /etc/profile.d/ 下，系统启动后就会自动执行该目录下的所有shell脚本，直接写入命令，第一行不需要加解释器设置

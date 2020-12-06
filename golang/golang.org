@@ -7669,10 +7669,11 @@ func main() {
   fmt.Printf("time:%s\n", timeStr)
   #+END_SRC
 * 框架
-** gin
+** WEB
+*** gin
 + https://github.com/gin-gonic/gin
   https://gin-gonic.com/
-*** 安装配置
+**** 安装配置
 + 安装
   go get -u github.com/gin-gonic/gin
 + 导入
@@ -7696,24 +7697,28 @@ func main() {
   // # run example.go and visit 0.0.0.0:8080/ping (for windows "localhost:8080/ping") on browser
   // $ go run example.go
   #+END_SRC
-*** HTTP
-**** HTTP请求和参数解析
-***** 请求类型
-****** GET
-****** POST
-****** DELETE
-****** HEAD
-****** OPTIONS
-*** 创建Engine
+**** HTTP
+***** HTTP请求和参数解析
+****** 请求类型
+******* GET
+******* POST
+******* DELETE
+******* HEAD
+******* OPTIONS
+**** 创建Engine
 + 在gin框架中，Engine被定义为一个结构体，其中包含了路由组、中间件、页眉渲染接口、框架配置设置等相关内容
 + 默认的Engine可以通过gin.Default或gin.New进行创建，区别在于gin.Default也使用gin.New创建Engine实例，但会默认使用Logger和Recovery中间件
   #+BEGIN_SRC go
   engine1 := gin.Default()
   engine2 := gin.New()
   #+END_SRC
++ 自定义监听端口
+  #+BEGIN_SRC go
+  engine1.Run(":8090")
+  #+END_SRC
 + 通常情况下，应使用gin.Default创建Engine实例
 + 在创建的engine实例中，包含很多方法可以直接处理不同类型的HTTP请求
-*** 通用处理HTTP请求
+**** 通用处理HTTP请求
 + engine中可以使用Handle方法直接进行HTTP请求的处理
 + Handle方法包含三个参数
   #+BEGIN_SRC go
@@ -7725,7 +7730,7 @@ func main() {
     表示要解析的接口，由开发者进行定义
   - handlers
     表示处理对应请求的的代码的定义
-**** Handle处理GET请求
+***** Handle处理GET请求
 + 示例
   #+BEGIN_SRC go
   engine.Handle("GET", "/hello", func(context *gin.Context) {
@@ -7743,7 +7748,7 @@ func main() {
 + Context是gin框架中封装的一个结构体，这是gin框架中最重要，最基础的一个结构体对象。该结构体可以提供我们操作请求，处理请求，获取数据等相关的操作，通常称之为上下文对象，简单说为我们提供操作环境
 + 可以通过context.Query和context.DefaultQuery获取GET请求携带的参数
 + 可以通过context.Writer.Write向请求发起端返回数据
-**** Handle处理POST请求
+***** Handle处理POST请求
 + 示例
   #+BEGIN_SRC go
   engine.Handle("POST", "/login", func(context *gin.Context) {
@@ -7762,9 +7767,9 @@ func main() {
   #+END_SRC
 + 第一个参数指定了解析POST类型的请求，第二个参数指定解析的接口为/login
 + POST请求是以form表单的方式提交数据的，可以通过context.PostForm获取表单中提交的数据字段
-*** 分类处理
+**** 分类处理
 + 除了engine中包含的通用的处理方法以外，engine还可以按类型进行直接解析。engine中包含有get方法、post方法、delete方法等与http请求类型对应的方法
-**** engine.GET()处理GET请求
+***** engine.GET()处理GET请求
 + 示例
   #+BEGIN_SRC go
   engine.GET("/hello", func(context *gin.Context) {
@@ -7778,7 +7783,7 @@ func main() {
   #+END_SRC
 + context.DefaultQuery
   除了context.DefaultQuery方法获取请求携带的参数数据以外，还可以使用context.Query方法来获取Get请求携带的参数
-**** engine.POST()处理POST请求
+***** engine.POST()处理POST请求
 + 示例
   #+BEGIN_SRC go
   engine.POST("/login", func(context *gin.Context) {
@@ -7799,24 +7804,25 @@ func main() {
   #+END_SRC
 + context.GetPostForm获取表单数据
   POST请求以表单的形式提交数据,除了可以使用context.PostForm获取表单数据意外，还可以使用context.GetPostForm来获取表单数据
-**** engine.DELETE()处理DELETE请求
+***** engine.DELETE()处理DELETE请求
 + 在项目开发中，通常都是遵循RESTful标准进行接口开发。除了GET、POST以外，还会有DELETE等操作
 + 比如要执行某个删除操作，会发送DELETE类型的请求，同时需要携带一些操作的参数。比如要删除用户，按照RESTful标准会进行如下所示
   #+BEGIN_SRC go
-  engine.DELETE("/user/:id", DeleteHandle)
-  func DeleteHandle(context *gin.Context) {
-      fmt.Println(context.FullPath())
+    // http://192.168.1.139/user/111
+    gine.DELETE("/user/:id", DeleteHandle)
+    func DeleteHandle(context *gin.Context) {
+        fmt.Println(context.FullPath())
 
-      userID := context.Param("id")
+        userID := context.Param("id")
 
-      fmt.Println(userID)
+        fmt.Println(userID)
 
-      context.Writer.Write([]byte("Delete user's id : " + userID))
-  }
+        context.Writer.Write([]byte("Delete user's id : " + userID))
+    }
   #+END_SRC
 + context.Param获取请求参数
   客户端的请求接口是DELETE类型，/user/1,最后的1是要删除的用户的id，是一个变量。因此在服务端gin中，通过路由的:id来定义一个要删除用户的id变量值，同时使用context.Param进行获取
-**** RouterGroup
+***** RouterGroup
 + 之所以engine中包含通用型的Handle和分类处理的GET、POST等类型的方法，是因为Engine中有RouterGroup作为匿名字段
 + RouteGroup可以称之为路由集合，在gin中定义为结构体
   #+BEGIN_SRC go
@@ -7828,10 +7834,10 @@ func main() {
   }
   #+END_SRC
 + RouteGroup的作用就是为每一个服务请求提供解析功能，并指定每一个请求对应的处理程序
-*** 请求参数绑定与多数据格式处理
+**** 请求参数绑定与多数据格式处理
 + 只有username和password两个字段的表单数据进行提交时，可以使用context.PostForm和context.GetPostForm获取。但是如果表单数据较多时，使用PostForm和GetPostForm一次获取一个表单数据，开发效率较慢
 + Gin框架提供给开发者表单实体绑定的功能，可以将表单数据与结构体绑定
-**** 表单实体绑定 
+***** 表单实体绑定 
 + 表单数据的提交，往往对应着完整的数据结构体定义，其中对应着表单的输入项。gin框架提供了数据结构体和表单提交数据绑定的功能，提高表单数据获取的效率
 + 用户注册需要提交表单数据，假设注册时表单数据包含三项，分别为：username、phone和password
   #+BEGIN_SRC go
@@ -7842,7 +7848,7 @@ func main() {
   }
   #+END_SRC
 + 创建了UserRegister结构体用于接收表单数据，通过tag标签的方式设置每个字段对应的form表单中的属性名，通过binding属于设置属性是否是必须
-***** ShouldBindQuery
+****** ShouldBindQuery
 + 使用ShouldBindQuery可以实现Get方式的数据请求的绑定
   #+BEGIN_SRC go
   func main() {
@@ -7874,7 +7880,7 @@ func main() {
       Classes string form:"classes"
   }
   #+END_SRC
-***** ShouldBind
+****** ShouldBind
 + 使用ShouldBind可以实现Post方式的提交数据的绑定工作
   #+BEGIN_SRC go
   func main() {
@@ -7904,7 +7910,7 @@ func main() {
       Password string form:"pwd"
   }
   #+END_SRC
-***** ShouldBindJson
+****** ShouldBindJson
 + 当客户端使用Json格式进行数据提交时，可以采用ShouldBindJson对数据进行绑定并自动解析
   #+BEGIN_SRC go
   func main() {
@@ -7933,9 +7939,9 @@ func main() {
       Age  int    form:"age"
   }
   #+END_SRC
-*** 多数据格式返回请求结果
+**** 多数据格式返回请求结果
 + 在gin框架中，支持返回多种请求数据格式
-**** []byte
+***** []byte
 + 请求返回数据格式为[]byte。通过context.Writer.Write方法写入[]byte数据，使用context.Writer.Write向客户端写入返回数据。Writer是gin框架中封装的一个ResponseWriter接口类型，write方法就是http.ResponseWriter中包含的方法
   #+BEGIN_SRC go
   engine := gin.Default()
@@ -7946,7 +7952,7 @@ func main() {
   })
   engine.Run()
   #+END_SRC
-**** string
+***** string
 + 除了write方法以外，ResponseWriter自身还封装了WriteString方法返回数据
   #+BEGIN_SRC go
   engine.GET("/hello", func(context *gin.Context) {
@@ -7955,10 +7961,10 @@ func main() {
         context.Writer.WriteString(fullPath)
   })
   #+END_SRC
-**** JSON
+***** JSON
 + 除了使用context.Writer对象返回[]byte和string类型的数据意外。在项目开发中，JSON格式规范使用的更为普遍
 + gin框架中的context包含的JSON方法可以将结构体类型的数据转换成JSON格式的结构化数据，然后返回给客户端
-***** map类型
+****** map类型
 + 调用JSON将map类型的数据转换成为json格式并返回给前端,第一个参数200表示设置请求返回的状态码。和http请求的状态码一致
 + 示例
   #+BEGIN_SRC go
@@ -7975,7 +7981,7 @@ func main() {
   })
   engine.Run(":9000") 
   #+END_SRC
-***** 结构体类型
+****** 结构体类型
 + 除了map以外，结构体也是可以直接转换为JSON格式进行返回的
   #+BEGIN_SRC go
   //通用请求返回结构体定义
@@ -7992,7 +7998,7 @@ func main() {
       context.JSON(200, &resp)
   })
   #+END_SRC
-**** HTML模板
+***** HTML模板
 + 除了JSON格式以外，gin框架还支持返回HTML格式的数据。可以直接渲染HTML页面
   #+BEGIN_SRC go
   engine := gin.Default()
@@ -8018,13 +8024,13 @@ func main() {
 
    {{.fullpath}}
   #+END_SRC
-**** 加载静态资源文件
+***** 加载静态资源文件
 + 在上面的index.html的基础上，添加一张img进行展示。需要将img所在的目录进行静态资源路径设置才可能会生效
   #+BEGIN_SRC go
   engine.Static("/img", "./img")
   #+END_SRC
 + 在工程项目的根目录下创建img目录，用于存放静态的img资源。同理，在项目开发时，一些静态的资源文件如html、js、css等可以通过静态资源文件设置的方式来进行设置
-*** 使用路由组分类处理请求
+**** 使用路由组分类处理请求
 + gin框架中可以使用路由组来实现对路由的分类
 + 路由组是router.Group中的一个方法，用于对请求进行分组
   #+BEGIN_SRC go
@@ -8083,21 +8089,21 @@ func main() {
       StaticFS(string, http.FileSystem) IRoutes
   }
   #+END_SRC
-*** middleware的编写与使用
-**** 中间件
+**** middleware的编写与使用
+***** 中间件
 + 在web应用服务中，完整的一个业务处理在技术上包含客户端操作、服务器端处理、返回处理结果给客户端三个步骤
 + 在实际的业务开发和处理中，会有根据负责的业务和需求场景。一个完整的系统可能要包含鉴权认证、权限管理、安全检查、日志记录等多维度的系统支持
 + 鉴权认证、权限管理、安全检查、日志记录等这些保障和支持系统业务属于全系统的业务，和具体的系统业务没有关联，对于系统中的所有业务都适用
 + 在业务开发过程中，为了更好的梳理系统架构，可以将上述描述所涉及的一些通用业务单独抽离并进行开发，然后以插件化的形式进行对接。这种方式既保证了系统功能的完整，同时又有效的将具体业务和系统功能进行解耦，并且，还可以达到灵活配置的目的
 + 这种通用业务独立开发并灵活配置使用的组件，一般称之为"中间件"，因为其位于服务器和实际业务处理程序之间。其含义就是相当于在请求和具体的业务逻辑处理之间增加某些操作，这种以额外添加的方式不会影响编码效率，也不会侵入到框架中
-**** Gin的中间件
+***** Gin的中间件
 + 在gin中，中间件称之为middleware,中间件的类型定义如下所示
   #+BEGIN_SRC go
   // HandlerFunc defines the handler used by gin middleware as return value.
   type HandlerFunc func(*Context)
   #+END_SRC
   HandlerFunc是一个函数类型,接收一个Context参数。用于编写程序处理函数并返回HandleFunc类型，作为中间件的定义
-**** 中间件Use用法
+***** 中间件Use用法
 + 使用gin.Default创建了gin引擎engins变量，其中，就使用了中间件
   #+BEGIN_SRC go
   func Default() *Engine {
@@ -8124,7 +8130,7 @@ func main() {
       return engine
   }
   #+END_SRC
-**** 自定义中间件
+***** 自定义中间件
 + 自己定义实现一个特殊需求的中间件，中间件的类型是函数，有两条标准
   - func函数
   - 返回值类型为HandlerFunc
@@ -8156,7 +8162,7 @@ func main() {
   #+END_SRC
   通过两条fmt.Println打印出了请求的信息，并通过engine.Use使用RequestInfos中间件。
   运行程序，能够得到正确的返回JSON格式的数据
-**** context.Next函数
+***** context.Next函数
 + 在上文自定义的中间件RequestInfos中，打印了请求了请求的path和method，接着去执行了正常的业务处理函数。如果我们想输出业务处理结果的信息，该如何实现呢。答案是使用context.Next函数
 + context.Next函数可以将中间件代码的执行顺序一分为二，Next函数调用之前的代码在请求处理之前之前，当程序执行到context.Next时，会中断向下执行，转而先去执行具体的业务逻辑，执行完业务逻辑处理函数之后，程序会再次回到context.Next处，继续执行中间件后续的代码。具体用法如下
   #+BEGIN_SRC go
@@ -8191,7 +8197,7 @@ func main() {
   中间件的使用方法  
   404
   #+END_SRC
-*** Gin框架中使用数据库
+**** Gin框架中使用数据库
 + 在gin中使用编程语言进行连接数据库，在gin中连接和操作mysql与在其他框架中连接操作mysql没有什么区别，分为主要的几个步骤
   - 引入mysql驱动程序：使用import将mysql驱动默认引入
     #+BEGIN_SRC go
@@ -8254,3 +8260,1943 @@ func main() {
         goto scan
     }
     #+END_SRC
+** 数据库
+*** 驱动
+**** pgx
+***** 安装
++ 网站
+  github.com/jackc/pgx
+  github.com/jackc/pgx/v4
++ 安装
+  go get -u github.com/jackc/pgx/v4
+***** 引入模块
+#+BEGIN_SRC go
+import (
+	"context"
+	"fmt"
+	"os"
+
+	"github.com/jackc/pgx/v4"
+  "github.com/jackc/pgx/v4/pgxpool"
+)
+#+END_SRC
+***** 连接数据库
++ 单线程连接
+  #+BEGIN_SRC go
+  var dburl = "host=192.168.100.11 port=5432 user=zp password=790204 database=zpdb sslmode=disable"
+	conn, err := pgx.Connect(context.Background(), dburl)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
+		os.Exit(1)
+	}
+	defer conn.Close(context.Background())
+  #+END_SRC
++ 连接池连接，并发安全
+  #+BEGIN_SRC go
+  var dburl = "host=192.168.100.11 port=5432 user=zp password=790204 database=zpdb sslmode=disable"
+	dbpool, err := pgxpool.Connect(context.Background(), dburl)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
+		os.Exit(1)
+	}
+	defer dbpool.Close()
+
+	var greeting string
+	err = dbpool.QueryRow(context.Background(), "select 'Hello, world!'").Scan(&greeting)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "QueryRow failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println(greeting)
+  #+END_SRC
+***** 简介
+****** 查询(Query Interface)
++ Query
+  #+BEGIN_SRC go
+  var sum int32
+
+  // Send the query to the server. The returned rows MUST be closed
+  // before conn can be used again.
+  rows, err := conn.Query(context.Background(), "select generate_series(1,$1)", 10)
+  if err != nil {
+      return err
+  }
+
+  // rows.Close is called by rows.Next when all rows are read
+  // or an error occurs in Next or Scan. So it may optionally be
+  // omitted if nothing in the rows.Next loop can panic. It is
+  // safe to close rows multiple times.
+  defer rows.Close()
+
+  // Iterate through the result set
+  for rows.Next() {
+      var n int32
+      err = rows.Scan(&n)
+      if err != nil {
+          return err
+      }
+      sum += n
+  }
+
+  // Any errors encountered by rows.Next or rows.Scan will be returned here
+  if rows.Err() != nil {
+      return rows.Err()
+  }
+  #+END_SRC
++ QueryRow
+  #+BEGIN_SRC go
+  var name string
+  var weight int64
+  err := conn.QueryRow(context.Background(), "select name, weight from widgets where id=$1", 42).Scan(&name, &weight)
+  if err != nil {
+      return err
+  }
+  #+END_SRC
++ Exec
+  #+BEGIN_SRC go
+  commandTag, err := conn.Exec(context.Background(), "delete from widgets where id=$1", 42)
+  if err != nil {
+      return err
+  }
+  if commandTag.RowsAffected() != 1 {
+      return errors.New("No row found to delete")
+  }
+  #+END_SRC
+****** 数据类型映射
++ Base Type Mapping
+|-----------+---------------------------|
+| Go        | PostgresSQL               |
+|-----------+---------------------------|
+| string    | varchar  text             |
+| int8      |                           |
+| int16     | smallint                  |
+| int32     | int                       |
+| int64     | bigint                    |
+| int       |                           |
+| uint8     |                           |
+| uint16    |                           |
+| uint32    |                           |
+| uint64    |                           |
+| uint      |                           |
+| float32   | float4                    |
+| float64   | float8                    |
+| time.time | date timestamp timestampz |
+| []byte    | bytea                     |
+|-----------+---------------------------|
++ Null Mapping
+  pgx can map nulls in two ways. The first is package pgtype provides types that have a data field and a status field. They work in a similar fashion to database/sql. The second is to use a pointer to a pointer
+  #+BEGIN_SRC go
+  var foo pgtype.Varchar
+  var bar *string
+  err := conn.QueryRow("select foo, bar from widgets where id=$1", 42).Scan(&foo, &bar)
+  if err != nil {
+      return err
+  }
+  #+END_SRC
++ Array Mapping
+  pgx maps between int16, int32, int64, float32, float64, and string Go slices and the equivalent PostgreSQL array type. Go slices of native types do not support nulls, so if a PostgreSQL array that contains a null is read into a native Go slice an error will occur. The pgtype package includes many more array types for PostgreSQL types that do not directly map to native Go types
++ JSON and JSONB Mapping
+  pgx includes built-in support to marshal and unmarshal between Go types and the PostgreSQL JSON and JSONB
++ Inet and CIDR Mapping
+  pgx encodes from net.IPNet to and from inet and cidr PostgreSQL types. In addition, as a convenience pgx will encode from a net.IP; it will assume a /32 netmask for IPv4 and a /128 for IPv6
++ Custom Type Support
+  pgx includes support for the common data types like integers, floats, strings, dates, and times that have direct mappings between Go and SQL. In addition, pgx uses the github.com/jackc/pgx/pgtype library to support more types. See documention for that library for instructions on how to implement custom types
++ Composite types and row values
++ Raw Bytes Mapping
+  []byte passed as arguments to Query, QueryRow, and Exec are passed unmodified to PostgreSQL
++ Transactions
++ 使用pgtype库可以支持更多的postgres数据类型
+****** Prepared Statements
++ 通常Query、QueryRow、Exec默认自动包含缓存功能，在ParseConfig中可以定制或禁用此功能
+****** Copy Protocol
++ 使用postgres的copy协议可以实现批量插入
+  #+BEGIN_SRC go
+  rows := [][]interface{}{
+    {"John", "Smith", int32(36)},
+    {"Jane", "Doe", int32(29)},
+  }
+
+  copyCount, err := conn.CopyFrom(
+      context.Background(),
+      pgx.Identifier{"people"},
+      []string{"first_name", "last_name", "age"},
+      pgx.CopyFromRows(rows),
+  )
+  #+END_SRC
++ 批量插入速度更快 
+****** Listen and Notify
+****** Logging
+***** 函数
+****** ScanRow()
++ 作用将从数据库中查询出来的信息转换存储到变量中
++ 调用方式
+  func ScanRow(connInfo *pgtype.ConnInfo, fieldDescriptions []pgproto3.FieldDescription, values [][]byte, dest ...interface{}) error
+***** 类型
+****** Batch
++ 
+*** ORM
+**** gorm
+***** 安装
++ 安装
+  go get -u github.com/jinzhu/gorm
++ 文档
+  https://gorm.io/zh_CN/docs/
++ 快速入门
+  #+BEGIN_SRC go
+  package main
+
+  import (
+    "github.com/jinzhu/gorm"
+    _ "github.com/jinzhu/gorm/dialects/sqlite"
+  )
+
+  type Product struct {
+      gorm.Model
+      Code string
+      Price uint
+  }
+
+  func main() {
+    db, err := gorm.Open("sqlite3", "test.db")
+    if err != nil {
+      panic("failed to connect database")
+    }
+    defer db.Close()
+
+    // Migrate the schema
+    db.AutoMigrate(&Product{})
+
+    // 创建
+    db.Create(&Product{Code: "L1212", Price: 1000})
+
+    // 读取
+    var product Product
+    db.First(&product, 1) // 查询id为1的product
+    db.First(&product, "code = ?", "L1212") // 查询code为l1212的product
+
+    // 更新 - 更新product的price为2000
+    db.Model(&product).Update("Price", 2000)
+
+    // 删除 - 删除product
+    db.Delete(&product)
+  }
+  #+END_SRC
+***** 模型定义
+****** 模型定义
++ 模型（Models）通常只是正常的 golang structs、基本的 go 类型或它们的指针。 同时也支持sql.Scanner及driver.Valuer 接口（interfaces）
++ 模型（Model）示例
+  #+BEGIN_SRC go
+  type User struct {
+    gorm.Model
+    Name         string
+    Age          sql.NullInt64
+    Birthday     *time.Time
+    Email        string  `gorm:"type:varchar(100);unique_index"`
+    Role         string  `gorm:"size:255"` // 设置字段大小为255
+    MemberNumber *string `gorm:"unique;not null"` // 设置会员号（member number）唯一并且不为空
+    Num          int     `gorm:"AUTO_INCREMENT"` // 设置 num 为自增类型
+    Address      string  `gorm:"index:addr"` // 给address字段创建名为addr的索引
+    IgnoreMe     int     `gorm:"-"` // 忽略本字段}
+  #+END_SRC
+****** 结构体标记（tags）
++ 标记（tags）在声明模型时是可选项
++ 支持的结构体标记（Struct tags）
+|-------------------+----------------------------------------------------------|
+| 结构体标记（Tag） | 描述                                                     |
+|-------------------+----------------------------------------------------------|
+| Column            | 指定列名                                                 |
+|-------------------+----------------------------------------------------------|
+| Type              | 指定列数据类型                                           |
+|-------------------+----------------------------------------------------------|
+| Size              | 指定列大小, 默认值255                                    |
+|-------------------+----------------------------------------------------------|
+| PRIMARY_KEY       | 将列指定为主键                                           |
+|-------------------+----------------------------------------------------------|
+| UNIQUE            | 将列指定为唯一                                           |
+|-------------------+----------------------------------------------------------|
+| DEFAULT           | 指定列默认值                                             |
+|-------------------+----------------------------------------------------------|
+| PRECISION         | 指定列精度                                               |
+|-------------------+----------------------------------------------------------|
+| NOT NULL          | 将列指定为非 NULL                                        |
+|-------------------+----------------------------------------------------------|
+| AUTO_INCREMENT    | 指定列是否为自增类型                                     |
+|-------------------+----------------------------------------------------------|
+| INDEX             | 创建具有或不带名称的索引, 如果多个索引同名则创建复合索引 |
+|-------------------+----------------------------------------------------------|
+| UNIQUE_INDEX      | 和 INDEX 类似，只不过创建的是唯一索引                    |
+|-------------------+----------------------------------------------------------|
+| EMBEDDED          | 将结构设置为嵌入                                         |
+|-------------------+----------------------------------------------------------|
+| EMBEDDED_PREFIX   | 设置嵌入结构的前缀                                       |
+|-------------------+----------------------------------------------------------|
+| -                 | 忽略此字段                                               |
+|-------------------+----------------------------------------------------------|
+
++ 关联 struct 的标记（tags）
+|----------------------------------+------------------------------------|
+| Tag                              | 描述                               |
+|----------------------------------+------------------------------------|
+| MANY2MANY                        | 指定连接表                         |
+|----------------------------------+------------------------------------|
+| FOREIGNKEY                       | 设置外键                           |
+|----------------------------------+------------------------------------|
+| ASSOCIATION_FOREIGNKEY           | 设置关联外键                       |
+|----------------------------------+------------------------------------|
+| POLYMORPHIC                      | 指定多态类型                       |
+|----------------------------------+------------------------------------|
+| POLYMORPHIC_VALUE                | 指定多态值                         |
+|----------------------------------+------------------------------------|
+| JOINTABLE_FOREIGNKEY             | 指定连接表的外键                   |
+|----------------------------------+------------------------------------|
+| ASSOCIATION_JOINTABLE_FOREIGNKEY | 指定连接表的关联外键               |
+|----------------------------------+------------------------------------|
+| SAVE_ASSOCIATIONS                | 是否自动完成 save 的相关操作       |
+|----------------------------------+------------------------------------|
+| ASSOCIATION_AUTOUPDATE           | 是否自动完成 update 的相关操作     |
+|----------------------------------+------------------------------------|
+| ASSOCIATION_AUTOCREATE           | 是否自动完成 create 的相关操作     |
+|----------------------------------+------------------------------------|
+| ASSOCIATION_SAVE_REFERENCE       | 是否自动完成引用的 save 的相关操作 |
+|----------------------------------+------------------------------------|
+| PRELOAD                          | 是否自动完成预加载的相关操作       |
+|----------------------------------+------------------------------------|
+***** 约定
+****** gorm.Model
++ gorm.Model 是一个包含了ID, CreatedAt, UpdatedAt, DeletedAt四个字段的GoLang结构体。你可以将它嵌入到你自己的 Model 中，也可以完全使用自己的 Model
+  #+BEGIN_SRC go
+  // gorm.Model 定义
+  type Model struct {
+  ID        uint `gorm:"primary_key"`
+    CreatedAt time.Time
+    UpdatedAt time.Time
+    DeletedAt *time.Time
+  }
+
+  // Inject fields `ID`, `CreatedAt`, `UpdatedAt`, `DeletedAt` into model `User`
+  // 将 `ID`, `CreatedAt`, `UpdatedAt`, `DeletedAt`字段注入到`User`模型中
+  type User struct {
+    gorm.Model
+    Name string
+  }
+
+  // 不使用gorm.Model定义模型
+  type User struct {
+    ID   int
+    Name string
+  }
+  #+END_SRC
+****** ID 作为主键
++ GORM 默认会使用名为ID的字段作为表的主键
+  #+BEGIN_SRC go
+  type User struct {
+    ID   string // 名为`ID`的字段会默认作为表的主键
+    Name string
+  }
+
+  // 使用`AnimalID`作为主键
+  type Animal struct {
+    AnimalID int64 `gorm:"primary_key"`
+    Name     string
+    Age      int64
+  }
+  #+END_SRC
+****** 表名（Table Name）
++ 表名默认就是结构体名称的复数
+  #+BEGIN_SRC go
+  type User struct {} // 默认表名是 `users`
+
+  // 将 User 的表名设置为 `profiles`
+  func (User) TableName() string {
+    return "profiles"
+  }
+
+  func (u User) TableName() string {
+    if u.Role == "admin" {
+      return "admin_users"
+    } else {
+      return "users"
+    }
+  } 
+
+  // 禁用默认表名的复数形式，如果置为 true，则 `User` 的默认表名是 `user`
+  db.SingularTable(true)
+  #+END_SRC
++ 指定表名称
+  #+BEGIN_SRC go
+  // 使用User结构体创建名为`deleted_users`的表
+  db.Table("deleted_users").CreateTable(&User{})
+
+  var deleted_users []User
+  db.Table("deleted_users").Find(&deleted_users)
+  //// SELECT * FROM deleted_users;
+
+  db.Table("deleted_users").Where("name = ?", "jinzhu").Delete()
+  //// DELETE FROM deleted_users WHERE name = 'jinzhu';
+  #+END_SRC
++ 更改默认表名称（table name）,可以通过定义DefaultTableNameHandler来设置默认表名的命名规则
+  #+BEGIN_SRC go
+  gorm.DefaultTableNameHandler = func (db *gorm.DB, defaultTableName string) string  {
+    return "prefix_" + defaultTableName;
+  }
+  #+END_SRC
+****** 下划线分割命名（Snake Case）的列名
++ 列名由字段名称进行下划线分割来生成
+  #+BEGIN_SRC go
+  type User struct {
+    ID        uint      // column name is `id`
+    Name      string    // column name is `name`
+    Birthday  time.Time // column name is `birthday`
+    CreatedAt time.Time // column name is `created_at`
+  }
+
+  // Overriding Column Name
+  type Animal struct {
+    AnimalId    int64     `gorm:"column:beast_id"`         // set column name to `beast_id`
+    Birthday    time.Time `gorm:"column:day_of_the_beast"` // set column name to `day_of_the_beast`
+    Age         int64     `gorm:"column:age_of_the_beast"` // set column name to `age_of_the_beast`
+  }
+  #+END_SRC
+****** 时间点（Timestamp）跟踪
++ CreatedAt 
+  如果模型有 CreatedAt字段，该字段的值将会是初次创建记录的时间
+  #+BEGIN_SRC go
+  db.Create(&user) // `CreatedAt`将会是当前时间
+
+  // 可以使用`Update`方法来改变`CreateAt`的值
+  db.Model(&user).Update("CreatedAt", time.Now())
+  #+END_SRC
+
++ UpdatedAt
+  如果模型有UpdatedAt字段，该字段的值将会是每次更新记录的时间
+  #+BEGIN_SRC go
+  db.Save(&user) // `UpdatedAt`将会是当前时间
+
+  db.Model(&user).Update("name", "jinzhu") // `UpdatedAt`将会是当前时间
+  #+END_SRC
+
++ DeletedAt
+  如果模型有DeletedAt字段，调用Delete删除该记录时，将会设置DeletedAt字段为当前时间，而不是直接将记录从数据库中删除
+***** 连接数据库
+****** 导入数据库驱动
++ 示例
+  #+BEGIN_SRC go
+  import _ "github.com/jinzhu/gorm/dialects/mysql"
+  // import _ "github.com/jinzhu/gorm/dialects/postgres"
+  // import _ "github.com/jinzhu/gorm/dialects/sqlite"
+  // import _ "github.com/jinzhu/gorm/dialects/mssql"
+
+  // 也可以导入其他的数据库驱动
+  import _ "github.com/go-sql-driver/mysql"
+  #+END_SRC
+****** 连接数据库
++ PostgreSQL
+  #+BEGIN_SRC go
+  import (
+    "github.com/jinzhu/gorm"
+    _ "github.com/jinzhu/gorm/dialects/postgres"
+  )
+
+  func main() {
+      db, err := gorm.Open("postgres", "host=192.168.100.11 port=5432 user=zp dbname=zpdb sslmode=disable password=790204")
+	    if err != nil {
+		      panic("failed to connect database")
+	    }
+	    defer db.Close()
+  }
+  #+END_SRC
+
++ SQLite3
+  You can also use :memory: instead of a path to a file. This will tell SQLite to use a temporary database in system memory
+  #+BEGIN_SRC go
+  import (
+    "github.com/jinzhu/gorm"
+    _ "github.com/jinzhu/gorm/dialects/sqlite"
+  )
+
+  func main() {
+    db, err := gorm.Open("sqlite3", "/tmp/gorm.db")
+    defer db.Close()
+  }
+  #+END_SRC
+
++ SQL Server
+  #+BEGIN_SRC go
+  import (
+    "github.com/jinzhu/gorm"
+    _ "github.com/jinzhu/gorm/dialects/mssql"
+  )
+
+  func main() {
+    db, err := gorm.Open("mssql", "sqlserver://username:password@localhost:1433?database=dbname")
+    defer db.Close()
+  }
+  #+END_SRC
+***** CRUD 接口
+****** 创建
+******* 创建记录
++ 示例
+  #+BEGIN_SRC go
+  user := User{Name: "Jinzhu", Age: 18, Birthday: time.Now()}
+
+  db.NewRecord(user) // => 主键为空返回`true`
+
+  db.Create(&user)
+  
+  db.NewRecord(user) // => 创建`user`后返回`false`
+  #+END_SRC
+******* 默认值
++ 可以通过 tag 定义字段的默认值
+  #+BEGIN_SRC go
+  type Animal struct {
+    ID   int64
+    Name string `gorm:"default:'galeone'"`
+    Age  int64
+  }
+  #+END_SRC
++ 生成的 SQL 语句会排除没有值或值为 零值 的字段。 将记录插入到数据库后，Gorm会从数据库加载那些字段的值
+  #+BEGIN_SRC go
+  var animal = Animal{Age: 99, Name: ""}
+  db.Create(&animal)
+  // INSERT INTO animals("age") values('99');
+  // SELECT name from animals WHERE ID=111; // 返回主键为 111
+  // animal.Name => 'galeone'
+  #+END_SRC
++ 所有字段的零值, 比如 0, '', false 或者其它 零值，都不会保存到数据库内，但会使用他们的默认值。 如果你想避免这种情况，可以考虑使用指针或实现 Scanner/Valuer 接口
+  #+BEGIN_SRC go
+  // 使用指针
+  type User struct {
+    gorm.Model
+    Name string
+    Age  *int `gorm:"default:18"`
+  }
+
+  // 使用 Scanner/Valuer
+  type User struct {
+    gorm.Model
+    Name string
+    Age  sql.NullInt64 `gorm:"default:18"`  // sql.NullInt64 实现了Scanner/Valuer接口
+  }
+  #+END_SRC
+******* 在Hooks中设置字段值
++ 在BeforeCreate hook 中修改字段的值，可以使用scope.SetColumn
+  #+BEGIN_SRC go
+  func (user *User) BeforeCreate(scope *gorm.Scope) error {
+    scope.SetColumn("ID", uuid.New())
+    return nil
+  }
+  #+END_SRC
+******* 扩展创建选项
++ 示例
+  #+BEGIN_SRC go
+  // 为Instert语句添加扩展SQL选项
+  db.Set("gorm:insert_option", "ON CONFLICT").Create(&product)
+  // INSERT INTO products (name, code) VALUES ("name", "code") ON CONFLICT;
+  #+END_SRC
+****** 查询
+******* 查询
++ 示例
+  #+BEGIN_SRC go
+  // 根据主键查询第一条记录
+  db.First(&user)
+  //// SELECT * FROM users ORDER BY id LIMIT 1;
+  
+  // 随机获取一条记录
+  db.Take(&user)
+  //// SELECT * FROM users LIMIT 1;
+  
+  // 根据主键查询最后一条记录
+  db.Last(&user)
+  //// SELECT * FROM users ORDER BY id DESC LIMIT 1;
+
+  // 查询所有的记录
+  db.Find(&users)
+  //// SELECT * FROM users;
+
+  // 查询指定的某条记录(仅当主键为整型时可用)
+  db.First(&user, 10)
+  //// SELECT * FROM users WHERE id = 10;
+  #+END_SRC
+******* Where 条件
++ 普通 SQL
+  #+BEGIN_SRC go
+  // 获取第一个匹配的记录
+  db.Where("name = ?", "jinzhu").First(&user)
+  //// SELECT * FROM users WHERE name = 'jinzhu' limit 1;
+
+  // 获取所有匹配的记录
+  db.Where("name = ?", "jinzhu").Find(&users)
+  //// SELECT * FROM users WHERE name = 'jinzhu';
+
+  // <>
+  db.Where("name <> ?", "jinzhu").Find(&users)
+  //// SELECT * FROM users WHERE name <> 'jinzhu';
+
+  // IN
+  db.Where("name IN (?)", []string{"jinzhu", "jinzhu 2"}).Find(&users)
+  //// SELECT * FROM users WHERE name in ('jinzhu','jinzhu 2');
+
+  // LIKE
+  db.Where("name LIKE ?", "%jin%").Find(&users)
+  //// SELECT * FROM users WHERE name LIKE '%jin%';
+
+  // AND
+  db.Where("name = ? AND age >= ?", "jinzhu", "22").Find(&users)
+  //// SELECT * FROM users WHERE name = 'jinzhu' AND age >= 22;
+
+  // Time
+  db.Where("updated_at > ?", lastWeek).Find(&users)
+  //// SELECT * FROM users WHERE updated_at > '2000-01-01 00:00:00';
+
+  // BETWEEN
+  db.Where("created_at BETWEEN ? AND ?", lastWeek, today).Find(&users)
+  //// SELECT * FROM users WHERE created_at BETWEEN '2000-01-01 00:00:00' AND '2000-01-08 00:00:00';
+  #+END_SRC
++ Struct & Map
+  #+BEGIN_SRC go
+  // Struct
+  db.Where(&User{Name: "jinzhu", Age: 20}).First(&user)
+  //// SELECT * FROM users WHERE name = "jinzhu" AND age = 20 ORDER BY id LIMIT 1;
+
+  // Map
+  db.Where(map[string]interface{}{"name": "jinzhu", "age": 20}).Find(&users)
+  //// SELECT * FROM users WHERE name = "jinzhu" AND age = 20;
+
+  // 主键切片
+  db.Where([]int64{20, 21, 22}).Find(&users)
+  //// SELECT * FROM users WHERE id IN (20, 21, 22);
+  #+END_SRC
+  - 当通过结构体进行查询时，GORM将会只通过非零值字段查询，这意味着如果你的字段值为0，''， false 或者其他 零值时，将不会被用于构建查询条件
+    #+BEGIN_SRC go
+    db.Where(&User{Name: "jinzhu", Age: 0}).Find(&users)
+    //// SELECT * FROM users WHERE name = "jinzhu";
+    #+END_SRC
+  - 可以使用指针或实现 Scanner/Valuer 接口来避免这个问题
+    #+BEGIN_SRC go
+    // 使用指针
+    type User struct {
+      gorm.Model
+      Name string
+      Age  *int
+    }
+
+    // 使用 Scanner/Valuer
+    type User struct {
+      gorm.Model
+      Name string
+      Age  sql.NullInt64  // sql.NullInt64 实现了 Scanner/Valuer 接口
+    }
+    #+END_SRC
+******* Not 条件
++ 作用与 Where 类似
+  #+BEGIN_SRC go
+  db.Not("name", "jinzhu").First(&user)
+  //// SELECT * FROM users WHERE name <> "jinzhu" ORDER BY id LIMIT 1;
+
+  // Not In
+  db.Not("name", []string{"jinzhu", "jinzhu 2"}).Find(&users)
+  //// SELECT * FROM users WHERE name NOT IN ("jinzhu", "jinzhu 2");
+
+  // 不在主键切片中
+  db.Not([]int64{1,2,3}).First(&user)
+  //// SELECT * FROM users WHERE id NOT IN (1,2,3) ORDER BY id LIMIT 1;
+
+  db.Not([]int64{}).First(&user)
+  //// SELECT * FROM users ORDER BY id LIMIT 1;
+
+  // 普通 SQL
+  db.Not("name = ?", "jinzhu").First(&user)
+  //// SELECT * FROM users WHERE NOT(name = "jinzhu") ORDER BY id LIMIT 1;
+
+  // Struct
+  db.Not(User{Name: "jinzhu"}).First(&user)
+  //// SELECT * FROM users WHERE name <> "jinzhu" ORDER BY id LIMIT 1;
+  #+END_SRC
+******* Or 条件
++ 示例
+  #+BEGIN_SRC go
+  db.Where("role = ?", "admin").Or("role = ?", "super_admin").Find(&users)
+  //// SELECT * FROM users WHERE role = 'admin' OR role = 'super_admin';
+
+  // Struct
+  db.Where("name = 'jinzhu'").Or(User{Name: "jinzhu 2"}).Find(&users)
+  //// SELECT * FROM users WHERE name = 'jinzhu' OR name = 'jinzhu 2';
+
+  // Map
+  db.Where("name = 'jinzhu'").Or(map[string]interface{}{"name": "jinzhu 2"}).Find(&users)
+  //// SELECT * FROM users WHERE name = 'jinzhu' OR name = 'jinzhu 2';
+  #+END_SRC
+******* Inline Condition 内联条件
++ 作用与 Where 类似,当内联条件与 多个立即执行方法 一起使用时, 内联条件不会传递给后面的立即执行方法
+  #+BEGIN_SRC go
+  // 通过主键获取 (只适用于整数主键)
+  db.First(&user, 23)
+  //// SELECT * FROM users WHERE id = 23;
+  // 如果是一个非整数类型，则通过主键获取
+  db.First(&user, "id = ?", "string_primary_key")
+  //// SELECT * FROM users WHERE id = 'string_primary_key';
+  
+  // Plain SQL
+  db.Find(&user, "name = ?", "jinzhu")
+  //// SELECT * FROM users WHERE name = "jinzhu";
+
+  db.Find(&users, "name <> ? AND age > ?", "jinzhu", 20)
+  //// SELECT * FROM users WHERE name <> "jinzhu" AND age > 20;
+
+  // Struct
+  db.Find(&users, User{Age: 20})
+  //// SELECT * FROM users WHERE age = 20;
+
+  // Map
+  db.Find(&users, map[string]interface{}{"age": 20})
+  //// SELECT * FROM users WHERE age = 20;
+  #+END_SRC
+******* Extra Querying option 其它查询选项
++ 示例
+  #+BEGIN_SRC go
+  // 为查询 SQL 添加额外的 SQL 操作
+  db.Set("gorm:query_option", "FOR UPDATE").First(&user, 10)
+  //// SELECT * FROM users WHERE id = 10 FOR UPDATE;
+  #+END_SRC
+******* FirstOrInit
++ 获取匹配的第一条记录，否则根据给定的条件初始化一个新的对象 (仅支持 struct 和 map 条件)
+  #+BEGIN_SRC go
+  // 未找到
+  db.FirstOrInit(&user, User{Name: "non_existing"})
+  //// user -> User{Name: "non_existing"}
+
+  // 找到
+  db.Where(User{Name: "Jinzhu"}).FirstOrInit(&user)
+  //// user -> User{Id: 111, Name: "Jinzhu", Age: 20}
+  db.FirstOrInit(&user, map[string]interface{}{"name": "jinzhu"})
+  //// user -> User{Id: 111, Name: "Jinzhu", Age: 20}
+  #+END_SRC
+******** Attrs
++ 如果记录未找到，将使用参数初始化 struct
+  #+BEGIN_SRC go
+  // 未找到
+  db.Where(User{Name: "non_existing"}).Attrs(User{Age: 20}).FirstOrInit(&user)
+  //// SELECT * FROM USERS WHERE name = 'non_existing' ORDER BY id LIMIT 1;
+  //// user -> User{Name: "non_existing", Age: 20}
+
+  db.Where(User{Name: "non_existing"}).Attrs("age", 20).FirstOrInit(&user)
+  //// SELECT * FROM USERS WHERE name = 'non_existing' ORDER BY id LIMIT 1;
+  //// user -> User{Name: "non_existing", Age: 20}
+
+  // 找到
+  db.Where(User{Name: "Jinzhu"}).Attrs(User{Age: 30}).FirstOrInit(&user)
+  //// SELECT * FROM USERS WHERE name = jinzhu' ORDER BY id LIMIT 1;
+  //// user -> User{Id: 111, Name: "Jinzhu", Age: 20}
+  #+END_SRC
+******** Assign
++ 不管记录是否找到，都将参数赋值给 struct
+  #+BEGIN_SRC go
+  // 未找到
+  db.Where(User{Name: "non_existing"}).Assign(User{Age: 20}).FirstOrInit(&user)
+  //// user -> User{Name: "non_existing", Age: 20}
+
+  // 找到
+  db.Where(User{Name: "Jinzhu"}).Assign(User{Age: 30}).FirstOrInit(&user)
+  //// SELECT * FROM USERS WHERE name = jinzhu' ORDER BY id LIMIT 1;
+  //// user -> User{Id: 111, Name: "Jinzhu", Age: 30}
+  #+END_SRC
+******* FirstOrCreate
++ 获取匹配的第一条记录, 否则根据给定的条件创建一个新的记录 (仅支持 struct 和 map 条件)
+  #+BEGIN_SRC go
+  // 未找到
+  db.FirstOrCreate(&user, User{Name: "non_existing"})
+  //// INSERT INTO "users" (name) VALUES ("non_existing");
+  //// user -> User{Id: 112, Name: "non_existing"}
+
+  // 找到
+  db.Where(User{Name: "Jinzhu"}).FirstOrCreate(&user)
+  //// user -> User{Id: 111, Name: "Jinzhu"}
+  #+END_SRC
+******** Attrs
++ 如果记录未找到，将使用参数创建 struct 和记录
+  #+BEGIN_SRC go
+  // 未找到
+  db.Where(User{Name: "non_existing"}).Attrs(User{Age: 20}).FirstOrCreate(&user)
+  //// SELECT * FROM users WHERE name = 'non_existing' ORDER BY id LIMIT 1;
+  //// INSERT INTO "users" (name, age) VALUES ("non_existing", 20);
+  //// user -> User{Id: 112, Name: "non_existing", Age: 20}
+
+  // 找到
+  db.Where(User{Name: "jinzhu"}).Attrs(User{Age: 30}).FirstOrCreate(&user)
+  //// SELECT * FROM users WHERE name = 'jinzhu' ORDER BY id LIMIT 1;
+  //// user -> User{Id: 111, Name: "jinzhu", Age: 20}
+  #+END_SRC
+******** Assign
++ 不管记录是否找到，都将参数赋值给 struct 并保存至数据库
+  #+BEGIN_SRC go
+  // 未找到
+  db.Where(User{Name: "non_existing"}).Assign(User{Age: 20}).FirstOrCreate(&user)
+  //// SELECT * FROM users WHERE name = 'non_existing' ORDER BY id LIMIT 1;
+  //// INSERT INTO "users" (name, age) VALUES ("non_existing", 20);
+  //// user -> User{Id: 112, Name: "non_existing", Age: 20}
+
+  // 找到
+  db.Where(User{Name: "jinzhu"}).Assign(User{Age: 30}).FirstOrCreate(&user)
+  //// SELECT * FROM users WHERE name = 'jinzhu' ORDER BY id LIMIT 1;
+  //// UPDATE users SET age=30 WHERE id = 111;
+  //// user -> User{Id: 111, Name: "jinzhu", Age: 30}
+  #+END_SRC
+******* Advanced Query 高级查询
+******** SubQuery 子查询
++ 基于 *gorm.expr 的子查询
+  #+BEGIN_SRC go
+  db.Where("amount > ?", db.Table("orders").Select("AVG(amount)").Where("state = ?", "paid").SubQuery()).Find(&orders)
+  // SELECT * FROM "orders"  WHERE "orders"."deleted_at" IS NULL AND (amount > (SELECT AVG(amount) FROM "orders"  WHERE (state = 'paid')));
+  #+END_SRC
+******** 选择字段
++ Select，指定你想从数据库中检索出的字段，默认会选择全部字段
+  #+BEGIN_SRC go
+  db.Select("name, age").Find(&users)
+  //// SELECT name, age FROM users;
+  
+  db.Select([]string{"name", "age"}).Find(&users)
+  //// SELECT name, age FROM users;
+
+  db.Table("users").Select("COALESCE(age,?)", 42).Rows()
+  //// SELECT COALESCE(age,'42') FROM users;
+  #+END_SRC
+******** 排序
++ Order，指定从数据库中检索出记录的顺序。设置第二个参数 reorder 为 true ，可以覆盖前面定义的排序条件。
+  #+BEGIN_SRC go
+  db.Order("age desc, name").Find(&users)
+  //// SELECT * FROM users ORDER BY age desc, name;
+
+  // 多字段排序
+  db.Order("age desc").Order("name").Find(&users)
+  //// SELECT * FROM users ORDER BY age desc, name;
+
+  // 覆盖排序
+  db.Order("age desc").Find(&users1).Order("age", true).Find(&users2)
+  //// SELECT * FROM users ORDER BY age desc; (users1)
+  //// SELECT * FROM users ORDER BY age; (users2)
+  #+END_SRC
+******** 数量
++ Limit，指定从数据库检索出的最大记录数
+  #+BEGIN_SRC go
+  db.Limit(3).Find(&users)
+  //// SELECT * FROM users LIMIT 3;
+
+  // -1 取消 Limit 条件
+  db.Limit(10).Find(&users1).Limit(-1).Find(&users2)
+  //// SELECT * FROM users LIMIT 10; (users1)
+  //// SELECT * FROM users; (users2)
+  #+END_SRC
+******** 偏移
++ Offset，指定开始返回记录前要跳过的记录数
+  #+BEGIN_SRC go
+  db.Offset(3).Find(&users)
+  //// SELECT * FROM users OFFSET 3;
+  
+  // -1 取消 Offset 条件
+  db.Offset(10).Find(&users1).Offset(-1).Find(&users2)
+  //// SELECT * FROM users OFFSET 10; (users1)
+  //// SELECT * FROM users; (users2)
+  #+END_SRC
+******** 总数
++ Count，该 model 能获取的记录总数
+  #+BEGIN_SRC go
+  db.Where("name = ?", "jinzhu").Or("name = ?", "jinzhu 2").Find(&users).Count(&count)
+  //// SELECT * from USERS WHERE name = 'jinzhu' OR name = 'jinzhu 2'; (users)
+  //// SELECT count(*) FROM users WHERE name = 'jinzhu' OR name = 'jinzhu 2'; (count)
+
+  db.Model(&User{}).Where("name = ?", "jinzhu").Count(&count)
+  //// SELECT count(*) FROM users WHERE name = 'jinzhu'; (count)
+
+  db.Table("deleted_users").Count(&count)
+  //// SELECT count(*) FROM deleted_users;
+
+  db.Table("deleted_users").Select("count(distinct(name))").Count(&count)
+  //// SELECT count( distinct(name) ) FROM deleted_users; (count)
+  #+END_SRC
+  + Count 必须是链式查询的最后一个操作 ，因为它会覆盖前面的 SELECT，但如果里面使用了 count 时不会覆盖
+******** Group & Having
++ 示例
+  #+BEGIN_SRC go
+  rows, err := db.Table("orders").Select("date(created_at) as date, sum(amount) as total").Group("date(created_at)").Rows()
+  for rows.Next() {
+    ...
+  }
+
+  rows, err := db.Table("orders").Select("date(created_at) as date, sum(amount) as total").Group("date(created_at)").Having("sum(amount) > ?", 100).Rows()
+  for rows.Next() {
+    ...
+  }
+
+  type Result struct {
+    Date  time.Time
+    Total int64
+  }
+  db.Table("orders").Select("date(created_at) as date, sum(amount) as total").Group("date(created_at)").Having("sum(amount) > ?", 100).Scan(&results)
+  #+END_SRC
+******** 连接
++ Joins，指定连接条件
+  #+BEGIN_SRC go
+  rows, err := db.Table("users").Select("users.name, emails.email").Joins("left join emails on emails.user_id = users.id").Rows()
+  for rows.Next() {
+    ...
+  }
+
+  db.Table("users").Select("users.name, emails.email").Joins("left join emails on emails.user_id = users.id").Scan(&results)
+
+  // 多连接及参数
+  db.Joins("JOIN emails ON emails.user_id = users.id AND emails.email = ?", "jinzhu@example.org").Joins("JOIN credit_cards ON credit_cards.user_id = users.id").Where("credit_cards.number = ?", "411111111111").Find(&user)
+  #+END_SRC
+******** Pluck
++ Pluck，查询 model 中的一个列作为切片，如果您想要查询多个列，您应该使用 Scan
+  #+BEGIN_SRC go
+  var ages []int64
+  db.Find(&users).Pluck("age", &ages)
+
+  var names []string
+  db.Model(&User{}).Pluck("name", &names)
+
+  db.Table("deleted_users").Pluck("name", &names)
+
+  // 想查询多个字段？ 这样做：
+  db.Select("name, age").Find(&users)
+  #+END_SRC
+******** 扫描
++ Scan，扫描结果至一个 struct.
+  #+BEGIN_SRC go
+  type Result struct {
+    Name string
+    Age  int
+  }
+
+  var result Result
+  db.Table("users").Select("name, age").Where("name = ?", "Antonio").Scan(&result)
+
+  // 原生 SQL
+  db.Raw("SELECT name, age FROM users WHERE name = ?", "Antonio").Scan(&result)
+  #+END_SRC
+****** 更新
+******* 更新所有字段
++ Save会更新所有字段，即使你没有赋值
+  #+BEGIN_SRC go
+  db.First(&user)
+
+  user.Name = "jinzhu 2"
+  user.Age = 100
+  db.Save(&user)
+
+  //// UPDATE users SET name='jinzhu 2', age=100, birthday='2016-01-01', updated_at = '2013-11-17 21:34:10' WHERE id=111;
+  #+END_SRC
+******* 更新修改字段
++ 如果你只希望更新指定字段，可以使用Update或者Updates
+  #+BEGIN_SRC go
+  // 更新单个属性，如果它有变化
+  db.Model(&user).Update("name", "hello")
+  //// UPDATE users SET name='hello', updated_at='2013-11-17 21:34:10' WHERE id=111;
+
+  // 根据给定的条件更新单个属性
+  db.Model(&user).Where("active = ?", true).Update("name", "hello")
+  //// UPDATE users SET name='hello', updated_at='2013-11-17 21:34:10' WHERE id=111 AND active=true;
+
+  // 使用 map 更新多个属性，只会更新其中有变化的属性
+  db.Model(&user).Updates(map[string]interface{}{"name": "hello", "age": 18, "actived": false})
+  //// UPDATE users SET name='hello', age=18, actived=false, updated_at='2013-11-17 21:34:10' WHERE id=111;
+
+  // 使用 struct 更新多个属性，只会更新其中有变化且为非零值的字段
+  db.Model(&user).Updates(User{Name: "hello", Age: 18})
+  //// UPDATE users SET name='hello', age=18, updated_at = '2013-11-17 21:34:10' WHERE id = 111;
+
+  // 警告：当使用 struct 更新时，GORM只会更新那些非零值的字段
+  // 对于下面的操作，不会发生任何更新，"", 0, false 都是其类型的零值
+  db.Model(&user).Updates(User{Name: "", Age: 0, Actived: false})
+  #+END_SRC
+******* 更新选定字段
++ 如果你想更新或忽略某些字段，你可以使用 Select，Omit
+  #+BEGIN_SRC go
+  db.Model(&user).Select("name").Updates(map[string]interface{}{"name": "hello", "age": 18, "actived": false})
+  //// UPDATE users SET name='hello', updated_at='2013-11-17 21:34:10' WHERE id=111;
+
+  db.Model(&user).Omit("name").Updates(map[string]interface{}{"name": "hello", "age": 18, "actived": false})
+  //// UPDATE users SET age=18, actived=false, updated_at='2013-11-17 21:34:10' WHERE id=111;
+  #+END_SRC
+******* 无 Hooks 更新
++ 上面的更新操作会自动运行 model 的 BeforeUpdate, AfterUpdate 方法，更新 UpdatedAt 时间戳, 在更新时保存其 Associations, 如果你不想调用这些方法，你可以使用 UpdateColumn， UpdateColumns
+  #+BEGIN_SRC go
+  // 更新单个属性，类似于 `Update`
+  db.Model(&user).UpdateColumn("name", "hello")
+  //// UPDATE users SET name='hello' WHERE id = 111;
+
+  // 更新多个属性，类似于 `Updates`
+  db.Model(&user).UpdateColumns(User{Name: "hello", Age: 18})
+  //// UPDATE users SET name='hello', age=18 WHERE id = 111;
+  #+END_SRC
+******* 批量更新
++ 批量更新时 Hooks 不会运行
+  #+BEGIN_SRC go
+  db.Table("users").Where("id IN (?)", []int{10, 11}).Updates(map[string]interface{}{"name": "hello", "age": 18})
+  //// UPDATE users SET name='hello', age=18 WHERE id IN (10, 11);
+
+  // 使用 struct 更新时，只会更新非零值字段，若想更新所有字段，请使用map[string]interface{}
+  db.Model(User{}).Updates(User{Name: "hello", Age: 18})
+  //// UPDATE users SET name='hello', age=18;
+
+  // 使用 `RowsAffected` 获取更新记录总数
+  db.Model(User{}).Updates(User{Name: "hello", Age: 18}).RowsAffected
+  #+END_SRC
+******* 使用 SQL 表达式更新
++ 示例
+  #+BEGIN_SRC go
+  DB.Model(&product).Update("price", gorm.Expr("price * ? + ?", 2, 100))
+  //// UPDATE "products" SET "price" = price * '2' + '100', "updated_at" = '2013-11-17 21:34:10' WHERE "id" = '2';
+
+  DB.Model(&product).Updates(map[string]interface{}{"price": gorm.Expr("price * ? + ?", 2, 100)})
+  //// UPDATE "products" SET "price" = price * '2' + '100', "updated_at" = '2013-11-17 21:34:10' WHERE "id" = '2';
+
+  DB.Model(&product).UpdateColumn("quantity", gorm.Expr("quantity - ?", 1))
+  //// UPDATE "products" SET "quantity" = quantity - 1 WHERE "id" = '2';
+
+  DB.Model(&product).Where("quantity > 1").UpdateColumn("quantity", gorm.Expr("quantity - ?", 1))
+  //// UPDATE "products" SET "quantity" = quantity - 1 WHERE "id" = '2' AND quantity > 1;
+  #+END_SRC
+******* 修改 Hooks 中的值
++ 如果你想修改 BeforeUpdate, BeforeSave 等 Hooks 中更新的值，你可以使用 scope.SetColumn
+  #+BEGIN_SRC go
+  func (user *User) BeforeSave(scope *gorm.Scope) (err error) {
+    if pw, err := bcrypt.GenerateFromPassword(user.Password, 0); err == nil {
+      scope.SetColumn("EncryptedPassword", pw)
+    }
+  }
+  #+END_SRC
+******* 其它更新选项
++ 示例
+  #+BEGIN_SRC go
+  // 为 update SQL 添加其它的 SQL
+  db.Model(&user).Set("gorm:update_option", "OPTION (OPTIMIZE FOR UNKNOWN)").Update("name", "hello")
+  //// UPDATE users SET name='hello', updated_at = '2013-11-17 21:34:10' WHERE id=111 OPTION (OPTIMIZE FOR UNKNOWN);
+  #+END_SRC
+****** 删除
+******* 删除记录
++ 删除记录时，请确保主键字段有值，GORM 会通过主键去删除记录，如果主键为空，GORM 会删除该 model 的所有记录
+  #+BEGIN_SRC go
+  // 删除现有记录
+  db.Delete(&email)
+  //// DELETE from emails where id=10;
+
+  // 为删除 SQL 添加额外的 SQL 操作
+  db.Set("gorm:delete_option", "OPTION (OPTIMIZE FOR UNKNOWN)").Delete(&email)
+  //// DELETE from emails where id=10 OPTION (OPTIMIZE FOR UNKNOWN);
+  #+END_SRC
+******* 批量删除
++ 删除全部匹配的记录
+  #+BEGIN_SRC go
+  db.Where("email LIKE ?", "%jinzhu%").Delete(Email{})
+  //// DELETE from emails where email LIKE "%jinzhu%";
+
+  db.Delete(Email{}, "email LIKE ?", "%jinzhu%")
+  //// DELETE from emails where email LIKE "%jinzhu%";
+  #+END_SRC
+******* 软删除
++ 如果一个 model 有 DeletedAt 字段，他将自动获得软删除的功能！ 当调用 Delete 方法时， 记录不会真正的从数据库中被删除， 只会将DeletedAt 字段的值会被设置为当前时间
+  #+BEGIN_SRC go
+  db.Delete(&user)
+  //// UPDATE users SET deleted_at="2013-10-29 10:23" WHERE id = 111;
+
+  // 批量删除
+  db.Where("age = ?", 20).Delete(&User{})
+  //// UPDATE users SET deleted_at="2013-10-29 10:23" WHERE age = 20;
+
+  // 查询记录时会忽略被软删除的记录
+  db.Where("age = 20").Find(&user)
+  //// SELECT * FROM users WHERE age = 20 AND deleted_at IS NULL;
+
+  // Unscoped 方法可以查询被软删除的记录
+  db.Unscoped().Where("age = 20").Find(&users)
+  //// SELECT * FROM users WHERE age = 20;
+  #+END_SRC
+******* 物理删除
++ 示例
+  #+BEGIN_SRC go
+  // Unscoped 方法可以物理删除记录
+  db.Unscoped().Delete(&order)
+  //// DELETE FROM orders WHERE id=10;
+  #+END_SRC
+***** 关联
+****** 属于
+******* 属于
++ belongs to 会与另一个模型建立一对一关系，因此声明的每一个模型实例都会”属于”另一个模型实例。例如, 如果您的应用程序包含用户和配置文件, 并且可以将每个配置文件分配给一个用户
+  #+BEGIN_SRC go
+  type User struct {
+    gorm.Model
+    Name string
+  }
+
+  // `Profile` 属于 `User`， 外键是`UserID` 
+  type Profile struct {
+    gorm.Model
+    UserID int
+    User   User
+    Name   string
+  }
+  #+END_SRC
+******* 外键
++ Foreign Key，若要定义属于关系的外键必须存在, 默认外键使用所有者的类型名称及其主键。对于上述例子，定义一个属于 User 的模型，外键应该是 UserID。GORM 提供了自定义外键的方法，例如：
+  #+BEGIN_SRC go
+  type User struct {
+    gorm.Model
+    Name string
+  }
+
+  type Profile struct {
+    gorm.Model
+    Name      string
+    User      User `gorm:"foreignkey:UserRefer"` // 将 UserRefer 作为外键
+    UserRefer uint
+  }
+  #+END_SRC
+******* 关联外键
++ 对于一个 belongs to 关系，GORM 通常使用所有者的主键作为外键的值，对于上面例子，外键的值是 User 的 ID。当你关联一个 profile 到一个 user 时，GORM 将保存 user 的 ID 到 profile 的 UserID 字段。你可以用 association_foreignkey 标签来更改它，例如
+  #+BEGIN_SRC go
+  type User struct {
+    gorm.Model
+    Refer string
+    Name string
+  }
+
+  type Profile struct {
+    gorm.Model
+    Name      string
+    User      User `gorm:"association_foreignkey:Refer"` // 将 Refer 作为关联外键
+    UserRefer string
+  }
+  #+END_SRC
+******* Belongs To 的使用
++ 使用 Related 查找 belongs to 关系
+  #+BEGIN_SRC go
+  db.Model(&user).Related(&profile)
+  //// SELECT * FROM profiles WHERE user_id = 111; // 111 is user's ID
+  #+END_SRC
+****** Has One
+******* Has One
++ 在一个 has one 关联中，其也与另一个 model 建立了一对一关系，但它和一对一关系有不同的语义（及结果）。 Has one 表示：model 的每一个示例都包含或拥有另一个 model 的示例。例如，你的应用包含了用户和信用卡，并且每个用户只能有一张信用卡
+  #+BEGIN_SRC go
+  // User 只能有一张信用卡 (CreditCard), CreditCardID 是外键
+  type CreditCard struct {
+    gorm.Model
+    Number   string
+    UserID   uint
+  }
+
+  type User struct {
+    gorm.Model
+    CreditCard   CreditCard
+  }
+  #+END_SRC
+******* 外键
++ Foreign Key，在 has one 关系中，被拥有 model 必须存在一个外键字段，用于保存所属 model 的主键。外键名通常使用 has one 拥有者 model 的类型加 主键 生成，对于上面的例子，其外键名为 UserID.当你为用户关联信用卡时，信用卡会保存用户的 ID 到它的 UserID 字段。如果你想使用另一个字段来记录该关系，您可以通过标签 foreignkey 来改变它
+  #+BEGIN_SRC go
+  type CreditCard struct {
+    gorm.Model
+    Number   string
+    UserName string
+  }
+
+  type User struct {
+    gorm.Model
+    CreditCard CreditCard `gorm:"foreignkey:UserName"`
+  }
+  #+END_SRC
+******* 关联外键
++ 默认情况下，在 has one 关系中，被拥有 model 会使用其外键，保存拥有者 model 的主键，您可以更改保存至另一个字段，例如下面例子中的 Name
+  #+BEGIN_SRC go
+  type CreditCard struct {
+    gorm.Model
+    Number string
+    UID    string
+  }
+
+  type User struct {
+    gorm.Model
+    Name       `sql:"index"`
+    CreditCard CreditCard `gorm:"foreignkey:uid;association_foreignkey:name"`
+  }
+  #+END_SRC
+******* 多态关联
++ Polymorphism Association，Gorm 支持 has many 和 has one 的多态关联,many-to-many 明确的不支持多态关联，如果使用会抛出错误
+  #+BEGIN_SRC go
+  type Cat struct {
+    ID    int
+    Name  string
+    Toy   Toy `gorm:"polymorphic:Owner;"`
+  }
+
+  type Dog struct {
+    ID   int
+    Name string
+    Toy  Toy `gorm:"polymorphic:Owner;"`
+  }
+
+  type Toy struct {
+    ID        int
+    Name      string
+    OwnerID   int
+    OwnerType string
+  }
+  #+END_SRC
+******* Has One 的使用
++ 通过 Related 使用 has one 关联
+  #+BEGIN_SRC go
+  var card CreditCard
+  db.Model(&user).Related(&card, "CreditCard")
+  //// SELECT * FROM credit_cards WHERE user_id = 123; // 123 is user's primary key
+  // CreditCard 是 users 的字段，其含义是，获取 user 的 CreditCard 并填充至 card 变量
+  // 如果字段名与 model 名相同，比如上面的例子，此时字段名可以省略不写，像这样：
+  db.Model(&user).Related(&card)
+  #+END_SRC
+****** Has Many
+******* Has Many
++ 在一个 has many 关联中，其也与另一个 model 建立了一对多关系，不同于 has one，model 的拥有者可以有零个或多个实例。例如，你的应用包含了用户和信用卡，并且每个用户可以有多张信用卡
+  #+BEGIN_SRC go
+  // User 可以有多张信用卡(CreditCards), UserID 是外键
+  type User struct {
+    gorm.Model
+    CreditCards []CreditCard
+  }
+
+  type CreditCard struct {
+    gorm.Model
+    Number   string
+    UserID  uint
+  }
+  #+END_SRC
+******* 外键
++ Foreign Key，在 has many 关系中，被拥有 model 必须存在一个外键字段，默认的外键字段名称通常使用其拥有者 model 加上它的主键（比如 UserID, CardID, 等）。例如：定义一个属于 User 的 model，它的外键应该为 UserID.要使用另一个字段作为外键，你可以通过标签 foreignkey 来定制它
+  #+BEGIN_SRC go
+  type User struct {
+    gorm.Model
+    CreditCards []CreditCard `gorm:"foreignkey:UserRefer"`
+  }
+
+  type CreditCard struct {
+    gorm.Model
+    Number    string
+    UserRefer uint
+  }
+  #+END_SRC
+******* 关联外键
++ Association ForeignKey，GORM 通常使用拥有者的主键作为外键的值，在上面的例子中，它是 User 的 ID.当你为用户关联信用卡时，GORM 会保存用户的 ID 到信用卡的 UserID 字段。您可以通过标签 association_foreignkey 来改变它
+  #+BEGIN_SRC go
+  type User struct {
+    gorm.Model
+    MemberNumber string
+    CreditCards  []CreditCard `gorm:"foreignkey:UserMemberNumber;association_foreignkey:MemberNumber"`
+  }
+
+  type CreditCard struct {
+    gorm.Model
+    Number           string
+    UserMemberNumber string
+  }
+  #+END_SRC
+******* 多态关联
++ Polymorphism Association，GORM 支持 has many 和 has one 的多态关联,many-to-many 明确的不支持多态关联，如果使用会抛出错误
+  #+BEGIN_SRC go
+  type Cat struct {
+    ID    int
+    Name  string
+    Toy   []Toy `gorm:"polymorphic:Owner;"`
+  }
+
+  type Dog struct {
+    ID   int
+    Name string
+    Toy  []Toy `gorm:"polymorphic:Owner;"`
+  }
+
+  type Toy struct {
+    ID        int
+    Name      string
+    OwnerID   int
+    OwnerType string
+  }
+  #+END_SRC
+******* Has Many 的使用
++ 通过 Related 使用 has many 关联
+  #+BEGIN_SRC go
+  db.Model(&user).Related(&emails)
+  //// SELECT * FROM emails WHERE user_id = 111; // 111 是 user 的主键
+  #+END_SRC
+****** Many To Many
+******* Many To Many
++ Many to Many 在两个 model 中添加一张连接表。比如说，你的应用包含 User 和 Language，一个 User 可以说多种 Language，多个 User 也可以说一种 Language。
+  #+BEGIN_SRC go
+  // User 拥有并属于多种 Language，使用 `user_languages` 连接表
+  type User struct {
+    gorm.Model
+    Languages         []Language `gorm:"many2many:user_languages;"`
+  }
+
+  type Language struct {
+    gorm.Model
+    Name string
+  }
+  #+END_SRC
+******* 互引用关联
++ 示例
+  #+BEGIN_SRC go
+  // User 拥有并属于多种 Language，使用 `user_languages` 连接表
+  type User struct {
+    gorm.Model
+    Languages         []*Language `gorm:"many2many:user_languages;"`
+  }
+
+  type Language struct {
+    gorm.Model
+    Name string
+    Users               []*User     `gorm:"many2many:user_languages;"`
+  }
+
+  var users []User
+  language := Language{}
+
+  db.First(&language, "id = ?", 111)
+
+  db.Model(&language).Related(&users,  "Users")
+  //// SELECT * FROM "users" INNER JOIN "user_languages" ON "user_languages"."user_id" = "users"."id" WHERE  ("user_languages"."language_id" IN ('111'))
+  #+END_SRC
+******* 多外键
++ Foreign Keys，它将为这两个 struct 创建多对多关系，并且他们的关系将被保存到连接表 PersonAccount ，连接表的外键为 customize_person_id_person 和 customize_account_id_account
+  #+BEGIN_SRC go
+  type CustomizePerson struct {
+    IdPerson string             `gorm:"primary_key:true"`
+    Accounts []CustomizeAccount `gorm:"many2many:PersonAccount;association_foreignkey:idAccount;foreignkey:idPerson"`
+  }
+
+  type CustomizeAccount struct {
+    IdAccount string `gorm:"primary_key:true"`
+    Name      string
+  }
+  #+END_SRC
+******* 连接表外键
++ Jointable ForeignKey，如果你想改变连接表的外键，你可以使用标签 association_jointable_foreignkey 和 jointable_foreignkey
+  #+BEGIN_SRC go
+  type CustomizePerson struct {
+    IdPerson string             `gorm:"primary_key:true"`
+    Accounts []CustomizeAccount `gorm:"many2many:PersonAccount;foreignkey:idPerson;association_foreignkey:idAccount;association_jointable_foreignkey:account_id;jointable_foreignkey:person_id;"`
+  }
+
+  type CustomizeAccount struct {
+    IdAccount string `gorm:"primary_key:true"`
+    Name      string
+  }
+  #+END_SRC
+******* 自引用关联
++ Self-Referencing，在自引用的多对多关系中，你必须在连接表中修改关联外键。使用属性名及其主键生成关联外键，使得关联外键与外键不同
+  #+BEGIN_SRC go
+  type User struct {
+    gorm.Model
+    Friends []*User `gorm:"many2many:friendships;association_jointable_foreignkey:friend_id"`
+  }
+  #+END_SRC
++ GORM 会生成一个关联表，其外键为 user_id 和 friend_id，并用其保存自引用用户关系。然后你还是可以像正常关系一样操作它们
+  #+BEGIN_SRC go
+  DB.Preload("Friends").First(&user, "id = ?", 1)
+
+  DB.Model(&user).Association("Friends").Append(&User{Name: "friend1"}, &User{Name: "friend2"})
+  
+  DB.Model(&user).Association("Friends").Delete(&User{Name: "friend2"})
+  
+  DB.Model(&user).Association("Friends").Replace(&User{Name: "new friend"})
+  
+  DB.Model(&user).Association("Friends").Clear()
+  
+  DB.Model(&user).Association("Friends").Count()
+  #+END_SRC
+******* Many To Many 的使用
++ 示例
+  #+BEGIN_SRC go
+  db.Model(&user).Related(&languages, "Languages")
+  //// SELECT * FROM "languages" INNER JOIN "user_languages" ON "user_languages"."language_id" = "languages"."id" WHERE "user_languages"."user_id" = 111
+
+  // 查询 user 时会预加载 Languages
+  db.Preload("Languages").First(&user)
+  #+END_SRC
+****** 关联
+******* 自动创建/更新
++ 创建/更新记录时, GORM 将自动保存关联及其引用。如果关联具有主键, GORM 将调用 Update 来保存它, 否则将创建它
+  #+BEGIN_SRC go
+  user := User{
+    Name:            "jinzhu",
+    BillingAddress:  Address{Address1: "Billing Address - Address 1"},
+    ShippingAddress: Address{Address1: "Shipping Address - Address 1"},
+    Emails:          []Email{
+      {Email: "jinzhu@example.com"},
+      {Email: "jinzhu-2@example.com"},
+    },
+    Languages:       []Language{
+      {Name: "ZH"},
+      {Name: "EN"},
+    },
+  }
+
+  db.Create(&user)
+  //// BEGIN TRANSACTION;
+  //// INSERT INTO "addresses" (address1) VALUES ("Billing Address - Address 1");
+  //// INSERT INTO "addresses" (address1) VALUES ("Shipping Address - Address 1");
+  //// INSERT INTO "users" (name,billing_address_id,shipping_address_id) VALUES ("jinzhu", 1, 2);
+  //// INSERT INTO "emails" (user_id,email) VALUES (111, "jinzhu@example.com");
+  //// INSERT INTO "emails" (user_id,email) VALUES (111, "jinzhu-2@example.com");
+  //// INSERT INTO "languages" ("name") VALUES ('ZH');
+  //// INSERT INTO user_languages ("user_id","language_id") VALUES (111, 1);
+  //// INSERT INTO "languages" ("name") VALUES ('EN');
+  //// INSERT INTO user_languages ("user_id","language_id") VALUES (111, 2);
+  //// COMMIT;
+
+  db.Save(&user)
+  #+END_SRC
+******* 跳过自动更新
++ 如果数据库中已存在关联, 你可能不希望对其进行更新。可以使用 DB 设置, 将 gorm: association_autoupdate 设置为 false
+  #+BEGIN_SRC go
+  // Don't update associations having primary key, but will save reference
+  db.Set("gorm:association_autoupdate", false).Create(&user)
+  db.Set("gorm:association_autoupdate", false).Save(&user)
+  #+END_SRC
++ 或者使用 GORM tags gorm:"association_autoupdate:false"
+  #+BEGIN_SRC go
+  type User struct {
+    gorm.Model
+    Name       string
+    CompanyID  uint
+    // Don't update associations having primary key, but will save reference
+    Company    Company `gorm:"association_autoupdate:false"`
+  }
+  #+END_SRC
+******* 跳过自动创建
++ 即使你禁用了 AutoUpdating，没有主键的关联仍然会被创建，所有关联的引用也会被保存。如果你也想跳过，那么你可以通过 DB 的设置，将gorm:association_autocreate设置为false
+  #+BEGIN_SRC go
+  // Don't create associations w/o primary key, WON'T save its reference
+  db.Set("gorm:association_autocreate", false).Create(&user)
+  db.Set("gorm:association_autocreate", false).Save(&user)
+  #+END_SRC
++ 或使用 GORM tags GORM: "association_autocreate: false"
+  #+BEGIN_SRC go
+  type User struct {
+    gorm.Model
+    Name       string
+    // Don't create associations w/o primary key, WON'T save its reference
+    Company1   Company `gorm:"association_autocreate:false"`
+  }
+  #+END_SRC
+******* 跳过自动创建及更新
++ 若要禁用 自动创建 及 自动更新, 可以将这两个设置一起使用
+  #+BEGIN_SRC go
+  db.Set("gorm:association_autoupdate", false).Set("gorm:association_autocreate", false).Create(&user)
+
+  type User struct {
+    gorm.Model
+    Name    string
+    Company Company `gorm:"association_autoupdate:false;association_autocreate:false"`
+  }
+  #+END_SRC
++ 或使用 GORM Tag gorm: save_associations
+  #+BEGIN_SRC go
+  db.Set("gorm:save_associations", false).Create(&user)
+  db.Set("gorm:save_associations", false).Save(&user)
+
+  type User struct {
+    gorm.Model
+    Name    string
+    Company Company `gorm:"save_associations:false:false"`
+  }
+  #+END_SRC
+******* 跳过引用的保存
++ 如果你不想保存关联的引用，那么你可以使用下面的技巧
+  #+BEGIN_SRC go
+  db.Set("gorm:association_save_reference", false).Save(&user)
+  db.Set("gorm:association_save_reference", false).Create(&user)
+  #+END_SRC
++ 或者使用 GORM Tag
+  #+BEGIN_SRC go
+  type User struct {
+    gorm.Model
+    Name       string
+    CompanyID  uint
+    Company    Company `gorm:"association_save_reference:false"`
+  }
+  #+END_SRC
+******* 关联模式
++ 关联模式包含几个帮助方法，可以更方便的来管理关联
+  #+BEGIN_SRC go
+  // 开始使用关联模式
+  var user User
+  db.Model(&user).Association("Languages")
+  // `user` 是源，必须包含主键
+  // `Languages` 是关系中的源的字段名
+  // 只有在满足上面两个条件时，关联模式才能正常工作，请注意检查错误：
+  // db.Model(&user).Association("Languages").Error
+  #+END_SRC
+******** 查找关联
++ 查找匹配的关联
+  #+BEGIN_SRC go
+  db.Model(&user).Association("Languages").Find(&languages)
+  #+END_SRC
+******** 添加关联
++ 为many to many，has many添加新的关联关系代替当前的关联关系has one，belongs to
+  #+BEGIN_SRC go
+  db.Model(&user).Association("Languages").Append([]Language{languageZH, languageEN})
+  db.Model(&user).Association("Languages").Append(Language{Name: "DE"})
+  #+END_SRC
+******** 替换关联
++ 使用新关联替换当前关联
+  #+BEGIN_SRC go
+  db.Model(&user).Association("Languages").Replace([]Language{languageZH, languageEN})
+  db.Model(&user).Association("Languages").Replace(Language{Name: "DE"}, languageEN)
+  #+END_SRC
+******** 删除关联
++ 删除关联的引用，不会删除关联本身
+  #+BEGIN_SRC go
+  db.Model(&user).Association("Languages").Delete([]Language{languageZH, languageEN})
+  db.Model(&user).Association("Languages").Delete(languageZH, languageEN)
+  #+END_SRC
+******** 清空关联
++ 清空对关联的引用，不会删除关联本身
+  #+BEGIN_SRC go
+  db.Model(&user).Association("Languages").Clear()
+  #+END_SRC
+******** 关联的数量
++ 返回关联的数量
+  #+BEGIN_SRC go
+  db.Model(&user).Association("Languages").Count()
+  #+END_SRC
+****** Preloading (预加载)
+******* 预加载
++ 示例
+  #+BEGIN_SRC go
+  // 下面的例子会用到 User 和 Order 结构体
+  type User struct {
+    gorm.Model
+    Username string
+    Orders Order
+  }
+  type Order struct {
+    gorm.Model
+    UserID uint
+    Price float64
+  }
+  // Preload 方法的参数应该是主结构体的字段名
+  db.Preload("Orders").Find(&users)
+  //// SELECT * FROM users;
+  //// SELECT * FROM orders WHERE user_id IN (1,2,3,4);
+  
+  db.Preload("Orders", "state NOT IN (?)", "cancelled").Find(&users)
+  //// SELECT * FROM users;
+  //// SELECT * FROM orders WHERE user_id IN (1,2,3,4) AND state NOT IN ('cancelled');
+
+  db.Where("state = ?", "active").Preload("Orders", "state NOT IN (?)", "cancelled").Find(&users)
+  //// SELECT * FROM users WHERE state = 'active';
+  //// SELECT * FROM orders WHERE user_id IN (1,2) AND state NOT IN ('cancelled');
+
+  db.Preload("Orders").Preload("Profile").Preload("Role").Find(&users)
+  //// SELECT * FROM users;
+  //// SELECT * FROM orders WHERE user_id IN (1,2,3,4); // has many
+  //// SELECT * FROM profiles WHERE user_id IN (1,2,3,4); // has one
+  //// SELECT * FROM roles WHERE id IN (4,5,6); // belongs to
+  #+END_SRC
+******* 自动预加载
++ Gorm 默认总是会自动预加载关联记录
+  #+BEGIN_SRC go
+  type User struct {
+    gorm.Model
+    Name       string
+    CompanyID  uint
+    Company    Company `gorm:"PRELOAD:false"` // 不会预加载
+    Role       Role                           // 预加载
+  }
+
+  db.Set("gorm:auto_preload", true).Find(&users)
+  #+END_SRC
+******* 嵌套预加载
++ 示例
+  #+BEGIN_SRC go
+  db.Preload("Orders.OrderItems").Find(&users)
+  db.Preload("Orders", "state = ?", "paid").Preload("Orders.OrderItems").Find(&users)
+  #+END_SRC
+******* 自定义预加载 SQL
++ 可以通过传入 func(db *gorm.DB) *gorm.DB 来自定义预加载
+  #+BEGIN_SRC go
+  db.Preload("Orders", func(db *gorm.DB) *gorm.DB {
+    return db.Order("orders.amount DESC")
+  }).Find(&users)
+  //// SELECT * FROM users;
+  //// SELECT * FROM orders WHERE user_id IN (1,2,3,4) order by orders.amount DESC;
+  #+END_SRC
+***** 链式操作
+****** 链式操作
++ Method Chaining，Gorm 实现了链式操作接口，所以你可以把代码写成这样,在调用立即执行方法前不会生成 Query 语句，有时候这会很有用
+  #+BEGIN_SRC go
+  db, err := gorm.Open("postgres", "user=gorm dbname=gorm sslmode=disable")
+
+  // 创建一个查询
+  tx := db.Where("name = ?", "jinzhu")
+
+  // 添加更多条件
+  if someCondition {
+    tx = tx.Where("age = ?", 20)
+  } else {
+    tx = tx.Where("age = ?", 30)
+  }
+
+  if yetAnotherCondition {
+    tx = tx.Where("active = ?", 1)
+  }
+  #+END_SRC
+****** 立即执行方法
++ Immediate methods ，立即执行方法是指那些会立即生成 SQL 语句并发送到数据库的方法, 他们一般是 CRUD 方法
+  #+BEGIN_SRC go
+  Create, First, Find, Take, Save, UpdateXXX, Delete, Scan, Row, Rows…
+  #+END_SRC
++ 这有一个基于上面链式方法代码的立即执行方法的例子
+  #+BEGIN_SRC go
+  tx.Find(&user)
+
+  //生成的 Sql
+  //SELECT * FROM users where name = 'jinzhu' AND age = 30 AND active = 1;
+  #+END_SRC
+****** 范围
++ Scopes，Scope 是建立在链式操作的基础之上的。基于它，你可以抽取一些通用逻辑，写出更多可重用的函数库
+  #+BEGIN_SRC go
+  func AmountGreaterThan1000(db *gorm.DB) *gorm.DB {
+    return db.Where("amount > ?", 1000)
+  }
+
+  func PaidWithCreditCard(db *gorm.DB) *gorm.DB {
+    return db.Where("pay_mode_sign = ?", "C")
+  }
+
+  func PaidWithCod(db *gorm.DB) *gorm.DB {
+    return db.Where("pay_mode_sign = ?", "C")
+  }
+
+  func OrderStatus(status []string) func (db *gorm.DB) *gorm.DB {
+    return func (db *gorm.DB) *gorm.DB {
+      return db.Scopes(AmountGreaterThan1000).Where("status IN (?)", status)
+    }
+  }
+
+  db.Scopes(AmountGreaterThan1000, PaidWithCreditCard).Find(&orders)
+  // 查找所有金额大于 1000 的信用卡订单
+
+  db.Scopes(AmountGreaterThan1000, PaidWithCod).Find(&orders)
+  // 查找所有金额大于 1000 的 COD 订单
+
+  db.Scopes(AmountGreaterThan1000, OrderStatus([]string{"paid", "shipped"})).Find(&orders)
+  // 查找所有金额大于 1000 且已付款或者已发货的订单
+  #+END_SRC
+****** 多个立即执行方法
++ Multiple Immediate Methods，在 GORM 中使用多个立即执行方法时，后一个立即执行方法会复用前一个 立即执行方法的条件 (不包括内联条件) 
+  #+BEGIN_SRC go
+  db.Where("name LIKE ?", "jinzhu%").Find(&users, "id IN (?)", []int{1, 2, 3}).Count(&count)
+
+  //生成的 Sql
+  //SELECT * FROM users WHERE name LIKE 'jinzhu%' AND id IN (1, 2, 3)
+  //SELECT count(*) FROM users WHERE name LIKE 'jinzhu%'
+  #+END_SRC
+***** 错误处理
++ Go的错误处理是很重要的建议您在调用任何 立即执行方法 后进行错误检查
+****** 错误处理
++ GORM中的错误处理与惯用的Go代码不同，因为它具有可链接的API，但仍然易于实现。如果发生任何错误，GORM将设置* gorm.DB的错误字段，可以这样检查
+  #+BEGIN_SRC go
+  if err := db.Where("name = ?", "jinzhu").First(&user).Error; err != nil {
+    // error 处理...
+  }
+
+  //或者
+
+  if result := db.Where("name = ?", "jinzhu").First(&user); result.Error != nil {
+    // error 处理...
+  }
+  #+END_SRC
+****** 错误
++ 处理数据时，通常会发生多个错误。 GORM提供了一个API来将所有错误作为切片返回
+  #+BEGIN_SRC go
+  // 如果发生了一个以上的错误， `GetErrors` 以`[]error`形式返回他们
+  errors := db.First(&user).Limit(10).Find(&users).GetErrors()
+
+  fmt.Println(len(errors))
+
+  for _, err := range errors {
+    fmt.Println(err)
+  }
+  #+END_SRC
+****** 记录未找到错误
++ RecordNotFound，GORM提供了处理 RecordNotFound 错误的快捷方式。如果有多个错误，它将逐一检查这些错误是否为 RecordNotFound 错误
+  #+BEGIN_SRC go
+  // 检查是否为 RecordNotFound 错误
+  db.Where("name = ?", "hello world").First(&user).RecordNotFound()
+
+  if db.Model(&user).Related(&credit_card).RecordNotFound() {
+    // 未找到记录
+  }
+
+  if err := db.Where("name = ?", "jinzhu").First(&user).Error; gorm.IsRecordNotFoundError(err) {
+    // 未找到记录
+  }
+  #+END_SRC
+***** 钩子
+****** 对象生命周期
++ Hooks(一般称之为钩子函数)的功能是在运行创建/查询/更新/删除语句之前或者之后执行。
++ 如果你为一个 model 定义了一个具体的方法，它将会在运行 创建，更新，查询，删除时自动被调用，并且如果任何回调函数函数返回一个错误，GORM 将会停止接下来的操作并且回滚当前的事务
+****** 钩子函数
+******* 创建对象时
++ Creating an object，创建对象时可用的 hooks
+  #+BEGIN_SRC go
+  // 开始事务
+  BeforeSave
+  BeforeCreate
+  // 在关联前保存
+  // 更新时间戳 `CreatedAt`, `UpdatedAt`
+  // save self
+  // 重新加载具有默认值的字段，其值为空
+  // 在关联后保存
+  AfterCreate
+  AfterSave
+  // 提交或回滚事务
+  #+END_SRC
++ 示例
+  #+BEGIN_SRC go
+  func (u *User) BeforeSave() (err error) {
+    if !u.IsValid() {
+      err = errors.New("can't save invalid data")
+    }
+    return
+  }
+
+  func (u *User) AfterCreate(scope *gorm.Scope) (err error) {
+    if u.ID == 1 {
+      scope.DB().Model(u).Update("role", "admin")
+    }
+    return
+  }
+  #+END_SRC
++ 在 GORM 中 Save/Delete 操作默认是基于事务完成， 所以相关更改在提交事务之前是不可见的。 如果你想在你的 hooks 中看到这些变化，你可以在你的 hooks 中接收当前事务的参数
+  #+BEGIN_SRC go
+  func (u *User) AfterCreate(tx *gorm.DB) (err error) {
+    tx.Model(u).Update("role", "admin")
+    return
+  }
+  #+END_SRC
+******* 更新对象时
++ Updating an object，更新对象时可用的 hooks
+  #+BEGIN_SRC go
+  // begin transaction 开始事物
+  BeforeSave
+  BeforeUpdate
+  // save before associations 保存前关联
+  // update timestamp `UpdatedAt` 更新 `UpdatedAt` 时间戳
+  // save self 保存自己
+  // save after associations 保存后关联
+  AfterUpdate
+  AfterSave
+  // commit or rollback transaction 提交或回滚事务
+  #+END_SRC
++ 示例
+  #+BEGIN_SRC go
+  func (u *User) BeforeUpdate() (err error) {
+    if u.readonly() {
+      err = errors.New("read only user")
+    }
+    return
+  }
+
+  // 在一个事务中更新数据
+  func (u *User) AfterUpdate(tx *gorm.DB) (err error) {
+    if u.Confirmed {
+      tx.Model(&Address{}).Where("user_id = ?", u.ID).Update("verfied", true)
+    }
+    return
+  }
+  #+END_SRC
+******* 删除对象时
++ Deleting an object，删除对象时可用的 hooks
+  #+BEGIN_SRC go
+  // begin transaction 开始事务
+  BeforeDelete
+  // delete self 删除自己
+  AfterDelete
+  // commit or rollback transaction 提交或回滚事务
+  #+END_SRC
++ 示例
+  #+BEGIN_SRC go
+  // 在一个事务中更新数据
+  func (u *User) AfterDelete(tx *gorm.DB) (err error) {
+    if u.Confirmed {
+      tx.Model(&Address{}).Where("user_id = ?", u.ID).Update("invalid", false)
+    }
+    return
+  }
+  #+END_SRC
+******* 查询对象时
++ Querying an object，查询对象时可用的 hooks
+  #+BEGIN_SRC go
+  // load data from database 从数据库加载数据
+  // Preloading (eager loading) 预加载（加载）
+  AfterFind
+  #+END_SRC
++ 示例
+  #+BEGIN_SRC go
+  func (u *User) AfterFind() (err error) {
+    if u.MemberShip == "" {
+      u.MemberShip = "user"
+    }
+    return
+  }
+  #+END_SRC
+***** 事务
++ GORM 默认会将单个的 create, update, delete操作封装在事务内进行处理，以确保数据的完整性。如果你想把多个 create, update, delete 操作作为一个原子操作，Transaction 就是用来完成这个的
+****** 事务
++ 要在事务中执行一系列操作，通常您可以参照下面的流程来执行
+  #+BEGIN_SRC go
+  func CreateAnimals(db *gorm.DB) error {
+    return db.Transaction(func(tx *gorm.DB) error {
+      // 在事务中做一些数据库操作 (这里应该使用 'tx' ，而不是 'db')
+      if err := tx.Create(&Animal{Name: "Giraffe"}).Error; err != nil {
+        // 返回任意 err ，整个事务都会 rollback
+        return err
+      }
+
+      if err := tx.Create(&Animal{Name: "Lion"}).Error; err != nil {
+        return err
+      }
+
+      // 返回 nil ，事务会 commit
+      return nil
+    })
+  }
+  #+END_SRC
+****** 手动控制的事务
++ 示例
+  #+BEGIN_SRC go
+  // 开始事务
+  tx := db.Begin()
+
+  // 在事务中做一些数据库操作 (这里应该使用 'tx' ，而不是 'db')
+  tx.Create(...)
+
+  // ...
+
+  // 有错误时，手动调用事务的 Rollback()
+  tx.Rollback()
+
+  // 无错误时，手动调用事务的 Commit()
+  tx.Commit()
+  #+END_SRC
+****** 具体的例子
++ 示例
+  #+BEGIN_SRC go
+  func CreateAnimals(db *gorm.DB) error {
+    // 请注意，事务一旦开始，你就应该使用 tx 作为数据库句柄
+    tx := db.Begin()
+    defer func() {
+      if r := recover(); r != nil {
+        tx.Rollback()
+      }
+    }()
+
+    if err := tx.Error; err != nil {
+      return err
+    }
+
+    if err := tx.Create(&Animal{Name: "Giraffe"}).Error; err != nil {
+       tx.Rollback()
+       return err
+    }
+
+    if err := tx.Create(&Animal{Name: "Lion"}).Error; err != nil {
+      tx.Rollback()
+      return err
+    }
+
+    return tx.Commit().Error
+  }
+  #+END_SRC
+***** SQL 生成器
+****** 执行原生SQL
++ 执行原生 SQL 时，不支持与其它方法的链式操作
+  #+BEGIN_SRC go
+  db.Exec("DROP TABLE users;")
+  db.Exec("UPDATE orders SET shipped_at=? WHERE id IN (?)", time.Now(), []int64{11,22,33})
+
+  // Scan
+  type Result struct {
+    Name string
+    Age  int
+  }
+
+  var result Result
+  db.Raw("SELECT name, age FROM users WHERE name = ?", 3).Scan(&result)
+  #+END_SRC
+****** sql.Row 和 sql.Rows
++ 通过 *sql.Row 或 *sql.Rows 获取查询结果
+  #+BEGIN_SRC go
+  row := db.Table("users").Where("name = ?", "jinzhu").Select("name, age").Row() // (*sql.Row)
+  row.Scan(&name, &age)
+
+  rows, err := db.Model(&User{}).Where("name = ?", "jinzhu").Select("name, age, email").Rows() // (*sql.Rows, error)
+  defer rows.Close()
+  for rows.Next() {
+    ...
+    rows.Scan(&name, &age, &email)
+    ...
+  }
+
+  // 原生 SQL
+  rows, err := db.Raw("select name, age, email from users where name = ?", "jinzhu").Rows() // (*sql.Rows, error)
+  defer rows.Close()
+  for rows.Next() {
+    ...
+    rows.Scan(&name, &age, &email)
+    ...
+  }
+  #+END_SRC
+****** 将 sql.Rows 扫描至 model
++ 示例
+  #+BEGIN_SRC go
+  rows, err := db.Model(&User{}).Where("name = ?", "jinzhu").Select("name, age, email").Rows() // (*sql.Rows, error)
+  defer rows.Close()
+
+  for rows.Next() {
+    var user User
+    // ScanRows 扫描一行记录到 user
+    db.ScanRows(rows, &user)
+
+    // do something
+  }
+  #+END_SRC
+**** github.com/go-pg/pg
+***** 安装
+go get github.com/go-pg/pg/v10
+
+***** 导入模块
+#+BEGIN_SRC go
+import (
+    "fmt"
+
+    "github.com/go-pg/pg/v10"
+    "github.com/go-pg/pg/v10/orm"
+)
+#+END_SRC
+***** 连接postgres
+#+BEGIN_SRC go
+db := pg.Connect(&pg.Options{
+    Addr:     ":5432",
+    User:     "user",
+    Password: "pass",
+    Database: "db_name",
+})
+或更流行的做法
+opt, err := pg.ParseURL("postgres://user:pass@localhost:5432/db_name?sslmode=disable")
+if err != nil {
+   panic(err)
+}
+
+db := pg.Connect(opt)
+#+END_SRC

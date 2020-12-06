@@ -165,6 +165,12 @@
 
 
   #+END_SRC
+** tslint
++ npm install tslint -g
++ 拷贝tslint.json配置文件到项目根目录，或使用 tslint -i 初始化生成基本的配置文件
++ 可能用到的其他模块
+  npm i tslint-loader tslint-config-standard -g
+
 ** webpack对应配置
 + 安装插件ts-load
   sudo npm install ts-loader -g --save-dev
@@ -4012,7 +4018,8 @@ ES6 提供了 11 个内置的 Symbol 值，指向 JS 内部使用的属性和方
 ** 全局安装typescript
 + 命令
   #+BEGIN_SRC shell
-  npm install -g typescript
+  sudo npm install -g typescript
+  sudo npm install -g tern
   #+END_SRC
 ** typescript初始化项目
 + 命令
@@ -4028,3 +4035,562 @@ ES6 提供了 11 个内置的 Symbol 值，指向 JS 内部使用的属性和方
   npm install webpack webpack-cli webpack-dev-server -D (开发依赖)
   #+END_SRC
 + 创建并编辑webpack.config.json(存放在build文件夹中)
+* 再次学习
+** 项目设置
+*** 初始化项目
++ npm
+  npm init -y
+*** 安装配套工具
+**** webpack
++ 安装
+  npm i webpack webpack-cli webpack-dev-server -D
++ ts-loader
+  npm i ts-loader typescript -D (需要本地安装一下typescript)
++ html-webpack-plugin
+  npm i html-webpack-plugin -D
++ clean-webpack-plugin
+  npm i clean-webpack-plugin -D
++ webpack-merge
+  npm i webpack-merge -D
+*** 修改package.json
++ 开发环境
+  - "main": "./src/index.ts",
+  - "scripts": {
+      "start": "webpack-dev-server --mode=development --config ./build/webpack.config.js",
+    },
++ 生产环境
+  -  "scripts": {
+       "build": "webpack --mode=production --config ./build/webpack.config.js",
+    },
+*** tsconfig.json配置文件
+
++ 创建tsconfig.json文件
+  在项目根目录下执行 tsc --init
+** 数据类型
++ 类型注解
+  - 相当于强类型语言中的类型声明
+  - 语法:(变量/函数) : 类型名称
+*** 基本类型
+**** Boolean
+**** Number
+**** String
+**** Symbol
+**** undefined
++ undefined和null是任何其他类型的子类型，可以赋值给其他类型的变量，但需要设置tsconfig.json
+  "strictNullChecks": false,
++ 如果不调整此设置，而给其他类型变量赋值undefined或null，则可以使用联合类型
+  let num: number | undefined | null = 123
+**** null
++ undefined和null是任何其他类型的子类型，可以赋值给其他类型的变量，但需要设置tsconfig.json
+  "strictNullChecks": false, 
++ 如果不调整此设置，而给其他类型变量赋值undefined或null，则可以使用联合类型
+  let num: number | undefined | null = 123
+*** 引用类型
+**** Array
+**** Function
+**** Object
+*** TS新增
+**** Void
++ void表示没有任何返回值的类型，比如没有任何返回值的函数，它的类型就是void类型
+**** Any
++ 如果不指定一个变量的类型，它默认是any类型，这就和js没有任何区别了
+  let x
+  x = 1
+  x = []
+**** Never
++ 表示永远不会有返回值的类型
+  let error = () => {
+      throw new Error('error')
+  }
+  
+  let endless = () => {
+      while(true) {}
+  }
+**** Tuple 元组
+**** Enum 枚举
++ 枚举就是一组有名字的常量集合
++ 将程序中不容易记忆的硬编码和在未来中可能改变的常量定义为枚举类型，可以提高维护性
+**** 高级类型
+***** 交叉类型
++ 将多个类型合并为一个类型
+  #+BEGIN_SRC typescript
+  interface DogInterface {
+      run(): void
+  }
+  interface CatInterface {
+      jump(): void
+  }
+  let pet: DogInterface & CatInterface = {
+      run() {},
+      jump() {}
+  }
+  #+END_SRC
+***** 联合类型
++ 声明时类型不确定，可以是多个类型中的一个
+  #+BEGIN_SRC typescript
+  let a: number | string = 1
+  let b: 'a' | 'b' | 'c'
+  #+END_SRC
+***** 索引类型
++ 操作符 keyof T
+  #+BEGIN_SRC typescript
+  interface Obj {
+      a: number,
+      b: string
+  }
+
+  let key: keyof Obj
+  #+END_SRC
+
++ 索引访问操作费 T[K]
+  #+BEGIN_SRC typescript
+  let value: Obj['a']
+  #+END_SRC
+
++ 泛型约束 T extends U
+***** 映射类型
++ 从旧的类型生成新的类型
+***** 条件类型
++ 有条件表达式决定的类型
+  T extends U ? X : Y
+** 接口
+*** 介绍
++ 接口可以用来约束函数、对象、类的结构、类的类型，是一种代码协作的契约
+*** 对象类型接口
+**** 可索引类型接口
+***** 使用数字索引
++ 示例
+  #+BEGIN_SRC typescript
+  interface StringArray {
+      [index: number]: string
+  }
+  let chars: StringArray = ['A', 'B']
+  #+END_SRC
+***** 使用字符串索引
++ 示例
+  #+BEGIN_SRC typescript
+  interface Names {
+      [x: string]: string
+  }
+  #+END_SRC
+**** 特殊处理
++ 当使用对象字面量赋值，多出接口定义内容的属性会提示错误，可以使用断言明确告诉编译器它属于某个接口类型
+  render({
+      data: [
+          {id: 1, name: 'A'},
+          {id: 2, name: 'B'}
+      ]
+  } as Result)
++ 使用字符串索引签名，使得接口支持任意属性
+  interface List {
+      id: number;
+      name: string;
+      [x: string]: any;
+  }
++ 可选属性 ?
+  interface List {
+      id: number;
+      name: string;
+      [x: string]: any;
+      age?: number;
+  }
++ 只读属性 readonly
+  #+BEGIN_SRC typescript
+  interface List {
+      readonly id: number;
+      name: string;
+      [x: string]: any;
+      age?: number;
+  }
+  #+END_SRC
+*** 函数类型接口
++ 示范
+  #+BEGIN_SRC typescript
+  interface Add {
+      (x: number, y: number): number
+  }
+  let add: Add = (a, b) => a + b
+  #+END_SRC
+*** 混合类型接口
++ 示例
+  #+BEGIN_SRC typescript
+  interface Lib {
+      (): void;
+      version: string;
+      doSomething(): void;
+  }
+  let lib: Lib = (() => {}) as Lib
+  lib.version = '1.0'
+  lib.doSomething = () => {}
+  #+END_SRC
+** 函数
+*** 定义函数
++ 通过 function 关键字
+  #+BEGIN_SRC typescript
+  function add1(x: number, y: number){
+      return x + y
+  }
+  #+END_SRC
++ 通过设置变量
+  #+BEGIN_SRC typescript
+  let add2: (x: number, y: number) => number 
+  #+END_SRC
++ 通过类型别名
+  #+BEGIN_SRC typescript
+  type add3 = (x: number, y: number) => number 
+  #+END_SRC
++ 通过接口
+  #+BEGIN_SRC typescript
+  interface add4 {
+      (x: number, y: number): number
+  }
+  #+END_SRC
+*** 函数参数
++ 形参与实参必须逐个对应
++ 可选参数，可选参数必须位于所有必选参数之后
+  #+BEGIN_SRC typescript
+  function add5(x: number, y?: number) {
+      return y? x + y: x
+  }
+  #+END_SRC
++ 参数默认值
+  #+BEGIN_SRC typescript
+  function add6(x: number, y=0, z: number, q=5){
+    return x + y + z
+  }
+  // 必选参数之前的具有默认值的参数，必选指定undefined来获取参数的默认值，之后的可以不指定undefined
+  add6(1, undefined, 8)
+  #+END_SRC
++ 当参数个数不固定时，可以使用剩余参数
+  #+BEGIN_SRC typescript
+  function add7(x: number, ...resst: number[]) {
+      return x + rest.reduce((pre, cur) => pre + cur)
+  }
+  add7(1, 2, 5, 6, 9)
+  #+END_SRC
+*** 函数重载
++ 函数重载的含义是当两个函数具有相同的名称，但参数个数、参数类型不同，就实现了一个函数重载
+  #+BEGIN_SRC typescript
+  function add8(...rest: number[]): number;
+  function add8(...rest: string[]): string;
+  function add8(...rest: any[]): any {
+      let first = rest[0];
+      if (typeof first === 'string') {
+          return rest.join('')
+      } 
+      if (typeof first === 'number') {
+          return  rest.reduce((pre, cur) => pre + cur)
+
+      }
+
+  }
+  
+  #+END_SRC
++ 在定义重载的函数列表时，需要注意顺序先后，将最可能用到的放在第一条
+** 类
+*** 类的定义
++ 示例
+  #+BEGIN_SRC typescript
+  class Dog {
+    constructor(name: string) {
+      this.name = name
+    }
+    name: string
+    run() {}
+  }
+  #+END_SRC
++ 类的属性必须通过构造函数或赋值给与初始化
+*** 创建实例
++ 示例
+  #+BEGIN_SRC typescript
+  let dog = new Dog('jiwawa')
+  #+END_SRC
+*** 继承
++ 示例
+  #+BEGIN_SRC typescript
+  class Husky extends Dog {
+    constructor (name: string, color: string) {
+      super(name)
+      this.color = color;
+    }
+    color: string
+  }
+  #+END_SRC
+*** 类的修饰符
++ public 公有
+  - 默认情况下都是public
+  - 构造函数的参数添加public修饰符，则自动变为类的属性，就不需要另行定义了
++ private 私有
++ protected 保护
++ readonly 只读
++ static 静态成员
+  - 只能通过类名调用，而不能通过实例调用
+*** 抽象类
++ 只能被继承不能被实例化的类
++ 示例
+  #+BEGIN_SRC typescript
+  abstract class Animal {
+    eat() {}
+    abstract sleep(): void //抽象方法
+  }
+  
+  class Dog extends Animal {
+    constructor (name: string) {
+      super()
+      this.name = name
+    }
+    name: string
+    run() {}
+    sleep() {
+      console.log('dog sleep')
+    }
+  }
+  #+END_SRC
+*** 多态
++ 示例
+  #+BEGIN_SRC typescript
+  class Cat extends Animal {
+    sleep() {
+      console.log('cat sleep')
+    }
+  }
+  #+END_SRC
+*** this类型
++ 可以实现链式调用
+*** 接口和类的关系
++ 类必须实现接口所有的属性和方法
+  #+BEGIN_SRC typescript
+  interface Human {
+    name: string;
+    eat(): void;
+  }
+
+  class Asian implements Human {
+      constructor(name: string) {
+          this.name = name;
+      }
+      name: string
+      eat() {}
+  }
+  #+END_SRC
++ 接口只能约束类的公有成员、构造函数
++ 接口的继承
+  - 一个接口可以继承多个接口
+    #+BEGIN_SRC typescript
+    interface Boy extends Man, Child {
+    }
+    #+END_SRC
+  - 接口可以继承类 
+** 泛型
++ 泛型概念
+  不预先确定的数据类型，具体的类型在使用的时候才能确定
++ 泛型函数
+  #+BEGIN_SRC typescript
+  function log<T>(value: T): T {
+    console.log(value)
+    return value
+  }
+
+  log<string[]>(['a', 'b', 'f'])
+  log(['a', 'b', 'f']) //类型推断
+
+  #+END_SRC
++ 泛型函数类型
+  #+BEGIN_SRC typescript
+  type log = <T>(value: T) => T
+  let myLog: Log = log
+  #+END_SRC
++ 泛型接口
+  #+BEGIN_SRC typescript
+  interface log {
+    <T>(value: T): T
+  }
+  
+  interface log<T> {
+    (value: T): T
+  }
+  
+  let myLog: Log<number> = log
+  #+END_SRC
++ 泛型类
+  #+BEGIN_SRC typescript
+  class Log<T> {
+      run(value: T) {
+          console.log(value)
+          return value
+      }
+  }
+  // 泛型类不能约束类的静态成员
+
+  let log1 = new Log<number>()
+  let log2 = new Log() //可以传入任意类型
+  #+END_SRC
++ 泛型约束
+  #+BEGIN_SRC typescript
+  interface Length {
+      length: number
+  }
+  function log<T extends Length>(value: T): T {
+      console.log(value, value.length)
+      return value
+  }
+  log([1])
+  log('123')
+  log({length: 1})
+  #+END_SRC
+** 类型检查机制
+*** 类型推断
+**** 基础类型推断
++ 示例
+  #+BEGIN_SRC typescript
+  let a // any
+  let a = 1 // number 
+  let b = [] //any[]
+  let c = (x = 1) => x + 1 // let c(x?: number) => number
+  #+END_SRC
+**** 最佳通用类型推断
++ 示例
+  #+BEGIN_SRC typescript
+  let b = [1, 'xxx'] // let b: (number | string)[]
+  #+END_SRC
+**** 上下文类型推断
++ 示例
+  #+BEGIN_SRC typescript
+  window.onkeydown = (event) => {
+     console.log(event.metakey)
+  }
+  #+END_SRC
+*** 类型断言
++ 当自己明确知道当前对象的类型时，可以使用类型断言，要避免滥用，容易出错
+  #+BEGIN_SRC typescript
+  interface Foo {
+      bar: number
+  }
+  let foo = {} as Foo
+  #+END_SRC
+*** 类型兼容性
++ 当一个类型Y可以被赋值给另一个类型X时，就可以认为类型X兼容类型Y，常应用于接口、函数、类中
+  X兼容Y: X(目标类型) = Y(源类型)
+  #+BEGIN_SRC typescript
+  let s: string = 'a'
+  s = null
+  #+END_SRC
++ 接口兼容性
+  成员少的兼容成员多的
+  #+BEGIN_SRC typescript
+  interface X {
+      a: any;
+      b: any;
+  }
+  interface Y {
+      a: any;
+      b: any;
+      c: any;
+  }
+  let x: X = {a: 1, b: 2}
+  let y: Y = {a: 1, b: 2, c: 3}
+  x = y // 可以
+  // y = x  不可以
+  #+END_SRC
++ 函数兼容性
+  #+BEGIN_SRC typescript
+  type Handler = (a: number, b: number) => void
+  function hof(handler: Handler) {
+      return handler
+  }
+  
+  // 1）参数个数
+  let handler1 = (a: number) => {}
+  hof(handler1) // 可以
+  
+  let handler2 = (a: number, b: number, c: number) => {}
+  hof(handler2) // 不可以
+
+  // 2）参数类型
+  // 参数类型必须要匹配，如果是对象类型、接口则是成员多的兼容成员少的，与单纯的接口兼容性正好相反
+  // 3）返回值类型
+  // 返回值要求相同或是子类型
+  #+END_SRC
++ 枚举兼容性
+  枚举类型与数值类型是完全兼容的
+  两个枚举是不兼容的
+  #+BEGIN_SRC typescript
+  enum Fruit {Apple, Banana}
+  enum Color {Red, Yellow}
+  let fruit: Fruit.Apple =3
+  let no: number = Fruit.Apple //可以
+  let color: Color.Red = Fruit.Apple //不可以
+  #+END_SRC
++ 类兼容性
+  #+BEGIN_SRC typescript
+  // 与接口情况类似，但静态成员和构造函数不参与比较
+  // 当类含义私有属性或方法，则两个类无法兼容，但子类和父类可以兼容
+  #+END_SRC
++ 泛型兼容性
+  #+BEGIN_SRC typescript
+  interface Empty<T> {
+  
+  }
+  let obj1: Empty<number> = {};
+  let obj2: Empty<string> = {};
+  obj1 = obj2 //可以
+
+  interface Empty<T> {
+      value: T
+  }
+  let obj1: Empty<number> = {};
+  let obj2: Empty<string> = {};
+  obj1 = obj2 //不可以
+  #+END_SRC
++ 口诀
+  结构之间，成员少的兼容成员多的
+  函数之间，参数多的兼容参数少的
+*** 类型保护
++ instanceof
+  判断实例是否属于某个类
++ in
+  判断属性是否属于某个对象
++ typeof
+  判断基本类型
++ 类型保护函数
+  #+BEGIN_SRC typescript
+  function isJava(lang: Java | JavaScript): lang is Java {
+      return (lang as Java).helloJava !== undefined 
+  }
+  #+END_SRC
+*** 命名空间
++ 关键字 namespace
++ 命名空间最好在全局中使用，不要与模块系统混用，所以命名空间目前应用较少
+*** 声明合并
++ 对项目中散落在不同地方的声明合并到一起，比如多个文件中的同名接口，会被合并到一起，包含所有的成员 
+*** 为外部类库编写声明文件
++ 大多数类库都提供声明文件，但需要npm单独安装(开发依赖)
++ 通过microsoft.github.io/TypeSearch/查询类库是否提供了声明文件
++ 手动编写声明文件
+** 装饰器
+*** 定义
++ 语法
+  @ name //名称必须是函数，或求值后为函数
++ 装饰器要放在被修饰对象紧挨着的前面，被修饰对象将作为参数传入到修饰器中
++ 装饰器可以作用于类、方法、访问器、属性、参数
++ 示例
+  #+BEGIN_SRC typescript
+  function setProp (target) {
+      //....
+  }
+  @setProp
+  #+END_SRC
+*** 装饰器工厂
++ 示例
+  #+BEGIN_SRC typescript
+  function setProp () {
+      return function(target){
+          //...
+      }
+  }
+  @setProp()
+  #+END_SRC  
+*** 装饰器组合
++ 对同一对象应用多个装饰器，调用顺序为从下往上
+*** 装饰器求值
++ 
